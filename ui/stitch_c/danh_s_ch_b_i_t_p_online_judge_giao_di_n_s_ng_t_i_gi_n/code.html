@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            background: "#ffffff",
+            surface: "#f8f9ff",
+            "surface-dim": "#cbdbf5",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#eff4ff",
+            "surface-container": "#f1f5f9",
+            "surface-container-high": "#e2e8f0",
+            "surface-container-highest": "#cbd5e1",
+            primary: "#2563eb",
+            "primary-container": "#2563eb",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#ffffff",
+            secondary: "#059669",
+            "secondary-container": "#ecfdf5",
+            "on-secondary-container": "#065f46",
+            "on-surface": "#0f172a",
+            "on-surface-variant": "#64748b",
+            outline: "#cbd5e1",
+            "outline-variant": "#e2e8f0"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900 min-h-screen flex flex-col">
+<!-- Minimal Light Header -->
+<header class="sticky top-0 z-40 w-full bg-white/95 backdrop-blur border-b border-slate-200/80">
+<div class="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<a class="flex items-center gap-2 font-mono font-bold text-lg text-slate-900 tracking-tight" href="#">
+<span class="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold text-sm">A</span>
+<span>Algo<span class="text-blue-600">Judge</span></span>
+</a>
+<nav class="hidden md:flex items-center gap-1 font-medium text-sm">
+<a class="px-3 py-1.5 rounded-md bg-blue-50 text-blue-600 font-semibold" href="#">Bài tập</a>
+<a class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" href="#">Submissions</a>
+<a class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" href="#">Leaderboard</a>
+<a class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" href="#">Contest</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<button class="h-8 px-3 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5" id="randomPickBtn" title="Alt+R" type="button">
+<span class="material-symbols-outlined text-base text-blue-600">casino</span>
+<span>Thử ngẫu nhiên</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-[1400px] mx-auto px-6 py-8">
+<div class="flex flex-col gap-6">
+<!-- Title & Search/Filter Section (Clean & Airy) -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h1 class="text-2xl font-bold tracking-tight text-slate-900">Kho Bài Tập Thuật Toán</h1>
+<p class="text-sm text-slate-500 mt-0.5">Luyện tập tư duy giải thuật với các bài toán chuẩn hoá tuyển chọn</p>
+</div>
+<div class="flex items-center gap-3 text-xs text-slate-500 font-mono">
+<span>Tổng số: <strong class="text-slate-900 font-semibold">1,850</strong> bài</span>
+<span>•</span>
+<span>Khớp bộ lọc: <strong class="text-blue-600 font-semibold" id="matchedCount">10</strong> bài</span>
+</div>
+</div>
+<!-- Search & Filters Container -->
+<div class="bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col gap-3.5">
+<!-- Top Search Row -->
+<div class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+<div class="relative flex-1">
+<span class="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg pointer-events-none">search</span>
+<input class="w-full h-10 pl-10 pr-20 rounded-lg border border-slate-200 bg-slate-50/60 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 transition-all" id="problemSearchInput" placeholder="Tìm theo tên bài tập, số ID (#1024), hoặc mã nguồn..." type="text"/>
+<div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+<button class="hidden text-slate-400 hover:text-slate-600 text-sm material-symbols-outlined" id="clearSearchBtn" type="button">close</button>
+<kbd class="px-1.5 py-0.5 rounded border border-slate-200 bg-white text-slate-400 font-mono text-[10px]">Ctrl+K</kbd>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<!-- Sort -->
+<div class="relative">
+<select class="appearance-none h-10 pl-3 pr-8 rounded-lg border border-slate-200 bg-slate-50/60 hover:bg-white text-slate-700 text-xs font-medium cursor-pointer focus:outline-none focus:border-blue-500 transition-all" id="sortSelector">
+<option value="id-asc">ID tăng dần</option>
+<option value="id-desc">ID giảm dần</option>
+<option value="ac-desc">Tỉ lệ AC cao nhất</option>
+<option value="ac-asc">Tỉ lệ AC thấp nhất</option>
+<option value="diff-asc">Độ khó tăng dần</option>
+<option value="diff-desc">Độ khó giảm dần</option>
+</select>
+<span class="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base pointer-events-none">expand_more</span>
+</div>
+<!-- Status Dropdown -->
+<div class="relative">
+<select class="appearance-none h-10 pl-3 pr-8 rounded-lg border border-slate-200 bg-slate-50/60 hover:bg-white text-slate-700 text-xs font-medium cursor-pointer focus:outline-none focus:border-blue-500 transition-all" id="filterStatus">
+<option value="all">Tất cả trạng thái</option>
+<option value="solved">Đã giải</option>
+<option value="attempted">Đang làm dở</option>
+<option value="unsolved">Chưa giải</option>
+</select>
+<span class="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-base pointer-events-none">expand_more</span>
+</div>
+<button class="h-10 px-3 rounded-lg border border-slate-200 bg-slate-50/60 hover:bg-white text-slate-600 hover:text-slate-900 transition-all text-xs font-medium flex items-center gap-1" id="resetFiltersBtn" title="Đặt lại bộ lọc" type="button">
+<span class="material-symbols-outlined text-sm">restart_alt</span>
+<span>Đặt lại</span>
+</button>
+</div>
+</div>
+<!-- Filter Sub-row: Difficulty & Topic Tags -->
+<div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="text-xs font-medium text-slate-400 mr-1">Độ khó:</span>
+<button class="diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-900 text-white shadow-xs" data-diff="all">Tất cả</button>
+<button class="diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors" data-diff="easy">Dễ</button>
+<button class="diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors" data-diff="medium">Trung bình</button>
+<button class="diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-rose-700 hover:bg-rose-50 transition-colors" data-diff="hard">Khó</button>
+</div>
+<!-- Algorithm Topic Pills -->
+<div class="flex items-center gap-1 overflow-x-auto max-w-full pb-0.5">
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200/60" data-topic="all">Tất cả chủ đề</button>
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-topic="dp">Quy hoạch động</button>
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-topic="graph">Đồ thị</button>
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-topic="ds">Cấu trúc dữ liệu</button>
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-topic="math">Toán &amp; Số học</button>
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-topic="binary-search">Tìm kiếm nhị phân</button>
+<button class="topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-topic="greedy">Tham lam</button>
+</div>
+</div>
+</div>
+<!-- Problemset Data Table -->
+<div class="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-slate-200/80 bg-slate-50/75 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+<th class="py-3 px-4 w-12 text-center" scope="col">TT</th>
+<th class="py-3 px-3 w-20 font-mono" scope="col">ID</th>
+<th class="py-3 px-4 min-w-[320px]" scope="col">Tên bài tập</th>
+<th class="py-3 px-4 w-44" scope="col">Tỉ lệ AC</th>
+<th class="py-3 px-4 w-32" scope="col">Độ khó</th>
+<th class="py-3 px-4 w-28 text-right" scope="col">Thao tác</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 text-sm" id="problemsetBody">
+<!-- Problem 1: Solved / Easy -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="easy" data-id="1001" data-status="solved" data-topics="greedy math">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600" title="Đã giải">
+<span class="material-symbols-outlined text-sm font-bold">check</span>
+</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1001</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Weird Algorithm (Collatz Conjecture)</a>
+<span class="text-xs text-slate-400 font-mono">CSES 1068</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Toán học</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Mô phỏng</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">78.4%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 rounded-full" style="width: 78.4%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">Dễ</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors" href="#">Nộp lại</a>
+</td>
+</tr>
+<!-- Problem 2: Solved / Easy -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="easy" data-id="1002" data-status="solved" data-topics="ds math">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600" title="Đã giải">
+<span class="material-symbols-outlined text-sm font-bold">check</span>
+</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1002</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Two Sum (Cặp số có tổng bằng S)</a>
+<span class="text-xs text-slate-400 font-mono">LC 01</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Hash Table</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Mảng</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">51.2%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 rounded-full" style="width: 51.2%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">Dễ</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors" href="#">Nộp lại</a>
+</td>
+</tr>
+<!-- Problem 3: Attempted / Medium -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="medium" data-id="1015" data-status="attempted" data-topics="dp binary-search">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-50 text-amber-600" title="Đang làm dở">
+<span class="material-symbols-outlined text-sm">schedule</span>
+</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1015</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Dãy Con Tăng Dài Nhất (LIS)</a>
+<span class="text-xs text-slate-400 font-mono">CSES 1145</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Quy hoạch động</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Binary Search</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">44.6%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 rounded-full" style="width: 44.6%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Trung bình</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors font-semibold" href="#">Làm tiếp</a>
+</td>
+</tr>
+<!-- Problem 4: Solved / Medium -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="medium" data-id="1024" data-status="solved" data-topics="graph ds">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600" title="Đã giải">
+<span class="material-symbols-outlined text-sm font-bold">check</span>
+</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1024</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Đường Đi Ngắn Nhất Dijkstra (Shortest Routes I)</a>
+<span class="text-xs text-slate-400 font-mono">CSES 1671</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Đồ thị</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Priority Queue</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">39.1%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 rounded-full" style="width: 39.1%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Trung bình</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors" href="#">Xem lại</a>
+</td>
+</tr>
+<!-- Problem 5: Unsolved / Easy -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="easy" data-id="1030" data-status="unsolved" data-topics="greedy">
+<td class="py-3.5 px-4 text-center">
+<span class="text-slate-300 font-mono text-xs">—</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1030</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Tổng Đoạn Con Lớn Nhất (Maximum Subarray Sum)</a>
+<span class="text-xs text-slate-400 font-mono">Kadane</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Kadane</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Tham lam</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">68.7%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 rounded-full" style="width: 68.7%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">Dễ</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors" href="#">Giải ngay</a>
+</td>
+</tr>
+<!-- Problem 6: Unsolved / Hard -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="hard" data-id="1048" data-status="unsolved" data-topics="graph ds">
+<td class="py-3.5 px-4 text-center">
+<span class="text-slate-300 font-mono text-xs">—</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1048</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Lịch Học &amp; Chu Trình Đồ Thị (Course Schedule II)</a>
+<span class="text-xs text-slate-400 font-mono">Topological</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">DAG</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Kahn</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">28.4%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-rose-500 rounded-full" style="width: 28.4%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700">Khó</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors" href="#">Giải ngay</a>
+</td>
+</tr>
+<!-- Problem 7: Unsolved / Hard -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="hard" data-id="1092" data-status="unsolved" data-topics="dp ds">
+<td class="py-3.5 px-4 text-center">
+<span class="text-slate-300 font-mono text-xs">—</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1092</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Camera Giám Sát Cây Nhị Phân (Binary Tree Cameras)</a>
+<span class="text-xs text-slate-400 font-mono">LC 968</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Tree DP</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Duyệt Hậu Tố</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">19.5%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-rose-500 rounded-full" style="width: 19.5%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700">Khó</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors" href="#">Giải ngay</a>
+</td>
+</tr>
+<!-- Problem 8: Solved / Medium -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="medium" data-id="1104" data-status="solved" data-topics="ds math">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600" title="Đã giải">
+<span class="material-symbols-outlined text-sm font-bold">check</span>
+</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1104</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Cây Đoạn Cập Nhật Điểm (Segment Tree RMQ)</a>
+<span class="text-xs text-slate-400 font-mono">CSES 1649</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Segment Tree</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">41.8%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 rounded-full" style="width: 41.8%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Trung bình</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors" href="#">Xem lại</a>
+</td>
+</tr>
+<!-- Problem 9: Attempted / Hard -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="hard" data-id="1205" data-status="attempted" data-topics="graph">
+<td class="py-3.5 px-4 text-center">
+<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-50 text-amber-600" title="Đang làm dở">
+<span class="material-symbols-outlined text-sm">schedule</span>
+</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1205</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Luồng Cực Đại Dinic (Max Flow)</a>
+<span class="text-xs text-slate-400 font-mono">CSES 1711</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Mạng luồng</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Dinic</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">22.1%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-rose-500 rounded-full" style="width: 22.1%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700">Khó</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors font-semibold" href="#">Làm tiếp</a>
+</td>
+</tr>
+<!-- Problem 10: Unsolved / Medium -->
+<tr class="hover:bg-slate-50/80 transition-colors" data-diff="medium" data-id="1337" data-status="unsolved" data-topics="math binary-search">
+<td class="py-3.5 px-4 text-center">
+<span class="text-slate-300 font-mono text-xs">—</span>
+</td>
+<td class="py-3.5 px-3 font-mono font-medium text-slate-400">#1337</td>
+<td class="py-3.5 px-4">
+<div class="flex items-baseline gap-2 flex-wrap">
+<a class="font-medium text-slate-900 hover:text-blue-600 transition-colors" href="#">Luỹ Thừa Ma Trận Fibonnaci</a>
+<span class="text-xs text-slate-400 font-mono">Math</span>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Nhân ma trận</span>
+<span class="inline-block px-1.5 py-0.5 rounded text-[11px] bg-slate-100 text-slate-500">Modulo</span>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<div class="flex flex-col gap-1 w-28">
+<span class="text-xs font-mono font-medium text-slate-600">37.4%</span>
+<div class="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-amber-500 rounded-full" style="width: 37.4%;"></div>
+</div>
+</div>
+</td>
+<td class="py-3.5 px-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">Trung bình</span>
+</td>
+<td class="py-3.5 px-4 text-right">
+<a class="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors" href="#">Giải ngay</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Clean Pagination Footer -->
+<div class="px-4 py-3 bg-slate-50/50 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+<div class="flex items-center gap-2">
+<span>Hiển thị 1 - 10 trong 1,850 bài</span>
+<span class="text-slate-300">•</span>
+<select class="border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs text-slate-700 focus:outline-none">
+<option value="10">10 / trang</option>
+<option value="25">25 / trang</option>
+<option value="50">50 / trang</option>
+</select>
+</div>
+<div class="flex items-center gap-1">
+<button class="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" title="Trang trước">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-7 h-7 rounded bg-blue-600 text-white font-medium">1</button>
+<button class="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors">2</button>
+<button class="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors">3</button>
+<span class="px-1 text-slate-400">...</span>
+<button class="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors">74</button>
+<button class="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors" title="Trang tiếp">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Clean Minimal Footer -->
+<footer class="w-full bg-white border-t border-slate-200/80 py-4 mt-auto">
+<div class="max-w-[1400px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+<div class="flex items-center gap-2">
+<span class="font-medium text-slate-700">AlgoJudge</span>
+<span>•</span>
+<span>Môi trường chấm bài tự động</span>
+</div>
+<div class="flex items-center gap-4">
+<a class="hover:text-slate-800 transition-colors" href="#">Quy tắc</a>
+<a class="hover:text-slate-800 transition-colors" href="#">API</a>
+<a class="hover:text-slate-800 transition-colors" href="#">Trạng thái</a>
+<span>© 2024 AlgoJudge</span>
+</div>
+</div>
+</footer>
+<script>
+    (function () {
+      const searchInput = document.getElementById('problemSearchInput');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      const statusSelect = document.getElementById('filterStatus');
+      const sortSelect = document.getElementById('sortSelector');
+      const resetBtn = document.getElementById('resetFiltersBtn');
+      const randomBtn = document.getElementById('randomPickBtn');
+      const matchedCountEl = document.getElementById('matchedCount');
+      const rows = Array.from(document.querySelectorAll('#problemsetBody tr'));
+      const diffButtons = Array.from(document.querySelectorAll('.diff-filter-btn'));
+      const topicButtons = Array.from(document.querySelectorAll('.topic-pill'));
+
+      let currentDiff = 'all';
+      let currentTopic = 'all';
+
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          searchInput.focus();
+        } else if (e.key === '/' && document.activeElement !== searchInput && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          searchInput.focus();
+        } else if (e.altKey && e.key.toLowerCase() === 'r') {
+          e.preventDefault();
+          pickRandomProblem();
+        }
+      });
+
+      function applyFilters() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        const status = statusSelect.value;
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          const text = row.innerText.toLowerCase();
+          const rowId = row.getAttribute('data-id') || '';
+          const rowStatus = row.getAttribute('data-status') || '';
+          const rowDiff = row.getAttribute('data-diff') || '';
+          const rowTopics = (row.getAttribute('data-topics') || '').split(' ');
+
+          const matchQuery = !query || text.includes(query) || ('#' + rowId).includes(query);
+          const matchStatus = (status === 'all') || (rowStatus === status);
+          const matchDiff = (currentDiff === 'all') || (rowDiff === currentDiff);
+          const matchTopic = (currentTopic === 'all') || rowTopics.includes(currentTopic);
+
+          if (matchQuery && matchStatus && matchDiff && matchTopic) {
+            row.style.display = '';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        matchedCountEl.textContent = visibleCount;
+        clearSearchBtn.classList.toggle('hidden', query.length === 0);
+      }
+
+      searchInput.addEventListener('input', applyFilters);
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        applyFilters();
+        searchInput.focus();
+      });
+
+      statusSelect.addEventListener('change', applyFilters);
+
+      diffButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          diffButtons.forEach(b => {
+            const diff = b.getAttribute('data-diff');
+            if (diff === 'easy') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors';
+            else if (diff === 'medium') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors';
+            else if (diff === 'hard') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-rose-700 hover:bg-rose-50 transition-colors';
+            else b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors';
+          });
+          btn.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-900 text-white shadow-xs';
+          currentDiff = btn.getAttribute('data-diff');
+          applyFilters();
+        });
+      });
+
+      topicButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          topicButtons.forEach(b => {
+            b.className = 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors';
+          });
+          btn.className = 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200/60';
+          currentTopic = btn.getAttribute('data-topic');
+          applyFilters();
+        });
+      });
+
+      resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        statusSelect.value = 'all';
+        sortSelect.value = 'id-asc';
+        currentDiff = 'all';
+        currentTopic = 'all';
+
+        diffButtons.forEach((b, idx) => {
+          if (idx === 0) b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-900 text-white shadow-xs';
+          else {
+            const diff = b.getAttribute('data-diff');
+            if (diff === 'easy') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors';
+            else if (diff === 'medium') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors';
+            else if (diff === 'hard') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-rose-700 hover:bg-rose-50 transition-colors';
+          }
+        });
+
+        topicButtons.forEach((b, idx) => {
+          b.className = idx === 0
+            ? 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200/60'
+            : 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors';
+        });
+
+        applyFilters();
+      });
+
+      function pickRandomProblem() {
+        const visibleRows = rows.filter(r => r.style.display !== 'none');
+        if (visibleRows.length === 0) return;
+        const randomRow = visibleRows[Math.floor(Math.random() * visibleRows.length)];
+        
+        rows.forEach(r => r.classList.remove('bg-blue-50/70'));
+        randomRow.classList.add('bg-blue-50/70');
+        randomRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        const titleLink = randomRow.querySelector('a');
+        if (titleLink) {
+          titleLink.focus();
+        }
+      }
+
+      randomBtn.addEventListener('click', pickRandomProblem);
+      applyFilters();
+    })();
+  </script>
+</body></html>

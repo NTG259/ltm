@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_standard" name="shell-type"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @layer base {
+      html, body { margin: 0; padding: 0; }
+      body { overscroll-behavior: none; }
+    }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            background: "#ffffff",
+            surface: "#f8f9ff",
+            "surface-dim": "#cbdbf5",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#eff4ff",
+            "surface-container": "#f1f5f9",
+            "surface-container-high": "#e2e8f0",
+            "surface-container-highest": "#cbd5e1",
+            primary: "#2563eb",
+            "primary-container": "#2563eb",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#ffffff",
+            secondary: "#059669",
+            "secondary-container": "#ecfdf5",
+            "on-secondary-container": "#065f46",
+            "on-surface": "#0f172a",
+            "on-surface-variant": "#64748b",
+            outline: "#cbd5e1",
+            "outline-variant": "#e2e8f0"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900 min-h-screen flex flex-col">
+<!-- Minimal Light Header -->
+<header class="sticky top-0 z-40 w-full bg-white/95 backdrop-blur border-b border-slate-200/80">
+<div class="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<a class="flex items-center gap-2 font-mono font-bold text-lg text-slate-900 tracking-tight" href="#">
+<span class="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center font-bold text-sm">A</span>
+<span>Algo<span class="text-blue-600">Judge</span></span>
+</a>
+<nav class="hidden md:flex items-center gap-1 font-medium text-sm">
+<a class="px-3 py-1.5 rounded-md bg-blue-50 text-blue-600 font-semibold" href="#">Bài tập</a>
+<a class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" href="#">Submissions</a>
+<a class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" href="#">Leaderboard</a>
+<a class="px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors" href="#">Contest</a>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<button class="h-8 px-3 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5" id="randomPickBtn" title="Alt+R" type="button">
+<span class="material-symbols-outlined text-base text-blue-600">casino</span>
+<span>Thử ngẫu nhiên</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 w-full max-w-[1400px] mx-auto px-6 py-8"><div class="flex flex-col w-full">
+<!-- Profile & Analytics Layout Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- LEFT COLUMN: User Summary & Meta (Col 1-4: ~30%) -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Primary Profile Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col gap-6 relative">
+<div class="flex items-start justify-between">
+<div class="relative">
+<img class="w-20 h-20 rounded-full object-cover shadow-sm bg-surface-container-high" data-alt="A professional studio headshot of a young Vietnamese male software engineer wearing minimal dark glasses and a clean navy casual shirt, softly lit with cool neutral studio lighting on a soft slate background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMxEnaMZ4m9U-nXpU7MFFskgoLC7RvHAFg1RrhC6aRWsmwOipsOFzA0Ma2fCOdp5FdUftLYPGuWzyAFPrZGtNFiJbo7UjJ6Z7TYq-IRZJ3Gqw5O5saGftXZkK65AaUxJTTjVjrSCEKCXvHLDwV37L8CNPiymzOdrutOKALDoQrNUxWGj7XGw_zoCtelN9sXvrRK6rQXOx_VD_vbLnsW_3jfsSSd6BLPxq_2Q5MbxMrTArudiCTaIdXbw"/>
+<span class="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center" title="Trực tuyến">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2.5 py-1 rounded bg-surface-container text-on-surface-variant font-label-md text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-tertiary">military_tech</span>
+              #45 Quốc gia
+            </span>
+</div>
+</div>
+<!-- Identity Block -->
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Nguyễn Hoàng Nam</h1>
+<span class="material-symbols-outlined text-primary text-[18px]" title="Tài khoản đã xác minh">verified</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-code-md text-code-md text-on-surface-variant">@nguyen_coder</span>
+<button class="w-6 h-6 rounded flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors" id="copyUsernameBtn" title="Sao chép tên người dùng" type="button">
+<span class="material-symbols-outlined text-[15px]" id="copyIcon">content_copy</span>
+</button>
+<span class="font-label-md text-label-md text-secondary opacity-0 transition-opacity duration-200" id="copyFeedback">Đã chép!</span>
+</div>
+</div>
+<!-- Rating & Tier Card -->
+<div class="p-4 rounded-xl bg-surface-container-low flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Cấp bậc thi đấu</span>
+<span class="font-headline-md text-headline-md text-primary font-bold">Candidate Master</span>
+</div>
+<div class="text-right">
+<span class="font-code-lg text-code-lg text-on-surface font-semibold">1,942</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant block">Max 2,015</span>
+</div>
+</div>
+<!-- Progress Bar to Master -->
+<div class="flex flex-col gap-1.5">
+<div class="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 74%;"></div>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant font-label-md text-label-md">
+<span>Mục tiêu: Master (2,100)</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">Còn 158 điểm</span>
+</div>
+</div>
+</div>
+<!-- Quick Bio / Details -->
+<div class="flex flex-col gap-2.5 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px] text-outline">school</span>
+<span class="text-on-surface">Đại học Bách Khoa Hà Nội</span>
+</div>
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px] text-outline">location_on</span>
+<span>Hà Nội, Việt Nam</span>
+</div>
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[18px] text-outline">calendar_today</span>
+<span>Thành viên từ: Tháng 10/2022</span>
+</div>
+</div>
+<!-- Micro Stat Cards in Column -->
+<div class="grid grid-cols-3 gap-2 py-3 px-2 rounded-xl bg-surface-container">
+<div class="flex flex-col items-center justify-center p-2 text-center">
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">648</span>
+<span class="font-label-md text-label-md text-on-surface-variant mt-0.5">Bài đã giải</span>
+<span class="font-code-sm text-code-sm text-secondary font-medium mt-0.5">82.4% AC</span>
+</div>
+<div class="flex flex-col items-center justify-center p-2 text-center">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-tertiary-container">local_fire_department</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">24</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant mt-0.5">Ngày streak</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant mt-0.5">Kỷ lục 42</span>
+</div>
+<div class="flex flex-col items-center justify-center p-2 text-center">
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">1,420</span>
+<span class="font-label-md text-label-md text-on-surface-variant mt-0.5">Lượt nộp</span>
+<span class="font-code-sm text-code-sm text-primary font-medium mt-0.5">Toàn thời gian</span>
+</div>
+</div>
+<!-- Social & Developer Links -->
+<div class="flex flex-col gap-2 pt-2">
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">Liên kết kỹ sư</span>
+<div class="flex flex-wrap gap-2">
+<a class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors" href="#">
+<span class="font-code-sm text-code-sm font-semibold">GH</span>
+<span>github.com/nam-ng</span>
+</a>
+<a class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors" href="#">
+<span class="font-code-sm text-code-sm font-semibold text-primary">CF</span>
+<span>cf/nam_pro</span>
+</a>
+<a class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors" href="#">
+<span class="font-code-sm text-code-sm font-semibold text-tertiary">LC</span>
+<span>leet/hoangnam</span>
+</a>
+<a class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center gap-1.5 transition-colors" href="#">
+<span class="material-symbols-outlined text-[15px]">globe</span>
+<span>hoangnam.dev</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Quick Achievements / Badges Widget -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-on-surface">Huy hiệu danh dự</h3>
+<span class="font-label-md text-label-md text-on-surface-variant">8 / 24</span>
+</div>
+<div class="grid grid-cols-4 gap-3 text-center">
+<div class="flex flex-col items-center gap-1 group cursor-pointer" title="Giải thành công 500 bài toán">
+<div class="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center text-primary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">workspace_premium</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface line-clamp-1">500+ AC</span>
+</div>
+<div class="flex flex-col items-center gap-1 group cursor-pointer" title="Top 100 Cuộc thi lập trình tuần">
+<div class="w-12 h-12 rounded-xl bg-secondary-container flex items-center justify-center text-on-secondary-container group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">trophy</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface line-clamp-1">Top 100</span>
+</div>
+<div class="flex flex-col items-center gap-1 group cursor-pointer" title="Chuỗi nộp bài liên tục 30 ngày">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center text-tertiary group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">local_fire_department</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface line-clamp-1">Flame 30</span>
+</div>
+<div class="flex flex-col items-center gap-1 group cursor-pointer" title="Bậc thầy Quy hoạch động">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[24px]">psychology</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface line-clamp-1">DP Master</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Analytics, Charts & Recent Submissions (Col 5-12: ~70%) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- BLOCK 1: Activity Submission Heatmap (365 Days) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col gap-5">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div>
+<div class="flex items-center gap-2">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Hoạt động nộp bài</h2>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-semibold">1,420 submissions</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Tần suất làm bài và giải thuật toán trong 52 tuần qua</p>
+</div>
+<div class="flex items-center gap-2">
+<select class="bg-surface-container text-on-surface font-label-md text-label-md py-1.5 px-3 rounded-lg focus:outline-none focus:bg-surface-container-high cursor-pointer" id="heatmapYearSelector">
+<option selected="" value="2025">Năm 2025</option>
+<option value="2024">Năm 2024</option>
+<option value="all">Tất cả thời gian</option>
+</select>
+</div>
+</div>
+<!-- Heatmap Grid Container -->
+<div class="overflow-x-auto pb-2">
+<div class="min-w-[690px] flex flex-col gap-2">
+<!-- Month labels -->
+<div class="flex text-on-surface-variant font-label-md text-label-md pl-7 justify-between pr-2">
+<span>Thg 1</span>
+<span>Thg 2</span>
+<span>Thg 3</span>
+<span>Thg 4</span>
+<span>Thg 5</span>
+<span>Thg 6</span>
+<span>Thg 7</span>
+<span>Thg 8</span>
+<span>Thg 9</span>
+<span>Thg 10</span>
+<span>Thg 11</span>
+<span>Thg 12</span>
+</div>
+<div class="flex gap-2">
+<!-- Weekday labels -->
+<div class="flex flex-col justify-between text-on-surface-variant font-code-sm text-[10px] w-5 py-0.5">
+<span>T2</span>
+<span>T4</span>
+<span>T6</span>
+<span>CN</span>
+</div>
+<!-- SVG Interactive Heatmap -->
+<div class="flex-1">
+<svg class="w-full h-auto text-on-surface" id="activityHeatmapSvg" viewbox="0 0 720 100">
+<!-- Generated 52 columns x 7 days with variable densities -->
+<!-- CSS classes for cell levels: 
+                       c0 = #e5eeff (none), 
+                       c1 = #6cf8bb (1-3 submissions), 
+                       c2 = #4edea3 (4-7 submissions), 
+                       c3 = #00714d (8+ submissions) -->
+<defs>
+<style>
+                      .heat-0 { fill: #f1f5f9; }
+                      .heat-1 { fill: #bbf7d0; }
+                      .heat-2 { fill: #4ade80; }
+                      .heat-3 { fill: #16a34a; }
+                      .heat-4 { fill: #15803d; }
+                    </style>
+</defs>
+<g id="heatmapRects">
+<!-- Column batches generated programmatically to form authentic streaks -->
+<!-- Week 1 - 10 (Early year) -->
+<g transform="translate(0, 0)">
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"><title>01/01: 2 bài nộp</title></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"><title>02/01: 5 bài nộp</title></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"><title>03/01: 0 bài nộp</title></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"><title>04/01: 9 bài nộp</title></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"><title>05/01: 4 bài nộp</title></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"><title>06/01: 1 bài nộp</title></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"><title>07/01: 0 bài nộp</title></rect>
+</g>
+<g transform="translate(14, 0)">
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<g transform="translate(28, 0)">
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<g transform="translate(42, 0)">
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<g transform="translate(56, 0)">
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<g transform="translate(70, 0)">
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<g transform="translate(84, 0)">
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<g transform="translate(98, 0)">
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+<!-- Mid weeks -->
+<g transform="translate(112, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(126, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(140, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(154, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(168, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(182, 0)"><rect class="heat-4" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(196, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(210, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(224, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(238, 0)"><rect class="heat-0" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(252, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(266, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(280, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(294, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(308, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(322, 0)"><rect class="heat-0" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(336, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(350, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(364, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(378, 0)"><rect class="heat-4" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(392, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(406, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(420, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(434, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(448, 0)"><rect class="heat-0" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(462, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(476, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(490, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(504, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(518, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(532, 0)"><rect class="heat-0" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(546, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(560, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(574, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(588, 0)"><rect class="heat-4" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(602, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(616, 0)"><rect class="heat-1" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-0" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(630, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-1" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(644, 0)"><rect class="heat-2" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(658, 0)"><rect class="heat-4" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<g transform="translate(672, 0)"><rect class="heat-3" height="10" rx="2" width="10" x="0" y="0"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="14"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect><rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="56"></rect><rect class="heat-2" height="10" rx="2" width="10" x="0" y="70"></rect><rect class="heat-3" height="10" rx="2" width="10" x="0" y="84"></rect></g>
+<!-- Latest active week -->
+<g transform="translate(686, 0)">
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="0"><title>Hôm nay: 12 bài nộp</title></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="14"><title>Hôm qua: 8 bài nộp</title></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="28"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="42"></rect>
+<rect class="heat-2" height="10" rx="2" width="10" x="0" y="56"></rect>
+<rect class="heat-3" height="10" rx="2" width="10" x="0" y="70"></rect>
+<rect class="heat-4" height="10" rx="2" width="10" x="0" y="84"></rect>
+</g>
+</g>
+</svg>
+</div>
+</div>
+</div>
+</div>
+<!-- Heatmap Footer with Legend & Telemetry -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-surface-container-high/60">
+<div class="flex flex-wrap items-center gap-4 text-on-surface-variant font-label-md text-label-md">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">bolt</span>
+<span>Ngày nhiều nhất: <strong class="text-on-surface">18 bài nộp</strong></span>
+</span>
+<span>•</span>
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary">trending_up</span>
+<span>Chuỗi dài nhất: <strong class="text-on-surface">42 ngày liên tiếp</strong></span>
+</span>
+</div>
+<!-- Heatmap Legend -->
+<div class="flex items-center gap-1.5 self-end sm:self-auto font-label-md text-label-md text-on-surface-variant">
+<span>Ít</span>
+<span class="w-2.5 h-2.5 rounded-xs bg-[#f1f5f9] inline-block"></span>
+<span class="w-2.5 h-2.5 rounded-xs bg-[#bbf7d0] inline-block"></span>
+<span class="w-2.5 h-2.5 rounded-xs bg-[#4ade80] inline-block"></span>
+<span class="w-2.5 h-2.5 rounded-xs bg-[#16a34a] inline-block"></span>
+<span class="w-2.5 h-2.5 rounded-xs bg-[#15803d] inline-block"></span>
+<span>Nhiều</span>
+</div>
+</div>
+</div>
+<!-- BLOCK 2: Skill Radar & Topic Mastery Split View -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col gap-6">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Đánh giá kỹ năng &amp; Thuật toán</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Phân bố năng lực qua 6 phân mảng thuật toán cốt lõi</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+<!-- Left: Skill Radar SVG Graphic (5 cols) -->
+<div class="md:col-span-5 flex flex-col items-center justify-center p-2">
+<div class="relative w-full max-w-[280px] aspect-square flex items-center justify-center">
+<svg class="w-full h-full overflow-visible" viewbox="0 0 300 300">
+<!-- Concentric Polygons (Web Grid) -->
+<!-- Level 20% -->
+<polygon fill="none" opacity="0.6" points="150,120 176,135 176,165 150,180 124,165 124,135" stroke="#cbd5e1" stroke-dasharray="2 2" stroke-width="1"></polygon>
+<!-- Level 40% -->
+<polygon fill="none" opacity="0.7" points="150,90 202,120 202,180 150,210 98,180 98,120" stroke="#cbd5e1" stroke-dasharray="2 2" stroke-width="1"></polygon>
+<!-- Level 60% -->
+<polygon fill="none" opacity="0.8" points="150,60 228,105 228,195 150,240 72,195 72,105" stroke="#cbd5e1" stroke-width="1"></polygon>
+<!-- Level 80% -->
+<polygon fill="none" opacity="0.8" points="150,30 254,90 254,210 150,270 46,210 46,90" stroke="#cbd5e1" stroke-width="1"></polygon>
+<!-- Level 100% (Outer Boundary) -->
+<polygon fill="none" points="150,10 271,80 271,220 150,290 29,220 29,80" stroke="#94a3b8" stroke-width="1.2"></polygon>
+<!-- Axis Lines -->
+<line stroke="#cbd5e1" stroke-width="1" x1="150" x2="150" y1="150" y2="10"></line>
+<line stroke="#cbd5e1" stroke-width="1" x1="150" x2="271" y1="150" y2="80"></line>
+<line stroke="#cbd5e1" stroke-width="1" x1="150" x2="271" y1="150" y2="220"></line>
+<line stroke="#cbd5e1" stroke-width="1" x1="150" x2="150" y1="150" y2="290"></line>
+<line stroke="#cbd5e1" stroke-width="1" x1="150" x2="29" y1="150" y2="220"></line>
+<line stroke="#cbd5e1" stroke-width="1" x1="150" x2="29" y1="150" y2="80"></line>
+<!-- Skill Filled Polygon:
+                     DP: 92% (top: 150, 21)
+                     Graph: 78% (top-right: 244, 95)
+                     Data Structures: 88% (bottom-right: 256, 211)
+                     Math: 90% (bottom: 150, 276)
+                     Greedy: 85% (bottom-left: 47, 209)
+                     Strings: 68% (top-left: 67, 102)
+                -->
+<polygon fill="#2563eb" fill-opacity="0.18" points="150,21 244,95 256,211 150,276 47,209 67,102" stroke="#2563eb" stroke-linejoin="round" stroke-width="2.5"></polygon>
+<!-- Data Points on Polygon -->
+<circle cx="150" cy="21" fill="#2563eb" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<circle cx="244" cy="95" fill="#2563eb" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<circle cx="256" cy="211" fill="#2563eb" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<circle cx="150" cy="276" fill="#2563eb" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<circle cx="47" cy="209" fill="#2563eb" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<circle cx="67" cy="102" fill="#2563eb" r="3.5" stroke="#ffffff" stroke-width="1.5"></circle>
+<!-- Axis Labels -->
+<text class="fill-slate-700 text-[10px] font-sans font-semibold" text-anchor="middle" x="150" y="0">Dynamic Programming (92%)</text>
+<text class="fill-slate-600 text-[9.5px] font-sans" text-anchor="start" x="282" y="82">Graph Theory</text>
+<text class="fill-slate-600 text-[9.5px] font-sans" text-anchor="start" x="282" y="226">Data Structures</text>
+<text class="fill-slate-600 text-[9.5px] font-sans" text-anchor="middle" x="150" y="306">Math &amp; Number Theory</text>
+<text class="fill-slate-600 text-[9.5px] font-sans" text-anchor="end" x="18" y="226">Greedy</text>
+<text class="fill-slate-600 text-[9.5px] font-sans" text-anchor="end" x="18" y="82">Strings &amp; Trie</text>
+</svg>
+</div>
+<span class="font-code-sm text-code-sm text-on-surface-variant mt-4 text-center">Chỉ số đánh giá cập nhật sau mỗi contest</span>
+</div>
+<!-- Right: Topic Mastery Breakdown (7 cols) -->
+<div class="md:col-span-7 flex flex-col gap-4">
+<!-- Item 1: Dynamic Programming -->
+<div class="flex flex-col gap-1.5 p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-semibold text-on-surface">Dynamic Programming</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-code-sm text-code-sm text-on-surface-variant">142 bài giải</span>
+<span class="font-code-sm text-code-sm font-semibold text-secondary">78% AC</span>
+</div>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 78%;"></div>
+</div>
+</div>
+<!-- Item 2: Data Structures -->
+<div class="flex flex-col gap-1.5 p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-semibold text-on-surface">Data Structures (Tree / Segment / Fenwick)</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-code-sm text-code-sm text-on-surface-variant">128 bài giải</span>
+<span class="font-code-sm text-code-sm font-semibold text-secondary">84% AC</span>
+</div>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-tertiary rounded-full" style="width: 84%;"></div>
+</div>
+</div>
+<!-- Item 3: Graph Theory -->
+<div class="flex flex-col gap-1.5 p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-fixed-dim"></span>
+<span class="font-semibold text-on-surface">Graph Theory (DFS/BFS, Dijkstra, Flow)</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-code-sm text-code-sm text-on-surface-variant">105 bài giải</span>
+<span class="font-code-sm text-code-sm font-semibold text-secondary">71% AC</span>
+</div>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary-fixed-dim rounded-full" style="width: 71%;"></div>
+</div>
+</div>
+<!-- Item 4: Math & Combinatorics -->
+<div class="flex flex-col gap-1.5 p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-semibold text-on-surface">Math &amp; Combinatorics</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-code-sm text-code-sm text-on-surface-variant">89 bài giải</span>
+<span class="font-code-sm text-code-sm font-semibold text-secondary">90% AC</span>
+</div>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 90%;"></div>
+</div>
+</div>
+<!-- Item 5: Greedy & Sorting -->
+<div class="flex flex-col gap-1.5 p-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="font-semibold text-on-surface">Greedy &amp; Sorting</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-code-sm text-code-sm text-on-surface-variant">96 bài giải</span>
+<span class="font-code-sm text-code-sm font-semibold text-secondary">88% AC</span>
+</div>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-tertiary-container rounded-full" style="width: 88%;"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BLOCK 3: Recent Submissions List -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col gap-5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Bài nộp gần đây</h2>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-code-sm text-code-sm">5 mới nhất</span>
+</div>
+<a class="font-label-lg text-label-lg text-primary hover:underline flex items-center gap-1" href="#">
+<span>Xem tất cả 1,420 bài nộp</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</div>
+<!-- Submissions Table / Cards -->
+<div class="overflow-x-auto">
+<div class="min-w-[650px] flex flex-col gap-2">
+<!-- Table Header -->
+<div class="grid grid-cols-12 px-4 py-2 text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+<span class="col-span-2 font-code-sm text-code-sm">ID &amp; Thời gian</span>
+<span class="col-span-4">Bài toán</span>
+<span class="col-span-2">Ngôn ngữ</span>
+<span class="col-span-2">Thời gian / Bộ nhớ</span>
+<span class="col-span-2 text-right">Trạng thái</span>
+</div>
+<!-- Row 1: WA -->
+<div class="grid grid-cols-12 items-center px-4 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="col-span-2 flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">#8492041</span>
+<span class="font-label-md text-label-md text-on-surface-variant">15 phút trước</span>
+</div>
+<div class="col-span-4 flex flex-col pr-2">
+<a class="font-body-sm text-body-sm text-on-surface font-semibold hover:text-primary transition-colors truncate" href="#">Weird Algorithm</a>
+<span class="font-code-sm text-code-sm text-on-surface-variant">CSES 1068</span>
+</div>
+<div class="col-span-2">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">C++20</span>
+</div>
+<div class="col-span-2 flex flex-col font-code-sm text-code-sm text-on-surface-variant">
+<span>124 ms</span>
+<span class="text-[11px]">4.2 MB</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-code-sm text-code-sm font-semibold">
+                  WA
+                </span>
+</div>
+</div>
+<!-- Row 2: AC -->
+<div class="grid grid-cols-12 items-center px-4 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="col-span-2 flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">#8491820</span>
+<span class="font-label-md text-label-md text-on-surface-variant">2 giờ trước</span>
+</div>
+<div class="col-span-4 flex flex-col pr-2">
+<a class="font-body-sm text-body-sm text-on-surface font-semibold hover:text-primary transition-colors truncate" href="#">Two Sum</a>
+<span class="font-code-sm text-code-sm text-on-surface-variant">LC 01</span>
+</div>
+<div class="col-span-2">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">C++20</span>
+</div>
+<div class="col-span-2 flex flex-col font-code-sm text-code-sm text-on-surface-variant">
+<span>8 ms</span>
+<span class="text-[11px]">10.4 MB</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-semibold">
+                  AC
+                </span>
+</div>
+</div>
+<!-- Row 3: AC -->
+<div class="grid grid-cols-12 items-center px-4 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="col-span-2 flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">#8489311</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Hôm qua</span>
+</div>
+<div class="col-span-4 flex flex-col pr-2">
+<a class="font-body-sm text-body-sm text-on-surface font-semibold hover:text-primary transition-colors truncate" href="#">Dãy Con Tăng Dài Nhất (LIS)</a>
+<span class="font-code-sm text-code-sm text-on-surface-variant">DP 302</span>
+</div>
+<div class="col-span-2">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">Python 3</span>
+</div>
+<div class="col-span-2 flex flex-col font-code-sm text-code-sm text-on-surface-variant">
+<span>240 ms</span>
+<span class="text-[11px]">18.2 MB</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-semibold">
+                  AC
+                </span>
+</div>
+</div>
+<!-- Row 4: AC -->
+<div class="grid grid-cols-12 items-center px-4 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="col-span-2 flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">#8487102</span>
+<span class="font-label-md text-label-md text-on-surface-variant">2 ngày trước</span>
+</div>
+<div class="col-span-4 flex flex-col pr-2">
+<a class="font-body-sm text-body-sm text-on-surface font-semibold hover:text-primary transition-colors truncate" href="#">Đường Đi Ngắn Nhất Dijkstra</a>
+<span class="font-code-sm text-code-sm text-on-surface-variant">GRAPH 104</span>
+</div>
+<div class="col-span-2">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">C++20</span>
+</div>
+<div class="col-span-2 flex flex-col font-code-sm text-code-sm text-on-surface-variant">
+<span>56 ms</span>
+<span class="text-[11px]">8.6 MB</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-semibold">
+                  AC
+                </span>
+</div>
+</div>
+<!-- Row 5: TLE -->
+<div class="grid grid-cols-12 items-center px-4 py-3 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+<div class="col-span-2 flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">#8482094</span>
+<span class="font-label-md text-label-md text-on-surface-variant">3 ngày trước</span>
+</div>
+<div class="col-span-4 flex flex-col pr-2">
+<a class="font-body-sm text-body-sm text-on-surface font-semibold hover:text-primary transition-colors truncate" href="#">Cây Đoạn Cập Nhật Điểm</a>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Segment Tree</span>
+</div>
+<div class="col-span-2">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-code-sm text-code-sm">C++20</span>
+</div>
+<div class="col-span-2 flex flex-col font-code-sm text-code-sm text-on-surface-variant">
+<span>1,000 ms</span>
+<span class="text-[11px]">14.1 MB</span>
+</div>
+<div class="col-span-2 text-right">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-code-sm text-code-sm font-semibold">
+                  TLE
+                </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Inline Micro-interactions Script -->
+<script>
+    (function() {
+      // Username copy button interaction
+      const copyBtn = document.getElementById('copyUsernameBtn');
+      const copyFeedback = document.getElementById('copyFeedback');
+      const copyIcon = document.getElementById('copyIcon');
+
+      if (copyBtn && copyFeedback && copyIcon) {
+        copyBtn.addEventListener('click', function() {
+          navigator.clipboard.writeText('nguyen_coder').then(() => {
+            copyIcon.textContent = 'check';
+            copyFeedback.classList.remove('opacity-0');
+            copyFeedback.classList.add('opacity-100');
+            
+            setTimeout(() => {
+              copyIcon.textContent = 'content_copy';
+              copyFeedback.classList.remove('opacity-100');
+              copyFeedback.classList.add('opacity-0');
+            }, 1800);
+          }).catch(() => {
+            copyFeedback.textContent = 'Lỗi!';
+            copyFeedback.classList.remove('opacity-0');
+          });
+        });
+      }
+
+      // Year Filter for Heatmap (Simulation)
+      const yearSelector = document.getElementById('heatmapYearSelector');
+      const heatmapGroup = document.getElementById('heatmapRects');
+      if (yearSelector && heatmapGroup) {
+        yearSelector.addEventListener('change', function() {
+          heatmapGroup.style.opacity = '0.3';
+          setTimeout(() => {
+            heatmapGroup.style.opacity = '1';
+          }, 150);
+        });
+      }
+    })();
+  </script>
+</div></main>
+<!-- Clean Minimal Footer -->
+<footer class="w-full bg-white border-t border-slate-200/80 py-4 mt-auto">
+<div class="max-w-[1400px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+<div class="flex items-center gap-2">
+<span class="font-medium text-slate-700">AlgoJudge</span>
+<span>•</span>
+<span>Môi trường chấm bài tự động</span>
+</div>
+<div class="flex items-center gap-4">
+<a class="hover:text-slate-800 transition-colors" href="#">Quy tắc</a>
+<a class="hover:text-slate-800 transition-colors" href="#">API</a>
+<a class="hover:text-slate-800 transition-colors" href="#">Trạng thái</a>
+<span>© 2024 AlgoJudge</span>
+</div>
+</div>
+</footer>
+<script>
+    (function () {
+      const searchInput = document.getElementById('problemSearchInput');
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      const statusSelect = document.getElementById('filterStatus');
+      const sortSelect = document.getElementById('sortSelector');
+      const resetBtn = document.getElementById('resetFiltersBtn');
+      const randomBtn = document.getElementById('randomPickBtn');
+      const matchedCountEl = document.getElementById('matchedCount');
+      const rows = Array.from(document.querySelectorAll('#problemsetBody tr'));
+      const diffButtons = Array.from(document.querySelectorAll('.diff-filter-btn'));
+      const topicButtons = Array.from(document.querySelectorAll('.topic-pill'));
+
+      let currentDiff = 'all';
+      let currentTopic = 'all';
+
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          searchInput.focus();
+        } else if (e.key === '/' && document.activeElement !== searchInput && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          searchInput.focus();
+        } else if (e.altKey && e.key.toLowerCase() === 'r') {
+          e.preventDefault();
+          pickRandomProblem();
+        }
+      });
+
+      function applyFilters() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        const status = statusSelect.value;
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+          const text = row.innerText.toLowerCase();
+          const rowId = row.getAttribute('data-id') || '';
+          const rowStatus = row.getAttribute('data-status') || '';
+          const rowDiff = row.getAttribute('data-diff') || '';
+          const rowTopics = (row.getAttribute('data-topics') || '').split(' ');
+
+          const matchQuery = !query || text.includes(query) || ('#' + rowId).includes(query);
+          const matchStatus = (status === 'all') || (rowStatus === status);
+          const matchDiff = (currentDiff === 'all') || (rowDiff === currentDiff);
+          const matchTopic = (currentTopic === 'all') || rowTopics.includes(currentTopic);
+
+          if (matchQuery && matchStatus && matchDiff && matchTopic) {
+            row.style.display = '';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        matchedCountEl.textContent = visibleCount;
+        clearSearchBtn.classList.toggle('hidden', query.length === 0);
+      }
+
+      searchInput.addEventListener('input', applyFilters);
+      clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        applyFilters();
+        searchInput.focus();
+      });
+
+      statusSelect.addEventListener('change', applyFilters);
+
+      diffButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          diffButtons.forEach(b => {
+            const diff = b.getAttribute('data-diff');
+            if (diff === 'easy') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors';
+            else if (diff === 'medium') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors';
+            else if (diff === 'hard') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-rose-700 hover:bg-rose-50 transition-colors';
+            else b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors';
+          });
+          btn.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-900 text-white shadow-xs';
+          currentDiff = btn.getAttribute('data-diff');
+          applyFilters();
+        });
+      });
+
+      topicButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          topicButtons.forEach(b => {
+            b.className = 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors';
+          });
+          btn.className = 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200/60';
+          currentTopic = btn.getAttribute('data-topic');
+          applyFilters();
+        });
+      });
+
+      resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        statusSelect.value = 'all';
+        sortSelect.value = 'id-asc';
+        currentDiff = 'all';
+        currentTopic = 'all';
+
+        diffButtons.forEach((b, idx) => {
+          if (idx === 0) b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-900 text-white shadow-xs';
+          else {
+            const diff = b.getAttribute('data-diff');
+            if (diff === 'easy') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-emerald-700 hover:bg-emerald-50 transition-colors';
+            else if (diff === 'medium') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors';
+            else if (diff === 'hard') b.className = 'diff-filter-btn px-2.5 py-1 rounded-md text-xs font-medium text-rose-700 hover:bg-rose-50 transition-colors';
+          }
+        });
+
+        topicButtons.forEach((b, idx) => {
+          b.className = idx === 0
+            ? 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200/60'
+            : 'topic-pill px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors';
+        });
+
+        applyFilters();
+      });
+
+      function pickRandomProblem() {
+        const visibleRows = rows.filter(r => r.style.display !== 'none');
+        if (visibleRows.length === 0) return;
+        const randomRow = visibleRows[Math.floor(Math.random() * visibleRows.length)];
+        
+        rows.forEach(r => r.classList.remove('bg-blue-50/70'));
+        randomRow.classList.add('bg-blue-50/70');
+        randomRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        const titleLink = randomRow.querySelector('a');
+        if (titleLink) {
+          titleLink.focus();
+        }
+      }
+
+      randomBtn.addEventListener('click', pickRandomProblem);
+      applyFilters();
+    })();
+  </script>
+</body></html>

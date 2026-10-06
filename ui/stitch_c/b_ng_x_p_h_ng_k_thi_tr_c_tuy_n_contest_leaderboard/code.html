@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>AlgoJudge - Nền tảng lập trình thi đấu</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"primary-fixed-dim":"#b4c5ff","on-primary-fixed-variant":"#003ea8","on-error-container":"#93000a","error-container":"#ffdad6","tertiary-container":"#0073ae","on-secondary":"#ffffff","background":"#f8f9ff","primary-container":"#2563eb","primary":"#004ac6","surface-tint":"#0053db","on-error":"#ffffff","secondary-fixed":"#6ffbbe","tertiary":"#005a89","inverse-on-surface":"#eaf1ff","secondary-container":"#6cf8bb","surface-container-lowest":"#ffffff","on-secondary-container":"#00714d","surface-dim":"#cbdbf5","outline-variant":"#c3c6d7","surface-container-low":"#eff4ff","surface-variant":"#d3e4fe","on-tertiary-fixed-variant":"#004b73","secondary":"#006c49","on-tertiary-fixed":"#001d31","on-secondary-fixed-variant":"#005236","inverse-primary":"#b4c5ff","surface-container-high":"#dce9ff","on-primary-fixed":"#00174b","on-tertiary":"#ffffff","on-primary":"#ffffff","on-secondary-fixed":"#002113","tertiary-fixed":"#cce5ff","surface":"#f8f9ff","primary-fixed":"#dbe1ff","error":"#ba1a1a","surface-container":"#e5eeff","on-surface":"#0b1c30","surface-bright":"#f8f9ff","outline":"#737686","tertiary-fixed-dim":"#93ccff","secondary-fixed-dim":"#4edea3","surface-container-highest":"#d3e4fe","on-tertiary-container":"#e7f2ff","inverse-surface":"#213145","on-background":"#0b1c30","on-surface-variant":"#434655","on-primary-container":"#eeefff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-md":"0.75rem","space-lg":"1rem","margin":"0.75rem","space-xs":"0.25rem","space-xl":"1.5rem","space-sm":"0.5rem","gutter":"0.5rem"},"fontFamily":{"label-md":["Inter"],"body-lg":["Inter"],"headline-xl":["Inter"],"body-sm":["Inter"],"label-lg":["Inter"],"code-lg":["JetBrains Mono"],"code-md":["JetBrains Mono"],"headline-lg":["Inter"],"headline-md":["Inter"],"code-sm":["JetBrains Mono"],"body-md":["Inter"]},"fontSize":{"label-md":["0.75rem",{"lineHeight":"1rem","fontWeight":"500"}],"body-lg":["0.9375rem",{"lineHeight":"1.5rem","fontWeight":"400"}],"headline-xl":["1.75rem",{"lineHeight":"2.25rem","letterSpacing":"-0.02em","fontWeight":"600"}],"body-sm":["0.8125rem",{"lineHeight":"1.25rem","fontWeight":"400"}],"label-lg":["0.8125rem",{"lineHeight":"1rem","fontWeight":"500"}],"code-lg":["0.875rem",{"lineHeight":"1.5rem","fontWeight":"400"}],"code-md":["0.8125rem",{"lineHeight":"1.375rem","fontWeight":"400"}],"headline-lg":["1.25rem",{"lineHeight":"1.75rem","letterSpacing":"-0.015em","fontWeight":"600"}],"headline-md":["1.125rem",{"lineHeight":"1.5rem","letterSpacing":"-0.01em","fontWeight":"600"}],"code-sm":["0.75rem",{"lineHeight":"1.125rem","fontWeight":"400"}],"body-md":["0.875rem",{"lineHeight":"1.375rem","fontWeight":"400"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest/90 backdrop-blur-xl border-b border-surface-container"><div class="h-14 max-w-7xl mx-auto px-space-lg flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-xl"><a class="flex items-center gap-space-sm group" data-path="problems" href="#"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary font-headline-md font-bold"><span class="material-symbols-outlined text-[20px]">terminal</span></div><div class="flex items-center font-headline-md font-bold tracking-tight text-on-surface"><span class="text-primary">Code</span><span>Arena</span></div></a><nav class="flex items-center gap-space-xl" data-active-classes="text-primary font-semibold relative after:absolute after:bottom-[-16px] after:left-0 after:right-0 after:h-[2px] after:bg-primary"><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors" data-path="problems" href="#">Bài tập</a><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors" data-path="submissions" href="#">Bài nộp</a><a aria-current="page" class="transition-colors text-primary font-semibold relative after:absolute after:bottom-[-16px] after:left-0 after:right-0 after:h-[2px] after:bg-primary" data-path="leaderboard" href="#">Bảng xếp hạng</a><a class="font-label-lg text-label-lg text-on-surface-variant hover:text-on-surface transition-colors" data-path="contests" href="#">Kỳ thi</a></nav></div><div class="flex items-center gap-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-space-sm text-outline text-[18px] pointer-events-none">search</span><input class="w-64 pl-8 pr-space-md py-1 bg-surface-container-low text-on-surface placeholder:text-outline font-body-sm text-body-sm rounded-lg border border-outline-variant focus:outline-none focus:border-primary focus:bg-surface-container-lowest transition-all" placeholder="Tìm bài tập, tag, người dùng (Ctrl+K)..." type="text"/></div><button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors relative" title="Thông báo" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span></button><div class="h-4 w-px bg-outline-variant"></div><div class="flex items-center gap-space-sm cursor-pointer pl-space-xs"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></div></header><main class="w-full pt-14 min-h-[calc(100vh-3.5rem)] bg-surface"><div class="flex flex-col w-full">
+<!-- Dynamic Top Ambient Accent -->
+<div class="w-full max-w-7xl mx-auto px-space-lg py-space-xl flex flex-col gap-space-xl">
+<!-- Section 1: Contest Header & Realtime Countdown HUD -->
+<div class="flex flex-col bg-surface-container-lowest rounded-xl shadow-sm p-space-xl gap-space-lg relative overflow-hidden">
+<!-- Ambient Backing Glow -->
+<div class="absolute -top-24 -right-24 w-96 h-96 bg-primary-container/5 rounded-full blur-3xl pointer-events-none"></div>
+<!-- Top Row: Title, Status, and Controls -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg relative z-10">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-md text-label-md">
+<span class="w-2 h-2 rounded-full bg-secondary animate-ping"></span>
+              ĐANG DIỄN RA
+            </span>
+<span class="px-2 py-0.5 rounded-md bg-surface-container font-label-md text-label-md text-on-surface-variant font-medium">ICPC Format</span>
+<span class="font-code-sm text-code-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">schedule</span> 14:00 - 19:00 (5h)
+            </span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight mt-1">
+            ICPC Regional Autumn Contest 2025
+          </h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Bảng thi đấu realtime chính thức • Cập nhật tự động theo chuẩn tiêu chí penalty ICPC toàn cầu
+          </p>
+</div>
+<!-- Realtime Timer HUD Pill -->
+<div class="flex items-center gap-space-lg bg-surface-container-low px-space-xl py-space-md rounded-xl shadow-sm self-start lg:self-auto">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 uppercase tracking-wider">
+<span class="material-symbols-outlined text-[16px] text-primary">timer</span> Thời gian còn lại
+            </span>
+<div class="font-code-lg text-[1.65rem] font-bold text-on-surface leading-none mt-1" id="countdown-clock">
+              01:42:15
+            </div>
+</div>
+<div class="w-px h-10 bg-outline-variant/40"></div>
+<div class="flex flex-col gap-1 w-32 sm:w-44">
+<div class="flex justify-between items-center font-label-md text-label-md">
+<span class="text-on-surface-variant font-code-sm">Tiến độ</span>
+<span class="font-code-sm font-semibold text-primary">66%</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-500" style="width: 66%"></div>
+</div>
+<span class="font-label-md text-label-md text-outline">Đóng băng sau: 42p</span>
+</div>
+</div>
+</div>
+<!-- Quick Metrics & Live Stream Toolbar -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pt-space-md relative z-10">
+<div class="flex items-center gap-space-lg flex-wrap text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-1.5 font-medium text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-primary">group</span>
+<span><strong>1,248</strong> thí sinh</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-tertiary">code_blocks</span>
+<span><strong>8</strong> bài tập (A - H)</span>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-secondary">sync</span>
+<span>Tự động làm mới: <strong class="font-code-sm">15s</strong></span>
+</div>
+</div>
+<!-- Controls: Filters, Manual Refresh, Auto-refresh toggle -->
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-outline text-[16px] pointer-events-none">search</span>
+<input class="w-48 sm:w-60 pl-8 pr-space-md py-1.5 bg-surface-container-low text-on-surface placeholder:text-outline font-body-sm text-body-sm rounded-lg focus:outline-none focus:bg-surface-container-lowest transition-all" id="team-search-input" placeholder="Tìm handle, trường..." type="text"/>
+</div>
+<!-- Division Filter Segment -->
+<div class="inline-flex p-0.5 bg-surface-container-low rounded-lg font-label-md text-label-md">
+<button class="px-2.5 py-1 rounded bg-surface-container-lowest text-primary font-semibold shadow-sm transition-colors">Tất cả</button>
+<button class="px-2.5 py-1 text-on-surface-variant hover:text-on-surface transition-colors">Chính thức</button>
+<button class="px-2.5 py-1 text-on-surface-variant hover:text-on-surface transition-colors">Dự thính</button>
+</div>
+<button class="p-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary hover:bg-surface-container transition-all" id="manual-refresh-btn" title="Làm mới bảng điểm">
+<span class="material-symbols-outlined text-[18px] block">refresh</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Section 2: Podium / Top 3 Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+<!-- Rank 1: Gold Card -->
+<div class="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between overflow-hidden group hover:shadow-md transition-all">
+<div class="absolute -right-6 -bottom-6 w-28 h-28 bg-amber-400/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-md">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Close-up portrait of a youthful Southeast Asian competitive programmer smiling calmly, soft directional studio lighting, modern minimalist developer workspace in the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxDsy0WwjnZyoDg5Y8Aqn6upkdU8lHX_t-30i2hyW3aojX3PQABVEyJ6VuSadyJAOtsMIuHcLw82UCz0WwKKcgY9j1IojPwbKo3pAtXnjru-noLkvoN3daTJOi700sL6edQtjz7T2IMiexiXyp73zAnW6fmA9zMf5ENuEZxmqA4QXWuu8DHSKXQf7fjQBvomQyn22sm4__RXch2V6biw7CZS1hMfKOuyCc-ydEISdACtAtr0XR8ld-Eg"/>
+<span class="absolute -bottom-1 -right-1 text-lg">🥇</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary cursor-pointer transition-colors">tourist_fan</span>
+<span class="font-body-sm text-body-sm text-outline">ĐH Bách Khoa Hà Nội</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm font-bold bg-amber-100 text-amber-900">#1 Top</span>
+</div>
+<div class="mt-space-lg pt-space-md flex items-center justify-between bg-surface-container-low/70 rounded-lg px-space-md py-space-sm">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">Đã giải</span>
+<span class="font-code-lg text-code-lg font-bold text-secondary">8 / 8</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface-variant">Penalty</span>
+<span class="font-code-lg text-code-lg font-bold text-on-surface">412 min</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-amber-700 font-medium">First Solver</span>
+<span class="font-code-sm text-code-sm font-bold text-amber-800 flex items-center justify-end gap-0.5">
+<span class="material-symbols-outlined text-[14px]">star</span> Bài C (24')
+            </span>
+</div>
+</div>
+</div>
+<!-- Rank 2: Silver Card -->
+<div class="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between overflow-hidden group hover:shadow-md transition-all">
+<div class="absolute -right-6 -bottom-6 w-28 h-28 bg-slate-400/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-md">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Portrait of a focused computer science student with glasses working on algorithm problems, crisp modern lighting, clean white room interior." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2mH2Zlsyuh-Rs9B97OC6qdNEFvba6LgO2hMf9rIMq9pqrwrU6kzAc92OgtkG4UqqbSeX5fZTt0NuQy1q2iGlVVHSBTX0kn1gEnG_2WBiifX7uLiyrP0Y6uHkU-fYnq7v6vb0HbPHvrrPwT49oeZ3k851H0sWqpfUb23dwq-LQElX4UAAfrxcTpcD6iV37fHKaxv0ViQsZQkfWDeMH2ytNtU2hXBzwYyv8bwbGmGHX3dRqSsafCwmMyQ"/>
+<span class="absolute -bottom-1 -right-1 text-lg">🥈</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary cursor-pointer transition-colors">nguyen_code_pro</span>
+<span class="font-body-sm text-body-sm text-outline">ĐH Công Nghệ - ĐHQGHN</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm font-bold bg-slate-200 text-slate-800">#2 Silver</span>
+</div>
+<div class="mt-space-lg pt-space-md flex items-center justify-between bg-surface-container-low/70 rounded-lg px-space-md py-space-sm">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">Đã giải</span>
+<span class="font-code-lg text-code-lg font-bold text-secondary">7 / 8</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface-variant">Penalty</span>
+<span class="font-code-lg text-code-lg font-bold text-on-surface">530 min</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface-variant">Chờ chấm</span>
+<span class="font-code-sm text-code-sm font-bold text-primary flex items-center justify-end gap-0.5">
+              Bài H (Pending)
+            </span>
+</div>
+</div>
+</div>
+<!-- Rank 3: Bronze Card -->
+<div class="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between overflow-hidden group hover:shadow-md transition-all">
+<div class="absolute -right-6 -bottom-6 w-28 h-28 bg-orange-400/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-md">
+<div class="relative">
+<img class="w-12 h-12 rounded-full object-cover shadow-sm" data-alt="Portrait of an energetic female developer wearing headphones smiling at code telemetry monitors, bright airy office background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAz1oDNCSshfY4LhCelK4kGM-ylfdsVajGBZ88dkmK49wXdvlOb0mBHfGBwkfQphaEfTL0QTwILqYR_jO6nD4kC7ZC2lL3qMWwQzByquxhbpMFOjBanI6qfWR1AXFP-_ukre8d90KHDqeC7T-OcX8Ou6M2iggekDJhh1pnkcOcl-jvxYMi4GusTMrEj6S2LacjMt1ZPmYCsJGhEpVJMQdp8y9demy9gKkOW-68Hu9K2dfrrR24OQZ4DoQ"/>
+<span class="absolute -bottom-1 -right-1 text-lg">🥉</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary cursor-pointer transition-colors">algorithm_ninja</span>
+<span class="font-body-sm text-body-sm text-outline">ĐH Khoa Học Tự Nhiên TP.HCM</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded font-code-sm text-code-sm font-bold bg-orange-100 text-orange-950">#3 Bronze</span>
+</div>
+<div class="mt-space-lg pt-space-md flex items-center justify-between bg-surface-container-low/70 rounded-lg px-space-md py-space-sm">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant">Đã giải</span>
+<span class="font-code-lg text-code-lg font-bold text-secondary">7 / 8</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-on-surface-variant">Penalty</span>
+<span class="font-code-lg text-code-lg font-bold text-on-surface">588 min</span>
+</div>
+<div class="flex flex-col text-right">
+<span class="font-label-md text-label-md text-amber-700 font-medium">First Solver</span>
+<span class="font-code-sm text-code-sm font-bold text-amber-800 flex items-center justify-end gap-0.5">
+<span class="material-symbols-outlined text-[14px]">star</span> Bài A (04')
+            </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Scoreboard Matrix Table Area -->
+<div class="flex flex-col bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<!-- Matrix Top Ribbon Info -->
+<div class="px-space-lg py-space-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm bg-surface-container-low/40">
+<div class="flex items-center gap-space-md">
+<span class="font-label-lg text-label-lg font-bold text-on-surface uppercase tracking-wide">Bảng điểm trực tiếp</span>
+<div class="flex items-center gap-2 font-code-sm text-code-sm text-outline">
+<span class="inline-block w-2.5 h-2.5 rounded bg-emerald-100"></span> AC
+            <span class="inline-block w-2.5 h-2.5 rounded bg-rose-100"></span> WA
+            <span class="inline-block w-2.5 h-2.5 rounded bg-amber-100"></span> First Solve
+            <span class="inline-block w-2.5 h-2.5 rounded bg-amber-50"></span> Chờ chấm
+          </div>
+</div>
+<div class="font-code-sm text-code-sm text-on-surface-variant flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary">bolt</span>
+<span>Cập nhật mới nhất: <strong>17:17:45</strong></span>
+</div>
+</div>
+<!-- Horizontal Scrollable Container -->
+<div class="w-full overflow-x-auto">
+<table class="w-full text-left text-body-sm font-body-sm min-w-[1020px]">
+<!-- Table Header -->
+<thead class="bg-surface-container-low font-label-md text-label-md text-on-surface-variant tracking-wider uppercase select-none">
+<tr>
+<!-- Sticky Column 1: Rank -->
+<th class="sticky left-0 z-20 bg-surface-container-low py-3.5 px-space-md w-16 text-center shadow-sm" scope="col">
+                #
+              </th>
+<!-- Sticky Column 2: Contestant Info -->
+<th class="sticky left-16 z-20 bg-surface-container-low py-3.5 px-space-md min-w-[240px] shadow-sm" scope="col">
+                Thí sinh / Đội thi
+              </th>
+<!-- Stats Column: Solved -->
+<th class="py-3.5 px-space-sm text-center w-20" scope="col">
+<div class="flex flex-col items-center">
+<span class="font-bold text-on-surface">AC</span>
+<span class="font-code-sm text-[10px] text-outline lowercase">solved</span>
+</div>
+</th>
+<!-- Stats Column: Penalty -->
+<th class="py-3.5 px-space-sm text-center w-24" scope="col">
+<div class="flex flex-col items-center">
+<span class="font-bold text-on-surface">Phạt</span>
+<span class="font-code-sm text-[10px] text-outline lowercase">penalty</span>
+</div>
+</th>
+<!-- Problem Columns A - H -->
+<!-- Problem A -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">A</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="Watermelon">Watermelon</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">890/1120</span>
+</a>
+</th>
+<!-- Problem B -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">B</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="Bitwise Flow">Bit Flow</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">645/980</span>
+</a>
+</th>
+<!-- Problem C -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">C</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="Graph Queries">Graph Q</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">412/750</span>
+</a>
+</th>
+<!-- Problem D -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">D</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="Tree Paths">Tree Paths</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">289/610</span>
+</a>
+</th>
+<!-- Problem E -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">E</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="DP on Trees">DP Trees</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">174/490</span>
+</a>
+</th>
+<!-- Problem F -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">F</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="String Hash">Str Hash</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">98/380</span>
+</a>
+</th>
+<!-- Problem G -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">G</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="Geometry Convex">Geo Convex</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">42/260</span>
+</a>
+</th>
+<!-- Problem H -->
+<th class="py-3 px-space-xs text-center w-24" scope="col">
+<a class="flex flex-col items-center group cursor-pointer" href="#">
+<span class="font-bold text-primary group-hover:underline text-[13px]">H</span>
+<span class="font-code-sm text-[10px] text-outline truncate max-w-[80px]" title="Max Flow Min Cut">Max Flow</span>
+<span class="font-code-sm text-[9px] text-secondary font-medium">12/185</span>
+</a>
+</th>
+</tr>
+</thead>
+<!-- Table Body -->
+<tbody class="divide-none text-on-surface">
+<!-- ROW 1: tourist_fan (#1) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<span class="text-base" title="Hạng 1 - Gold">🥇</span>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center font-bold text-amber-900 font-label-md">T</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">tourist_fan</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Bách Khoa Hà Nội</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">8</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">412</td>
+<!-- Problem A: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+12'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- Problem B: AC with 1 WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+28'</div>
+<div class="text-[10px] text-emerald-600">+1 phạt</div>
+</div>
+</td>
+<!-- Problem C: First to Solve (AC 1st) -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-amber-100 text-amber-900 font-code-sm shadow-xs relative overflow-hidden">
+<div class="font-bold flex items-center justify-center gap-0.5">
+<span class="material-symbols-outlined text-[11px] text-amber-700">star</span>+24'
+                  </div>
+<div class="text-[9px] font-bold text-amber-800 uppercase tracking-tighter">1st AC</div>
+</div>
+</td>
+<!-- Problem D: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+52'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- Problem E: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+76'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- Problem F: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+104'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- Problem G: AC with penalty -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+138'</div>
+<div class="text-[10px] text-emerald-600">+2 phạt</div>
+</div>
+</td>
+<!-- Problem H: AC First -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-amber-100 text-amber-900 font-code-sm shadow-xs">
+<div class="font-bold flex items-center justify-center gap-0.5">
+<span class="material-symbols-outlined text-[11px] text-amber-700">star</span>+178'
+                  </div>
+<div class="text-[9px] font-bold text-amber-800 uppercase tracking-tighter">1st AC</div>
+</div>
+</td>
+</tr>
+<!-- ROW 2: nguyen_code_pro (#2) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<span class="text-base" title="Hạng 2 - Silver">🥈</span>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-800 font-label-md">N</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">nguyen_code_pro</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Công Nghệ - ĐHQGHN</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">7</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">530</td>
+<!-- A: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+18'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+35'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+49'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D: AC with 1 WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+88'</div>
+<div class="text-[10px] text-emerald-600">+1 phạt</div>
+</div>
+</td>
+<!-- E: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+112'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- F: AC with 2 WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+144'</div>
+<div class="text-[10px] text-emerald-600">+2 phạt</div>
+</div>
+</td>
+<!-- G: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+184'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- H: Pending evaluation -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-amber-50 text-amber-800 font-code-sm animate-pulse">
+<div class="font-bold">⏳ ...</div>
+<div class="text-[9px] text-amber-700">Đang chấm</div>
+</div>
+</td>
+</tr>
+<!-- ROW 3: algorithm_ninja (#3) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<span class="text-base" title="Hạng 3 - Bronze">🥉</span>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-900 font-label-md">A</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">algorithm_ninja</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Khoa Học Tự Nhiên TP.HCM</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">7</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">588</td>
+<!-- A: 1st AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-amber-100 text-amber-900 font-code-sm shadow-xs">
+<div class="font-bold flex items-center justify-center gap-0.5">
+<span class="material-symbols-outlined text-[11px] text-amber-700">star</span>+04'
+                  </div>
+<div class="text-[9px] font-bold text-amber-800 uppercase tracking-tighter">1st AC</div>
+</div>
+</td>
+<!-- B: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+22'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+65'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D: AC with 2 WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+97'</div>
+<div class="text-[10px] text-emerald-600">+2 phạt</div>
+</div>
+</td>
+<!-- E: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+120'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- F: AC -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+160'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- G: AC with penalty -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+180'</div>
+<div class="text-[10px] text-emerald-600">+1 phạt</div>
+</div>
+</td>
+<!-- H: Failed attempts -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-3</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+</tr>
+<!-- ROW 4: dark_matter (#4) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#4</span>
+<span class="text-[11px] text-secondary font-bold" title="Lên 2 hạng">▲2</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">D</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">dark_matter</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Bách Khoa TP.HCM</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">6</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">445</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+15'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+31'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+58'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+79'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- E -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+112'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- F -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+150'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- G: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-2</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+<!-- ROW 5: pixel_knight (#5) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#5</span>
+<span class="text-[11px] text-error font-bold" title="Tụt 1 hạng">▼1</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">P</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">pixel_knight</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH FPT Cần Thơ</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">6</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">480</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+10'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+41'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+62'</div>
+<div class="text-[10px] text-emerald-600">+1 phạt</div>
+</div>
+</td>
+<!-- D -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+85'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- E -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+122'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- F -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+160'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- G: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+<!-- ROW 6: red_black_tree (#6) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#6</span>
+<span class="text-[11px] text-outline font-bold" title="Không đổi">=</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">R</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">red_black_tree</span>
+<span class="font-label-md text-[11px] text-outline truncate">Học viện CNBCVT (PTIT)</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">5</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">320</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+08'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+25'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+44'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+92'</div>
+<div class="text-[10px] text-emerald-600">+1 phạt</div>
+</div>
+</td>
+<!-- E -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+131'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- F: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-4</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- G: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-1</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+<!-- ROW 7: bitmask_wizard (#7) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#7</span>
+<span class="text-[11px] text-secondary font-bold" title="Lên 3 hạng">▲3</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">B</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">bitmask_wizard</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Sư Phạm Kỹ Thuật TP.HCM</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">5</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">395</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+20'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B: First to solve -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-amber-100 text-amber-900 font-code-sm shadow-xs">
+<div class="font-bold flex items-center justify-center gap-0.5">
+<span class="material-symbols-outlined text-[11px] text-amber-700">star</span>+16'
+                  </div>
+<div class="text-[9px] font-bold text-amber-800 uppercase tracking-tighter">1st AC</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+68'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+105'</div>
+<div class="text-[10px] text-emerald-600">+1 phạt</div>
+</div>
+</td>
+<!-- E -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+166'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- F: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-2</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- G: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+<!-- ROW 8: hanoi_coder (#8) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#8</span>
+<span class="text-[11px] text-error font-bold" title="Tụt 2 hạng">▼2</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">H</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">hanoi_coder</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Giao Thông Vận Tải</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">4</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">218</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+14'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+33'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+61'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+110'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- E: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-1</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- F: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- G: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+<!-- ROW 9: cyber_eagle (#9) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#9</span>
+<span class="text-[11px] text-outline font-bold">=</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">C</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">cyber_eagle</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Bách Khoa - ĐH Đà Nẵng</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">4</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">245</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+19'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+45'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+71'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+110'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- E: Pending evaluation -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-amber-50 text-amber-800 font-code-sm animate-pulse">
+<div class="font-bold">⏳ ...</div>
+<div class="text-[9px] text-amber-700">Đang chấm</div>
+</div>
+</td>
+<!-- F: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- G: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+<!-- ROW 10: segment_lazy (#10) -->
+<tr class="hover:bg-surface-container-low/60 transition-colors bg-surface-container-lowest">
+<td class="sticky left-0 z-10 bg-surface-container-lowest py-3 px-space-md text-center font-code-md font-bold shadow-sm">
+<div class="flex items-center justify-center gap-1">
+<span class="text-on-surface">#10</span>
+<span class="text-[11px] text-secondary font-bold">▲1</span>
+</div>
+</td>
+<td class="sticky left-16 z-10 bg-surface-container-lowest py-3 px-space-md shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-label-md">S</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-md text-body-md font-bold text-primary truncate hover:underline cursor-pointer">segment_lazy</span>
+<span class="font-label-md text-[11px] text-outline truncate">ĐH Cần Thơ</span>
+</div>
+</div>
+</td>
+<td class="py-3 px-space-sm text-center font-code-md font-bold text-secondary text-base">3</td>
+<td class="py-3 px-space-sm text-center font-code-md text-on-surface font-semibold">180</td>
+<!-- A -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+22'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- B -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+58'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- C -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-emerald-50 text-emerald-800 font-code-sm">
+<div class="font-bold">+100'</div>
+<div class="text-[10px] text-emerald-600">1 thử</div>
+</div>
+</td>
+<!-- D: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-3</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- E: WA -->
+<td class="py-2 px-1 text-center">
+<div class="p-1.5 rounded bg-rose-50 text-rose-700 font-code-sm">
+<div class="font-bold">-1</div>
+<div class="text-[9px] text-rose-500">Chưa giải</div>
+</div>
+</td>
+<!-- F: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- G: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+<!-- H: Untouched -->
+<td class="py-2 px-1 text-center text-outline-variant font-code-md">·</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination & Table Metadata Bottom Bar -->
+<div class="px-space-lg py-space-md flex flex-col sm:flex-row items-center justify-between gap-space-md bg-surface-container-low/30">
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+          Hiển thị <span class="font-semibold text-on-surface font-code-sm">1 - 10</span> trong tổng số <span class="font-semibold text-on-surface font-code-sm">1,248</span> thí sinh
+        </div>
+<!-- Pagination Controls -->
+<div class="flex items-center gap-space-xs font-label-md text-label-md">
+<button class="p-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface disabled:opacity-40 transition-colors" disabled="">
+<span class="material-symbols-outlined text-[18px]">keyboard_double_arrow_left</span>
+</button>
+<button class="p-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface disabled:opacity-40 transition-colors" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary text-on-primary font-bold">1</button>
+<button class="w-8 h-8 rounded bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors">2</button>
+<button class="w-8 h-8 rounded bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors">3</button>
+<span class="px-1 text-outline">...</span>
+<button class="w-8 h-8 rounded bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors">125</button>
+<button class="p-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+<button class="p-1 rounded bg-surface-container-low text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[18px]">keyboard_double_arrow_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Inline Micro-interactions Script -->
+<script>
+    (function initLeaderboardRealtime() {
+      // Countdown Timer Logic
+      const timerElement = document.getElementById('countdown-clock');
+      let totalSeconds = (1 * 3600) + (42 * 60) + 15;
+
+      const timerInterval = setInterval(() => {
+        if (totalSeconds <= 0) {
+          clearInterval(timerInterval);
+          if (timerElement) timerElement.textContent = "00:00:00";
+          return;
+        }
+        totalSeconds--;
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        const pad = (n) => String(n).padStart(2, '0');
+        if (timerElement) {
+          timerElement.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+        }
+      }, 1000);
+
+      // Manual Refresh Micro-action
+      const refreshBtn = document.getElementById('manual-refresh-btn');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+          const icon = refreshBtn.querySelector('.material-symbols-outlined');
+          if (icon) {
+            icon.classList.add('animate-spin');
+            setTimeout(() => {
+              icon.classList.remove('animate-spin');
+            }, 600);
+          }
+        });
+      }
+
+      // Filter rows dynamically by handle/school
+      const searchInput = document.getElementById('team-search-input');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const term = (e.target.value || '').toLowerCase().trim();
+          const tableRows = document.querySelectorAll('tbody tr');
+          tableRows.forEach(row => {
+            const rowText = row.innerText.toLowerCase();
+            row.style.display = rowText.includes(term) ? '' : 'none';
+          });
+        });
+      }
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest border-t border-surface-container py-space-md"><div class="max-w-7xl mx-auto px-space-lg flex flex-col sm:flex-row items-center justify-between gap-space-sm font-label-md text-label-md text-on-surface-variant"><div class="flex items-center gap-space-md"><span>© 2025 CodeArena Judge Engine. Mọi quyền được bảo lưu.</span><span class="hidden sm:inline text-outline-variant">•</span><span class="font-code-sm text-code-sm text-outline">v4.18.2-prod</span></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary"></span><span class="font-code-sm text-code-sm text-secondary font-medium">Hệ thống hoạt động bình thường</span></div><span class="text-outline-variant">|</span><span class="font-code-sm text-code-sm text-outline">Độ trễ Judge: 14ms</span></div></div></footer></body></html>

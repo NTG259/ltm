@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-error-container":"#93000a","outline-variant":"#c3c6d7","on-primary-fixed-variant":"#003ea8","on-surface":"#0b1c30","tertiary-container":"#0073ae","surface-tint":"#0053db","surface-container":"#e5eeff","on-primary-container":"#eeefff","error-container":"#ffdad6","surface-container-low":"#eff4ff","primary-container":"#2563eb","on-error":"#ffffff","tertiary-fixed":"#cce5ff","tertiary-fixed-dim":"#93ccff","surface-dim":"#cbdbf5","on-secondary-fixed-variant":"#005236","surface-container-high":"#dce9ff","secondary-fixed":"#6ffbbe","primary":"#004ac6","on-secondary-container":"#00714d","primary-fixed":"#dbe1ff","inverse-surface":"#213145","surface-container-highest":"#d3e4fe","outline":"#737686","on-secondary":"#ffffff","inverse-primary":"#b4c5ff","on-tertiary-container":"#e7f2ff","error":"#ba1a1a","surface-variant":"#d3e4fe","secondary-fixed-dim":"#4edea3","tertiary":"#005a89","secondary-container":"#6cf8bb","on-surface-variant":"#434655","primary-fixed-dim":"#b4c5ff","on-tertiary-fixed-variant":"#004b73","on-background":"#0b1c30","surface-container-lowest":"#ffffff","on-secondary-fixed":"#002113","secondary":"#006c49","surface-bright":"#f8f9ff","on-tertiary":"#ffffff","on-tertiary-fixed":"#001d31","surface":"#f8f9ff","on-primary-fixed":"#00174b","inverse-on-surface":"#eaf1ff","on-primary":"#ffffff","background":"#f8f9ff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"margin":"0.75rem","gutter":"0.5rem","space-xs":"0.25rem","space-sm":"0.5rem","space-xl":"1.5rem","space-md":"0.75rem","space-lg":"1rem"},"fontFamily":{"body-lg":["Inter"],"code-lg":["JetBrains Mono"],"headline-lg":["Inter"],"label-md":["Inter"],"code-md":["JetBrains Mono"],"headline-md":["Inter"],"headline-xl":["Inter"],"body-md":["Inter"],"label-lg":["Inter"],"code-sm":["JetBrains Mono"],"body-sm":["Inter"]},"fontSize":{"body-lg":["0.9375rem",{"lineHeight":"1.5rem","fontWeight":"400"}],"code-lg":["0.875rem",{"lineHeight":"1.5rem","fontWeight":"400"}],"headline-lg":["1.25rem",{"lineHeight":"1.75rem","letterSpacing":"-0.015em","fontWeight":"600"}],"label-md":["0.75rem",{"lineHeight":"1rem","fontWeight":"500"}],"code-md":["0.8125rem",{"lineHeight":"1.375rem","fontWeight":"400"}],"headline-md":["1.125rem",{"lineHeight":"1.5rem","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-xl":["1.75rem",{"lineHeight":"2.25rem","letterSpacing":"-0.02em","fontWeight":"600"}],"body-md":["0.875rem",{"lineHeight":"1.375rem","fontWeight":"400"}],"label-lg":["0.8125rem",{"lineHeight":"1rem","fontWeight":"500"}],"code-sm":["0.75rem",{"lineHeight":"1.125rem","fontWeight":"400"}],"body-sm":["0.8125rem",{"lineHeight":"1.25rem","fontWeight":"400"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><header class="fixed top-0 left-0 right-0 z-50 h-14 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] flex items-center justify-between px-space-lg select-none"><div class="flex items-center gap-space-md min-w-0"><div class="flex items-center gap-space-xs font-headline-md text-headline-md text-primary font-bold"><span class="material-symbols-outlined text-primary text-[20px]">terminal</span><span>CodeJudge</span></div><div class="h-4 w-px bg-outline-variant"></div><div class="flex items-center gap-space-sm truncate"><span class="px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface-variant font-code-sm text-code-sm font-semibold">CSES-1068</span><span class="font-label-lg text-label-lg font-semibold text-on-surface truncate">Weird Algorithm</span><span class="px-space-xs py-0.5 rounded bg-surface-container text-primary font-label-md text-label-md font-medium">In Progress</span></div><div class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface font-code-sm text-code-sm"><span class="material-symbols-outlined text-[16px] text-primary">timer</span><span class="font-medium tracking-wide">00:24:15</span></div></div><div class="hidden xl:flex items-center gap-space-sm"><div class="flex items-center p-0.5 rounded bg-surface-container-low"><button class="flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-lowest text-on-surface shadow-[0_1px_4px_rgba(0,0,0,0.04)] font-label-md text-label-md font-medium transition-colors" title="Split 50:50 View (Alt+1)" type="button"><span class="material-symbols-outlined text-[16px]">vertical_split</span><span>Split 50:50</span></button><button class="flex items-center gap-space-xs px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md font-medium transition-colors" title="Code Focus (Alt+2)" type="button"><span class="material-symbols-outlined text-[16px]">code</span><span>Code Focus</span></button><button class="flex items-center gap-space-xs px-space-sm py-1 rounded text-on-surface-variant hover:text-on-surface font-label-md text-label-md font-medium transition-colors" title="Problem Focus (Alt+3)" type="button"><span class="material-symbols-outlined text-[16px]">menu_book</span><span>Problem Focus</span></button></div><div class="flex items-center text-outline font-code-sm text-code-sm"><span class="material-symbols-outlined text-[14px] mr-1">keyboard</span><span>Alt+1/2/3</span></div></div><div class="flex items-center gap-space-sm"><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" title="Workspace Settings" type="button"><span class="material-symbols-outlined text-[18px]">settings</span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" title="Theme (Light Mode Active)" type="button"><span class="material-symbols-outlined text-[18px]">light_mode</span></button><button class="p-1.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" title="Toggle Fullscreen" type="button"><span class="material-symbols-outlined text-[18px]">fullscreen</span></button><div class="h-4 w-px bg-outline-variant mx-space-xs"></div><button class="flex items-center gap-space-xs px-space-md py-1.5 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-low hover:text-on-surface font-label-md text-label-md font-medium transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.06)]" type="button"><span class="material-symbols-outlined text-[16px]">play_arrow</span><span>Run Code</span></button><button class="flex items-center gap-space-xs px-space-md py-1.5 rounded bg-primary-container text-on-primary font-label-md text-label-md font-semibold hover:bg-primary transition-colors shadow-[0_1px_6px_rgba(37,99,235,0.25)]" type="button"><span class="material-symbols-outlined text-[16px]">cloud_upload</span><span>Submit</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><aside class="fixed left-0 top-14 bottom-0 w-14 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex flex-col items-center justify-between py-space-md"><nav class="flex flex-col items-center gap-space-xs w-full" data-active-classes="bg-surface-container text-primary"><a aria-current="page" class="p-2.5 rounded transition-colors flex items-center justify-center bg-surface-container text-primary" data-path="algorithm-ide-workbench" href="#" title="Problem &amp; Code Workspace"><span class="material-symbols-outlined text-[20px]">code_blocks</span></a><a class="p-2.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors flex items-center justify-center" data-path="testcase-runner" href="#" title="Testcases &amp; Telemetry"><span class="material-symbols-outlined text-[20px]">playlist_play</span></a><a class="p-2.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors flex items-center justify-center" data-path="submission-history" href="#" title="Submissions &amp; Verdicts"><span class="material-symbols-outlined text-[20px]">history</span></a><a class="p-2.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors flex items-center justify-center" data-path="contest-leaderboard" href="#" title="Live Standings"><span class="material-symbols-outlined text-[20px]">leaderboard</span></a></nav><div class="flex flex-col items-center gap-space-xs w-full"><a class="p-2.5 rounded text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors flex items-center justify-center" data-path="judge-documentation" href="#" title="Judge Constraints &amp; Documentation"><span class="material-symbols-outlined text-[20px]">help_outline</span></a></div></aside><div class="pl-14"><main class="w-full pt-14 bg-surface min-h-[calc(100vh-3.5rem)]"><div class="flex flex-col w-full h-[calc(100vh-3.5rem)] overflow-hidden select-none bg-surface text-on-surface">
+<!-- Interactive Master Workbench Frame -->
+<div class="flex flex-row w-full h-full min-h-0 overflow-hidden" id="ide-container">
+<!-- LEFT PANE: Problem Statement & Documentation -->
+<section class="w-1/2 min-w-[360px] h-full flex flex-col bg-surface-container-lowest overflow-hidden shadow-sm relative z-10" id="left-pane">
+<!-- Top Problem Sub-bar / Meta Header -->
+<div class="h-11 px-space-lg flex items-center justify-between bg-surface-container-low shrink-0">
+<div class="flex items-center gap-space-sm overflow-hidden">
+<span class="inline-flex items-center gap-1 px-space-xs py-0.5 rounded bg-surface-container-high text-primary font-code-sm text-code-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            Dễ / 800 DP
+          </span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-label-md text-label-md">Toán học</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-label-md text-label-md">Mô phỏng</span>
+</div>
+<div class="flex items-center gap-space-xs shrink-0">
+<button class="flex items-center gap-1 px-space-xs py-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors font-code-sm text-code-sm" id="btn-like" onclick="toggleVote('like')" title="Hữu ích" type="button">
+<span class="material-symbols-outlined text-[16px]">thumb_up</span>
+<span id="like-count">1.4k</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" id="btn-dislike" onclick="toggleVote('dislike')" title="Không hữu ích" type="button">
+<span class="material-symbols-outlined text-[16px]">thumb_down</span>
+</button>
+<div class="w-px h-3.5 bg-outline-variant mx-1"></div>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" id="btn-bookmark" onclick="toggleBookmark()" title="Lưu bài tập" type="button">
+<span class="material-symbols-outlined text-[16px]" id="bm-icon">bookmark_border</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" onclick="copyShareLink()" title="Chia sẻ liên kết" type="button">
+<span class="material-symbols-outlined text-[16px]">share</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Problem Statement Content -->
+<div class="flex-1 overflow-y-auto px-space-lg py-space-md space-y-space-md select-text">
+<!-- Title & Identification -->
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm font-semibold text-primary px-1.5 py-0.5 rounded bg-surface-container">CSES-1068</span>
+<span class="font-label-md text-label-md text-outline">Bộ đề Quy nạp Cơ bản</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Weird Algorithm</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Giả thuyết Collatz (3n + 1 Problem) &amp; Quy trình biến đổi số học.</p>
+</div>
+<!-- Meta Specs Card Grid -->
+<div class="grid grid-cols-4 gap-space-xs p-space-sm rounded-lg bg-surface-container-low shadow-sm">
+<div class="flex flex-col p-space-xs rounded bg-surface-container-lowest">
+<div class="flex items-center gap-1 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-[14px] text-primary">schedule</span>
+<span>Thời gian</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold text-on-surface mt-0.5">1.00s (C++)</span>
+</div>
+<div class="flex flex-col p-space-xs rounded bg-surface-container-lowest">
+<div class="flex items-center gap-1 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-[14px] text-tertiary">memory</span>
+<span>Bộ nhớ</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold text-on-surface mt-0.5">512 MB</span>
+</div>
+<div class="flex flex-col p-space-xs rounded bg-surface-container-lowest">
+<div class="flex items-center gap-1 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-[14px]">login</span>
+<span>Đầu vào</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold text-on-surface mt-0.5">stdin</span>
+</div>
+<div class="flex flex-col p-space-xs rounded bg-surface-container-lowest">
+<div class="flex items-center gap-1 text-on-surface-variant font-label-md text-label-md">
+<span class="material-symbols-outlined text-[14px]">logout</span>
+<span>Đầu ra</span>
+</div>
+<span class="font-code-sm text-code-sm font-semibold text-on-surface mt-0.5">stdout</span>
+</div>
+</div>
+<!-- Problem Description Text -->
+<div class="space-y-space-sm font-body-md text-body-md text-on-surface leading-relaxed">
+<p>
+            Xét một thuật toán nhận vào số nguyên dương <code class="px-1.5 py-0.5 rounded bg-surface-container text-primary font-code-sm text-code-sm font-medium">n</code>. 
+            Nếu <code class="px-1 py-0.2 rounded bg-surface-container-low font-code-sm text-code-sm">n</code> là số chẵn, thuật toán sẽ chia <code class="px-1 py-0.2 rounded bg-surface-container-low font-code-sm text-code-sm">n</code> cho 2. 
+            Nếu <code class="px-1 py-0.2 rounded bg-surface-container-low font-code-sm text-code-sm">n</code> là số lẻ, thuật toán sẽ nhân <code class="px-1 py-0.2 rounded bg-surface-container-low font-code-sm text-code-sm">n</code> với 3 rồi cộng thêm 1.
+          </p>
+<p>
+            Thuật toán lặp lại quy trình trên liên tục cho đến khi giá trị của <code class="px-1 py-0.2 rounded bg-surface-container-low font-code-sm text-code-sm">n = 1</code>. 
+            Ví dụ thực tế với khởi đầu <code class="px-1.5 py-0.5 rounded bg-surface-container font-code-sm text-code-sm font-bold text-primary">n = 3</code>, chuỗi dãy số sinh ra theo từng bước là:
+          </p>
+</div>
+<!-- Visual Sequence Flow / Interactive Pill Diagram -->
+<div class="p-space-md rounded-lg bg-surface-container-low shadow-sm space-y-space-xs">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">Sơ đồ chuyển dịch trạng thái (Dãy sinh)</span>
+<span class="font-code-sm text-code-sm text-outline">K = 8 bước biến đổi</span>
+</div>
+<div class="flex items-center flex-wrap gap-2 py-1">
+<div class="flex items-center gap-1.5">
+<span class="px-2.5 py-1 rounded bg-primary-container text-on-primary font-code-sm text-code-sm font-bold shadow-sm ring-1 ring-primary/20">3</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-medium shadow-sm">10</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-medium shadow-sm">5</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-medium shadow-sm">16</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-medium shadow-sm">8</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-medium shadow-sm">4</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-medium shadow-sm">2</span>
+<span class="material-symbols-outlined text-[14px] text-outline">arrow_forward</span>
+</div>
+<div class="flex items-center">
+<span class="px-2.5 py-1 rounded bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold shadow-sm">1</span>
+</div>
+</div>
+<p class="font-code-sm text-code-sm text-on-surface-variant pt-1 italic">
+            Quy luật: <span class="text-on-surface font-medium">n_chẵn = n / 2</span> | <span class="text-on-surface font-medium">n_lẻ = 3n + 1</span>. Chu kỳ kết thúc khi đạt mốc 1.
+          </p>
+</div>
+<!-- Constraints & Limits Card -->
+<div class="p-space-md rounded-lg bg-surface-container-low shadow-sm space-y-space-xs">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-primary">gavel</span>
+<h2 class="font-label-lg text-label-lg font-bold uppercase tracking-wider">Ràng buộc &amp; Giới hạn kỹ thuật</h2>
+</div>
+<ul class="space-y-1.5 font-body-sm text-body-sm text-on-surface list-none pl-1">
+<li class="flex items-start gap-2">
+<span class="text-primary font-bold">•</span>
+<span>Giới hạn giá trị đầu vào: <code class="px-1.5 py-0.5 rounded bg-surface-container font-code-sm text-code-sm font-semibold text-primary">1 ≤ n ≤ 10⁶</code>.</span>
+</li>
+<li class="flex items-start gap-2 p-space-xs rounded bg-surface-container-high/60">
+<span class="material-symbols-outlined text-[16px] text-on-surface shrink-0 mt-0.5">info</span>
+<span class="font-code-sm text-code-sm text-on-surface">
+<strong>LƯU Ý TRÀN SỐ:</strong> Các giá trị trung gian trong quá trình tính toán có thể vượt quá giới hạn số nguyên 32-bit có dấu (<code class="text-error font-semibold">2³¹ - 1</code>). Bắt buộc sử dụng kiểu dữ liệu <code class="px-1 bg-surface-container-lowest font-bold text-primary rounded">long long</code> trong C++ hoặc <code class="px-1 bg-surface-container-lowest font-bold text-primary rounded">BigInt/Long</code>.
+              </span>
+</li>
+</ul>
+</div>
+<!-- Example Testcase Card 1 -->
+<div class="rounded-lg bg-surface-container-low shadow-sm overflow-hidden">
+<div class="px-space-md py-space-sm bg-surface-container-high/50 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">terminal</span>
+<span class="font-label-lg text-label-lg font-bold text-on-surface">Ví dụ mẫu 1 (Standard I/O)</span>
+</div>
+<span class="font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-medium">Testcase #1</span>
+</div>
+<div class="p-space-md space-y-space-md">
+<!-- Input Block -->
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-on-surface-variant">Dữ liệu đầu vào (stdin):</span>
+<button class="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-code-sm text-code-sm transition-colors" onclick="copySnippet('in-1', this)" type="button">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+<span>Sao chép Input</span>
+</button>
+</div>
+<pre class="p-space-sm rounded bg-surface-container-lowest font-code-sm text-code-sm text-on-surface font-semibold shadow-inner select-all" id="in-1">3</pre>
+</div>
+<!-- Output Block -->
+<div class="space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-on-surface-variant">Kết quả đầu ra (stdout):</span>
+<button class="flex items-center gap-1 px-2 py-0.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface font-code-sm text-code-sm transition-colors" onclick="copySnippet('out-1', this)" type="button">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+<span>Sao chép Output</span>
+</button>
+</div>
+<pre class="p-space-sm rounded bg-surface-container-lowest font-code-sm text-code-sm text-on-surface font-semibold shadow-inner select-all" id="out-1">3 10 5 16 8 4 2 1</pre>
+</div>
+<!-- Explanation Box -->
+<div class="p-space-xs rounded bg-surface-container-lowest text-on-surface-variant font-body-sm text-body-sm leading-normal space-y-1">
+<div class="font-semibold text-on-surface flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">check_circle</span>
+<span>Giải thích chi tiết các bước:</span>
+</div>
+<div class="font-code-sm text-code-sm text-on-surface space-y-0.5 pl-2">
+<div>• Bước 1: 3 là số lẻ ➔ 3 * 3 + 1 = 10</div>
+<div>• Bước 2: 10 là số chẵn ➔ 10 / 2 = 5</div>
+<div>• Bước 3: 5 là số lẻ ➔ 5 * 3 + 1 = 16</div>
+<div>• Bước 4, 5, 6, 7: 16 ➔ 8 ➔ 4 ➔ 2 ➔ 1 (kết thúc tại 1)</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Additional Guidance footer notice -->
+<div class="p-space-sm rounded bg-surface-container text-on-surface-variant font-code-sm text-code-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">lightbulb</span>
+<span>Mẹo: Để in mảng lớn không bị quá thời gian (TLE), dùng <code class="font-bold text-on-surface">\n</code> thay cho <code class="font-bold text-on-surface">std::endl</code>.</span>
+</div>
+</div>
+</section>
+<!-- VERTICAL RESIZER GUTTER -->
+<div class="w-2 hover:w-2.5 bg-surface-container-low hover:bg-primary-container transition-all cursor-col-resize flex items-center justify-center shrink-0 z-20 group relative select-none" id="vertical-resizer">
+<div class="w-0.5 h-8 rounded-full bg-outline-variant group-hover:bg-on-primary"></div>
+</div>
+<!-- RIGHT PANE: Code Editor & Console Telemetry -->
+<section class="flex-1 min-w-[420px] h-full flex flex-col bg-surface overflow-hidden relative z-10" id="right-pane">
+<!-- TOP: Code Editor Container -->
+<div class="flex-1 min-h-[160px] flex flex-col bg-surface-container-lowest overflow-hidden shadow-sm" id="editor-section">
+<!-- Editor Header Toolbar -->
+<div class="h-10 px-space-md flex items-center justify-between bg-surface-container-low shrink-0 select-none">
+<!-- Left: File Tabs -->
+<div class="flex items-center gap-1 h-full pt-1">
+<button class="h-full px-space-md rounded-t bg-surface-container-lowest text-primary font-code-sm text-code-sm font-semibold flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span>solution.cpp</span>
+<span class="material-symbols-outlined text-[14px] text-outline hover:text-on-surface ml-1">close</span>
+</button>
+<button class="h-full px-space-md rounded-t text-on-surface-variant hover:bg-surface-container font-code-sm text-code-sm font-medium flex items-center gap-1.5 transition-colors">
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+<span>template.cpp</span>
+</button>
+</div>
+<!-- Center/Right: Language Selector & Tools -->
+<div class="flex items-center gap-space-xs">
+<div class="relative">
+<select class="appearance-none pl-2.5 pr-7 py-1 rounded bg-surface-container-lowest text-on-surface font-code-sm text-code-sm font-semibold shadow-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+<option selected="">C++20 (GCC 13.2) -O3</option>
+<option>C++17 (Clang 16.0)</option>
+<option>Python 3.11 (PyPy 7.3)</option>
+<option>Java 21 (OpenJDK)</option>
+<option>Rust 1.76 (2021)</option>
+<option>Go 1.22</option>
+</select>
+<span class="material-symbols-outlined absolute right-1.5 top-1.5 text-[16px] text-outline pointer-events-none">expand_more</span>
+</div>
+<div class="w-px h-3.5 bg-outline-variant mx-1"></div>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" onclick="formatCode()" title="Tự động căn chỉnh Code (Format Shift+Alt+F)" type="button">
+<span class="material-symbols-outlined text-[16px]">code_blocks</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" onclick="resetCode()" title="Khôi phục mã mẫu gốc" type="button">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex items-center" title="Cỡ chữ editor (14px)" type="button">
+<span class="font-code-sm text-code-sm font-medium">14px</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" id="btn-maximize-editor" onclick="toggleMaximizeEditor()" title="Mở rộng trình soạn thảo" type="button">
+<span class="material-symbols-outlined text-[16px]" id="max-icon">open_in_full</span>
+</button>
+</div>
+</div>
+<!-- Code Editor Body Simulation (VS Code / GitHub Light IDE Palette) -->
+<div class="flex-1 flex flex-row overflow-hidden font-code-sm text-code-sm relative">
+<!-- Line Numbers Gutter -->
+<div class="w-12 bg-surface-container-low/70 py-2 text-right pr-3 select-none text-outline space-y-0 shrink-0 font-code-sm text-code-sm leading-6">
+<div>1</div>
+<div>2</div>
+<div>3</div>
+<div>4</div>
+<div>5</div>
+<div>6</div>
+<div>7</div>
+<div>8</div>
+<div>9</div>
+<div>10</div>
+<div>11</div>
+<div>12</div>
+<div>13</div>
+<div>14</div>
+<div>15</div>
+<div>16</div>
+<div>17</div>
+<div class="text-primary font-bold bg-surface-container-high/60 -mr-3 pr-3">18</div>
+<div>19</div>
+<div>20</div>
+<div>21</div>
+<div>22</div>
+<div>23</div>
+<div>24</div>
+</div>
+<!-- Syntax Surface Workspace -->
+<div class="flex-1 overflow-auto py-2 px-3 text-on-surface leading-6 relative font-code-sm text-code-sm whitespace-pre">
+<!-- Simulated Active Line Highlight -->
+<div class="absolute left-0 right-0 top-[408px] h-6 bg-surface-container-low/80 -z-0 pointer-events-none"></div>
+<div class="relative z-10"><span class="text-error font-semibold">#include</span> <span class="text-[#0a3069]">&lt;iostream&gt;</span></div>
+<div class="relative z-10"><span class="text-error font-semibold">#include</span> <span class="text-[#0a3069]">&lt;vector&gt;</span></div>
+<div class="relative z-10"><span class="text-outline italic">// CSES 1068 - Weird Algorithm</span></div>
+<div class="relative z-10"><span class="text-outline italic">// Complexity: O(k) steps, O(1) auxiliary space</span></div>
+<div class="relative z-10"><span class="text-tertiary font-semibold">using namespace</span> std;</div>
+<div class="relative z-10"></div>
+<div class="relative z-10"><span class="text-tertiary font-semibold">int</span> <span class="text-primary font-semibold">main</span>() {</div>
+<div class="relative z-10"> <span class="text-outline italic">// Tối ưu tốc độ luồng xuất nhập I/O</span></div>
+<div class="relative z-10">    ios_base::<span class="text-primary">sync_with_stdio</span>(<span class="text-error">false</span>);</div>
+<div class="relative z-10">    cin.<span class="text-primary">tie</span>(<span class="text-tertiary">nullptr</span>);</div>
+<div class="relative z-10"></div>
+<div class="relative z-10"> <span class="text-outline italic">// Bắt buộc dùng 64-bit int để tránh tràn số khi 3n + 1 vượt 2^31 - 1</span></div>
+<div class="relative z-10"> <span class="text-tertiary font-semibold">long long</span> n;</div>
+<div class="relative z-10"> <span class="text-tertiary font-semibold">if</span> (!(cin &gt;&gt; n)) <span class="text-tertiary font-semibold">return</span> <span class="text-primary">0</span>;</div>
+<div class="relative z-10"></div>
+<div class="relative z-10">    cout &lt;&lt; n;</div>
+<div class="relative z-10"> <span class="text-tertiary font-semibold">while</span> (n != <span class="text-primary">1</span>) {</div>
+<div class="relative z-10"> <span class="text-tertiary font-semibold">if</span> (n % <span class="text-primary">2</span> == <span class="text-primary">0</span>) {<span class="inline-block w-1.5 h-4 bg-primary align-middle ml-1 animate-pulse"></span></div>
+<div class="relative z-10">            n /= <span class="text-primary">2</span>;</div>
+<div class="relative z-10">        } <span class="text-tertiary font-semibold">else</span> {</div>
+<div class="relative z-10">            n = <span class="text-primary">3</span> * n + <span class="text-primary">1</span>;</div>
+<div class="relative z-10">        }</div>
+<div class="relative z-10">        cout &lt;&lt; <span class="text-[#0a3069]">" "</span> &lt;&lt; n;</div>
+<div class="relative z-10">    }</div>
+<div class="relative z-10">    cout &lt;&lt; <span class="text-[#0a3069]">"\n"</span>;</div>
+<div class="relative z-10"> <span class="text-tertiary font-semibold">return</span> <span class="text-primary">0</span>;</div>
+<div class="relative z-10">}</div>
+</div>
+<!-- Code Minimap Preview -->
+<div class="w-16 h-full bg-surface-container-lowest opacity-40 hover:opacity-80 transition-opacity border-l border-surface-container-low shrink-0 select-none py-2 px-1 hidden md:block">
+<div class="w-full h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+<div class="w-3/4 h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+<div class="w-1/2 h-1 bg-outline-variant/40 rounded-sm mb-2"></div>
+<div class="w-5/6 h-1 bg-primary/70 rounded-sm mb-1"></div>
+<div class="w-2/3 h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+<div class="w-3/4 h-1 bg-outline-variant/60 rounded-sm mb-2"></div>
+<div class="w-1/2 h-1 bg-outline-variant/50 rounded-sm mb-1"></div>
+<div class="w-4/5 h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+<div class="w-2/3 h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+<div class="w-full h-1.5 bg-primary/80 rounded-sm mb-1"></div>
+<div class="w-1/2 h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+<div class="w-3/4 h-1 bg-outline-variant/60 rounded-sm mb-1"></div>
+</div>
+</div>
+<!-- Editor Cursor & Document Status Bar -->
+<div class="h-6 px-space-md bg-surface-container-low flex items-center justify-between font-code-sm text-code-sm text-on-surface-variant shrink-0">
+<div class="flex items-center gap-space-md">
+<span>Dòng 18, Cột 28</span>
+<span>Khoảng trắng: 4</span>
+<span>UTF-8</span>
+<span>LF</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="flex items-center gap-1 text-secondary font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              C++ Language Server Sẵn sàng
+            </span>
+</div>
+</div>
+</div>
+<!-- HORIZONTAL RESIZER GUTTER -->
+<div class="h-2 hover:h-2.5 bg-surface-container-low hover:bg-primary-container transition-all cursor-row-resize flex items-center justify-center shrink-0 z-20 group relative select-none" id="horizontal-resizer">
+<div class="h-0.5 w-10 rounded-full bg-outline-variant group-hover:bg-on-primary"></div>
+</div>
+<!-- BOTTOM: Interactive Execution Panel & Telemetry Console -->
+<div class="h-[280px] min-h-[120px] flex flex-col bg-surface-container-lowest overflow-hidden shadow-sm" id="console-section">
+<!-- Bottom Panel Header Tabs -->
+<div class="h-10 px-space-md flex items-center justify-between bg-surface-container-low shrink-0 select-none">
+<div class="flex items-center gap-1 h-full pt-1">
+<button class="h-full px-space-md rounded-t bg-surface-container-lowest text-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm" id="tab-btn-results" onclick="switchConsoleTab('results')" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">verified</span>
+<span>Kết quả Thực thi (Run Results)</span>
+<span class="px-1.5 py-0.2 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold">10/10 AC</span>
+</button>
+<button class="h-full px-space-md rounded-t text-on-surface-variant hover:bg-surface-container font-label-md text-label-md font-medium flex items-center gap-1.5 transition-colors" id="tab-btn-custom" onclick="switchConsoleTab('custom')" type="button">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>Console (Custom Input)</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" onclick="clearConsoleOutput()" title="Xóa nội dung console" type="button">
+<span class="material-symbols-outlined text-[16px]">block</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" id="btn-maximize-console" onclick="toggleMaximizeConsole()" title="Phóng to bảng console" type="button">
+<span class="material-symbols-outlined text-[16px]" id="con-max-icon">vertical_align_top</span>
+</button>
+</div>
+</div>
+<!-- Execution Panel Content (Run Results Active View) -->
+<div class="flex-1 overflow-y-auto p-space-md space-y-space-sm" id="tab-content-results">
+<!-- Verdict Metric Banner -->
+<div class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low shadow-sm">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-1.5 px-space-sm py-1 rounded bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span>Accepted 100/100 (Chính xác)</span>
+</div>
+<div class="flex items-center gap-space-md text-on-surface font-code-sm text-code-sm">
+<div class="flex items-center gap-1">
+<span class="text-on-surface-variant font-medium">Thời gian chạy:</span>
+<span class="font-bold text-primary">0.04s</span>
+</div>
+<div class="w-px h-3 bg-outline-variant"></div>
+<div class="flex items-center gap-1">
+<span class="text-on-surface-variant font-medium">Bộ nhớ chiếm dụng:</span>
+<span class="font-bold text-on-surface">1.8 MB</span>
+</div>
+</div>
+</div>
+<!-- Subtask Badge Matrix -->
+<div class="flex items-center gap-1">
+<span class="text-on-surface-variant font-label-md text-label-md mr-1 font-medium">Subtasks:</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">1</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">2</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">3</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">4</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">5</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">6</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">7</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">8</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">9</span>
+<span class="w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container font-code-sm text-code-sm font-bold flex items-center justify-center text-[10px]">10</span>
+</div>
+</div>
+<!-- Split Diff Stream Comparison -->
+<div class="grid grid-cols-2 gap-space-sm font-code-sm text-code-sm">
+<!-- Custom Input & STDOUT -->
+<div class="space-y-1.5 p-space-sm rounded bg-surface-container-low shadow-sm">
+<div class="flex items-center justify-between text-on-surface-variant font-label-md text-label-md">
+<span class="font-semibold">Đầu ra của bạn (Your STDOUT)</span>
+<span class="font-code-sm text-code-sm text-primary">Testcase 1 (n = 15)</span>
+</div>
+<div class="p-2 rounded bg-surface-container-lowest font-code-sm text-code-sm text-on-surface overflow-x-auto whitespace-pre font-medium shadow-inner">
+15 46 23 70 35 106 53 160 80 40 20 10 5 16 8 4 2 1
+              </div>
+</div>
+<!-- Expected Output & Diff Match -->
+<div class="space-y-1.5 p-space-sm rounded bg-surface-container-low shadow-sm">
+<div class="flex items-center justify-between text-on-surface-variant font-label-md text-label-md">
+<span class="font-semibold">Đáp án chuẩn (Expected STDOUT)</span>
+<span class="flex items-center gap-1 text-secondary font-bold">
+<span class="material-symbols-outlined text-[14px]">done_all</span>
+                  Khớp chính xác 100%
+                </span>
+</div>
+<div class="p-2 rounded bg-surface-container-lowest font-code-sm text-code-sm text-on-surface overflow-x-auto whitespace-pre font-medium shadow-inner">
+15 46 23 70 35 106 53 160 80 40 20 10 5 16 8 4 2 1
+              </div>
+</div>
+</div>
+<!-- Comprehensive Test Matrix Accordion View -->
+<div class="flex items-center justify-between pt-1">
+<span class="font-label-md text-label-md text-on-surface-variant font-medium">Chi tiết 10/10 bài kiểm tra ngầm:</span>
+<span class="font-code-sm text-code-sm text-outline">Tất cả bài kiểm tra đều nằm dưới giới hạn 1.00s</span>
+</div>
+<div class="grid grid-cols-5 gap-2 font-code-sm text-code-sm">
+<div class="p-1.5 rounded bg-surface-container-low flex items-center justify-between shadow-sm">
+<span class="text-on-surface-variant">#1 (n=3)</span>
+<span class="text-secondary font-bold">0.01s ✓</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container-low flex items-center justify-between shadow-sm">
+<span class="text-on-surface-variant">#2 (n=15)</span>
+<span class="text-secondary font-bold">0.04s ✓</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container-low flex items-center justify-between shadow-sm">
+<span class="text-on-surface-variant">#3 (n=27)</span>
+<span class="text-secondary font-bold">0.03s ✓</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container-low flex items-center justify-between shadow-sm">
+<span class="text-on-surface-variant">#4 (n=97)</span>
+<span class="text-secondary font-bold">0.02s ✓</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container-low flex items-center justify-between shadow-sm">
+<span class="text-on-surface-variant">#5 (n=871)</span>
+<span class="text-secondary font-bold">0.04s ✓</span>
+</div>
+</div>
+</div>
+<!-- Custom Input Console View (Hidden initially) -->
+<div class="hidden flex-1 overflow-y-auto p-space-md space-y-space-sm" id="tab-content-custom">
+<div class="flex flex-col h-full space-y-2">
+<label class="font-label-md text-label-md font-semibold text-on-surface-variant flex items-center justify-between" for="custom-input-area">
+<span>Đầu vào tự chọn (Nhập số n tùy ý):</span>
+<span class="font-code-sm text-code-sm text-outline">stdin stream</span>
+</label>
+<textarea class="w-full flex-1 p-space-sm rounded bg-surface-container-low font-code-sm text-code-sm text-on-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary shadow-inner" id="custom-input-area" placeholder="Nhập một số nguyên dương n... (ví dụ: 1000000)">15</textarea>
+</div>
+</div>
+<!-- Bottom Execution Action Toolbar -->
+<div class="h-11 px-space-md bg-surface-container-low flex items-center justify-between shrink-0 select-none shadow-sm">
+<div class="flex items-center gap-space-md font-code-sm text-code-sm text-outline">
+<span class="flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container-lowest shadow-sm text-on-surface">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 rounded bg-surface-container-lowest shadow-sm text-on-surface">Enter</kbd>
+<span class="ml-0.5">Chạy thử</span>
+</span>
+<div class="w-px h-3 bg-outline-variant"></div>
+<span class="flex items-center gap-1">
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container-lowest shadow-sm text-on-surface">Ctrl</kbd> + <kbd class="px-1.5 py-0.5 rounded bg-surface-container-lowest shadow-sm text-on-surface">Shift</kbd> + <kbd class="px-1.5 py-0.5 rounded bg-surface-container-lowest shadow-sm text-on-surface">Enter</kbd>
+<span class="ml-0.5">Nộp bài</span>
+</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="flex items-center gap-1.5 px-space-md py-1.5 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-md text-label-md font-semibold transition-colors shadow-sm" onclick="runSimulation()" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">play_arrow</span>
+<span>Chạy thử</span>
+</button>
+<button class="flex items-center gap-1.5 px-space-lg py-1.5 rounded bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm" onclick="submitSolution()" type="button">
+<span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+<span>Nộp bài (Submit)</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Notification Toast Container -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 transition-all duration-200 pointer-events-none px-4 py-2.5 rounded bg-inverse-surface text-inverse-on-surface font-label-md text-label-md shadow-lg flex items-center gap-2" id="toast">
+<span class="material-symbols-outlined text-[18px] text-secondary-container" id="toast-icon">check_circle</span>
+<span id="toast-msg">Đã sao chép vào bộ nhớ tạm!</span>
+</div>
+</div>
+<script>
+  // Dynamic Layout Splitting & Gutter Dragging Engine
+  (function initSplitter() {
+    const container = document.getElementById('ide-container');
+    const leftPane = document.getElementById('left-pane');
+    const rightPane = document.getElementById('right-pane');
+    const verticalResizer = document.getElementById('vertical-resizer');
+    
+    const editorSection = document.getElementById('editor-section');
+    const consoleSection = document.getElementById('console-section');
+    const horizontalResizer = document.getElementById('horizontal-resizer');
+
+    let isDraggingV = false;
+    let isDraggingH = false;
+
+    // Vertical Splitting
+    verticalResizer.addEventListener('mousedown', (e) => {
+      isDraggingV = true;
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+
+    // Horizontal Splitting
+    horizontalResizer.addEventListener('mousedown', (e) => {
+      isDraggingH = true;
+      document.body.style.cursor = 'row-resize';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDraggingV) {
+        const bounds = container.getBoundingClientRect();
+        const offsetX = e.clientX - bounds.left;
+        const totalW = bounds.width;
+        const minW = 340;
+        if (offsetX > minW && offsetX < totalW - minW) {
+          const leftPercent = (offsetX / totalW) * 100;
+          leftPane.style.width = leftPercent + '%';
+        }
+      }
+
+      if (isDraggingH) {
+        const bounds = rightPane.getBoundingClientRect();
+        const offsetY = e.clientY - bounds.top;
+        const totalH = bounds.height;
+        const minH = 120;
+        if (offsetY > minH && offsetY < totalH - minH) {
+          const consoleHeight = totalH - offsetY;
+          consoleSection.style.height = consoleHeight + 'px';
+        }
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDraggingV || isDraggingH) {
+        isDraggingV = false;
+        isDraggingH = false;
+        document.body.style.cursor = '';
+      }
+    });
+  })();
+
+  // Console Tab Switcher
+  function switchConsoleTab(tab) {
+    const resTab = document.getElementById('tab-content-results');
+    const custTab = document.getElementById('tab-content-custom');
+    const btnRes = document.getElementById('tab-btn-results');
+    const btnCust = document.getElementById('tab-btn-custom');
+
+    if (tab === 'results') {
+      resTab.classList.remove('hidden');
+      custTab.classList.add('hidden');
+      btnRes.className = 'h-full px-space-md rounded-t bg-surface-container-lowest text-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm';
+      btnCust.className = 'h-full px-space-md rounded-t text-on-surface-variant hover:bg-surface-container font-label-md text-label-md font-medium flex items-center gap-1.5 transition-colors';
+    } else {
+      resTab.classList.add('hidden');
+      custTab.classList.remove('hidden');
+      btnCust.className = 'h-full px-space-md rounded-t bg-surface-container-lowest text-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm';
+      btnRes.className = 'h-full px-space-md rounded-t text-on-surface-variant hover:bg-surface-container font-label-md text-label-md font-medium flex items-center gap-1.5 transition-colors';
+    }
+  }
+
+  // Snippet Copy Helper with Feedback
+  function copySnippet(elementId, btnElement) {
+    const text = document.getElementById(elementId).innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Đã sao chép thành công!');
+      const oldHtml = btnElement.innerHTML;
+      btnElement.innerHTML = `<span class="material-symbols-outlined text-[14px] text-secondary">check</span><span class="text-secondary font-semibold">Đã chép</span>`;
+      setTimeout(() => {
+        btnElement.innerHTML = oldHtml;
+      }, 1500);
+    });
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toast-msg');
+    toastMsg.innerText = message;
+    toast.classList.remove('translate-y-12', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    setTimeout(() => {
+      toast.classList.add('translate-y-12', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 2200);
+  }
+
+  // Micro-interactions
+  let bookmarked = false;
+  function toggleBookmark() {
+    bookmarked = !bookmarked;
+    const icon = document.getElementById('bm-icon');
+    if (bookmarked) {
+      icon.innerText = 'bookmark';
+      icon.classList.add('text-primary');
+      showToast('Đã lưu bài toán vào danh sách yêu thích!');
+    } else {
+      icon.innerText = 'bookmark_border';
+      icon.classList.remove('text-primary');
+      showToast('Đã xóa khỏi danh sách yêu thích.');
+    }
+  }
+
+  let voted = null;
+  function toggleVote(type) {
+    const likeBtn = document.getElementById('btn-like');
+    const count = document.getElementById('like-count');
+    if (type === 'like') {
+      likeBtn.classList.toggle('text-primary');
+      count.innerText = likeBtn.classList.contains('text-primary') ? '1,401' : '1.4k';
+      showToast('Cảm ơn bạn đã phản hồi đánh giá!');
+    } else {
+      showToast('Cảm ơn bạn đã đóng góp ý kiến.');
+    }
+  }
+
+  function copyShareLink() {
+    navigator.clipboard.writeText(window.location.href);
+    showToast('Đã sao chép liên kết chia sẻ bài nộp!');
+  }
+
+  function resetCode() {
+    showToast('Đã khôi phục mã nguồn về mẫu khởi tạo!');
+  }
+
+  function formatCode() {
+    showToast('Đã tự động định dạng mã theo chuẩn Google C++ Style!');
+  }
+
+  function clearConsoleOutput() {
+    showToast('Đã làm sạch bộ đệm console.');
+  }
+
+  let editorMaximized = false;
+  function toggleMaximizeEditor() {
+    editorMaximized = !editorMaximized;
+    const conSec = document.getElementById('console-section');
+    const resizer = document.getElementById('horizontal-resizer');
+    const maxIcon = document.getElementById('max-icon');
+    if (editorMaximized) {
+      conSec.style.display = 'none';
+      resizer.style.display = 'none';
+      maxIcon.innerText = 'close_fullscreen';
+    } else {
+      conSec.style.display = 'flex';
+      resizer.style.display = 'flex';
+      maxIcon.innerText = 'open_in_full';
+    }
+  }
+
+  let consoleMaximized = false;
+  function toggleMaximizeConsole() {
+    consoleMaximized = !consoleMaximized;
+    const edSec = document.getElementById('editor-section');
+    const conSec = document.getElementById('console-section');
+    const icon = document.getElementById('con-max-icon');
+    if (consoleMaximized) {
+      edSec.style.display = 'none';
+      conSec.style.height = '100%';
+      icon.innerText = 'vertical_align_bottom';
+    } else {
+      edSec.style.display = 'flex';
+      conSec.style.height = '280px';
+      icon.innerText = 'vertical_align_top';
+    }
+  }
+
+  function runSimulation() {
+    showToast('Đang biên dịch & thực thi mã (g++ -O3)...');
+    setTimeout(() => {
+      switchConsoleTab('results');
+      showToast('Thực thi hoàn tất: 10/10 Tests PASSED (0.04s)');
+    }, 700);
+  }
+
+  function submitSolution() {
+    showToast('Đã gửi bài tới Hệ thống Chấm tự động (CSES Judge)...');
+    setTimeout(() => {
+      showToast('Verdict: ACCEPTED - 100/100 Điểm!');
+    }, 1200);
+  }
+
+  // Keyboard shortcut listener
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
+      e.preventDefault();
+      submitSolution();
+    } else if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      runSimulation();
+    }
+  });
+</script></main></div></body></html>
