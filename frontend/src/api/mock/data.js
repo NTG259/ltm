@@ -214,16 +214,27 @@ int main() {
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
 
-    long long a, b;
-    cin >> a >> b;
-    cout << a + b << "\\n";
+    // TODO: Viết lời giải thuật toán tại đây
+
     return 0;
 }
 `
 
 // Bộ mã nguồn mẫu tương ứng thư mục samples/ (README §8) để demo nhanh 7 nhãn.
 export const SAMPLE_SOURCES = {
-  'ac.cpp': STARTER_CODE,
+  'ac.cpp': `#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    long long a, b;
+    cin >> a >> b;
+    cout << a + b << "\\n";
+    return 0;
+}
+`,
   'wa.cpp': `#include <iostream>
 using namespace std;
 

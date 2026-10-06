@@ -77,7 +77,7 @@ function stripComments(code) {
   return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 }
 
-// Quyết định kết quả giả lập dựa trên nội dung mã nguồn (đủ để demo 7 nhãn với samples/).
+// Quyết định kết quả giả lập dựa trên nội dung mã nguồn và yêu cầu từng đề bài.
 function analyse(code, problem) {
   const clean = stripComments(code)
   for (const p of SECURITY_PATTERNS) {
@@ -98,15 +98,137 @@ function analyse(code, problem) {
             : "solution.cpp: error: expected '}' at end of input\ncompilation terminated due to errors.",
     }
   }
-  const total = problem.tests.length
+
+  // 1. Phải có lệnh xuất kết quả ra màn hình (cout / printf / puts)
+  if (!/\b(cout\s*<<|printf\s*\(|puts\s*\(|putchar\s*\()/.test(clean)) {
+    return { verdict: 'WA', failAt: 0, detail: 'Chương trình không in ra kết quả nào' }
+  }
+
+  // 2. Kiểm tra các lỗi mô phỏng (TLE, MLE, RTE, WRONG_ANSWER)
   if (/while\s*\(\s*(true|1)\s*\)\s*\{\s*\}/.test(clean) || /for\s*\(\s*;\s*;\s*\)/.test(clean))
     return { verdict: 'TLE', failAt: 0 }
   if (/\(\s*\d{9,}\s*(LL)?\s*[,)]/.test(clean) || /\[\s*\d{9,}\s*\]/.test(clean)) return { verdict: 'MLE', failAt: 0 }
   if (/\/\s*(0\b|zero\b)/.test(clean) || /nullptr\s*->|\*\s*\(\s*int\s*\*\s*\)\s*0/.test(clean))
     return { verdict: 'RTE', failAt: 0 }
-  if (/\ba\s*-\s*b\b/.test(clean) || /WRONG_ANSWER/.test(code)) return { verdict: 'WA', failAt: 0 }
-  const h = hash(clean + problem.id)
-  if (problem.id !== 1 && h % 4 === 0) return { verdict: 'WA', failAt: 1 + (h % Math.max(1, total - 1)) }
+  if (/\ba\s*-\s*b\b/.test(clean) || /WRONG_ANSWER/.test(code)) return { verdict: 'WA', failAt: 0, detail: 'Đầu ra không khớp đáp án' }
+
+  // 3. Phân tích đặc trưng thuật toán của mã nguồn:
+  const isYesNoCode = /"YES"/i.test(clean) && /"NO"/i.test(clean)
+  const isPrimeCheck = /\b(is_?prime|prime|nguyen_to|snt)\b/i.test(clean) || (/%\s*[a-zA-Z_]\w*\s*==\s*0/.test(clean) && !/\b(fib|dp|vector)\b/i.test(clean) && !/1000000007|1e9/.test(clean))
+  const isFibonacci = /\b(fib|fibonacci)\b/i.test(clean) || (/f\[\s*i\s*-\s*1\s*\]/i.test(clean)) || (/1000000007|1e9/i.test(clean) && /\+/.test(clean))
+  const isAPlusB = /\b(cin\s*>>\s*a\s*>>\s*b|a\s*\+\s*b)\b/.test(clean) && !/\b(for|while|if|vector|string|fib|prime)\b/i.test(clean)
+
+  const pid = Number(problem.id)
+
+  // CHẶN CHÉO 1: Bài nào yêu cầu YES/NO (chỉ bài 3 và 5)
+  if ((pid === 3 || pid === 5) && !isYesNoCode) {
+    return { verdict: 'WA', failAt: 0, detail: "Đầu ra không khớp: Đề bài yêu cầu in 'YES' hoặc 'NO'" }
+  }
+  // Ngược lại, các bài khác yêu cầu in số / mảng, TUYỆT ĐỐI không được in YES/NO
+  if (pid !== 3 && pid !== 5 && isYesNoCode) {
+    return { verdict: 'WA', failAt: 0, wrongOutput: "YES\n", detail: "Đầu ra không khớp: Nhận được 'YES'/'NO' trong khi đề bài yêu cầu số/mảng" }
+  }
+
+  // CHẶN CHÉO 2: Nộp code A+B vào bài khác bài 1
+  if (pid !== 1 && isAPlusB) {
+    return { verdict: 'WA', failAt: 0, detail: 'Đầu ra không khớp: Mã nguồn chỉ tính a + b' }
+  }
+
+  // CHẶN CHÉO 3: Nộp code Số nguyên tố vào bài khác bài 3
+  if (pid !== 3 && isPrimeCheck) {
+    return { verdict: 'WA', failAt: 0, wrongOutput: "YES\n", detail: 'Đầu ra không khớp: Mã nguồn là bài kiểm tra số nguyên tố' }
+  }
+
+  // CHẶN CHÉO 4: Nộp code Fibonacci vào bài khác bài 2
+  if (pid !== 2 && isFibonacci) {
+    return { verdict: 'WA', failAt: 0, detail: 'Đầu ra không khớp: Mã nguồn là bài tính dãy Fibonacci' }
+  }
+
+  // CHI TIẾT TỪNG BÀI:
+
+  // Bài 1: A + B Problem
+  if (pid === 1) {
+    if (!/\+/.test(clean)) return { verdict: 'WA', failAt: 0, detail: 'Thiếu phép toán cộng a + b' }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 2: Fibonacci Modulo 10^9+7
+  if (pid === 2) {
+    const hasModulo = /%|1000000007|1e9/.test(clean)
+    const hasFibRec = (/f\[\s*i\s*-\s*1\s*\]/i.test(clean)) || (/\b(prev|curr|a\s*\+\s*b)\b/.test(clean)) || (/\bfib\s*\(/.test(clean)) || (/\bfor\b/.test(clean) && /\+/.test(clean))
+    if (!hasModulo || !hasFibRec) {
+      return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần tính F(n) = F(n-1) + F(n-2) chia dư cho 10^9+7' }
+    }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 3: Kiểm tra số nguyên tố
+  if (pid === 3) {
+    const hasLoop = /\b(for|while)\b/.test(clean)
+    const hasModulo = /%\s*\w+\s*==\s*0/.test(clean) || /\b(isPrime|prime|nguyen_to)\b/i.test(clean)
+    if (!hasLoop || !hasModulo) {
+      return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần duyệt ước số i và kiểm tra chia hết n % i == 0' }
+    }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 4: Min/Max & Đảo mảng
+  if (pid === 4) {
+    const hasLoop = /\b(for|while)\b/.test(clean)
+    const hasMinMax = /\b(min|max|<|>)\b/.test(clean)
+    const hasReverse = /\b(reverse|rbegin|--)\b/.test(clean)
+    if (!hasLoop || !hasMinMax || !hasReverse) {
+      return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần tìm min, max và in mảng theo thứ tự đảo ngược' }
+    }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 5: Chuỗi đối xứng Palindrome
+  if (pid === 5) {
+    const hasString = /\b(string|char)\b/.test(clean)
+    const hasCheck = /==|\breverse\b/.test(clean)
+    if (!hasString || !hasCheck) {
+      return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần kiểm tra ký tự đối xứng trong xâu' }
+    }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 6: Sắp xếp dãy số
+  if (pid === 6) {
+    const hasSort = /\bsort\s*\(/.test(clean) || (clean.match(/\bfor\b/g) || []).length >= 2
+    if (!hasSort) return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần sắp xếp dãy số không giảm' }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 7: Tìm kiếm nhị phân
+  if (pid === 7) {
+    const hasBS = /\b(lower_bound|binary_search|mid)\b/i.test(clean) || /\b(left|right|mid)\b/i.test(clean)
+    const hasMinusOne = /-1/.test(clean)
+    if (!hasBS || !hasMinusOne) return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần tìm kiếm nhị phân và in -1 nếu không thấy' }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 8: Dãy con tăng dài nhất (LIS)
+  if (pid === 8) {
+    const hasLIS = /\b(dp|lis|max|lower_bound)\b/i.test(clean)
+    if (!hasLIS) return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần quy hoạch động hoặc tìm kiếm nhị phân tìm LIS' }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 9: 0/1 Knapsack
+  if (pid === 9) {
+    const hasDP = /\bdp\b/i.test(clean) && /\bmax\b/i.test(clean)
+    if (!hasDP) return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần quy hoạch động Knapsack' }
+    return { verdict: 'AC' }
+  }
+
+  // Bài 10: BigInt
+  if (pid === 10) {
+    const hasBigInt = /\bstring\b/.test(clean) && (/%|carry|nho|\/|10/.test(clean))
+    if (!hasBigInt) return { verdict: 'WA', failAt: 0, detail: 'Thuật toán chưa đúng: Cần cộng hai số lớn bằng xử lý xâu' }
+    return { verdict: 'AC' }
+  }
+
   return { verdict: 'AC' }
 }
 
@@ -195,7 +317,8 @@ function runJudge(w, sub) {
       test.memoryKb = memoryKb
       if (failing) {
         test.status = plan.verdict
-        if (plan.verdict === 'WA') test.output = corrupt(test.expected)
+        test.detail = plan.detail || (plan.verdict === 'WA' ? 'Đầu ra không khớp đáp án' : undefined)
+        if (plan.verdict === 'WA') test.output = plan.wrongOutput || corrupt(test.expected)
         if (plan.verdict === 'RTE') test.stderr = 'Floating point exception (SIGFPE, signal 8) – exit code 136'
         if (plan.verdict === 'TLE') test.stderr = `Bị dừng sau ${problem.timeLimitMs} ms (SIGKILL)`
         if (plan.verdict === 'MLE') test.stderr = `Bộ nhớ vượt ${problem.memoryLimitMb} MB – tiến trình bị kết thúc`

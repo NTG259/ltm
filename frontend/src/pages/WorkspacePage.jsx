@@ -42,7 +42,13 @@ const draftKey = (pid, uid) => `cj.draft.${uid}.${pid}`
 
 function readDraft(pid, uid) {
   try {
-    return localStorage.getItem(draftKey(pid, uid))
+    const val = localStorage.getItem(draftKey(pid, uid))
+    // Nếu draft cũ là code A+B nhưng bài hiện tại không phải bài 1, dọn dẹp để nạp template sạch
+    if (val && Number(pid) !== 1 && val.includes('cin >> a >> b') && val.includes('cout << a + b')) {
+      localStorage.removeItem(draftKey(pid, uid))
+      return null
+    }
+    return val
   } catch {
     return null
   }
