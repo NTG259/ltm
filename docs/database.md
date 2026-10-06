@@ -7,8 +7,8 @@
 | `compose.yaml` | PostgreSQL 18 cho phát triển |
 
 ```bash
-docker compose up -d db
-export DATABASE_URL=postgresql://codejudge:codejudge@127.0.0.1:5432/codejudge
+docker compose up -d db          # PostgreSQL ở cổng 5433 của máy
+export DATABASE_URL=postgresql://codejudge:codejudge@127.0.0.1:5433/codejudge
 psql "$DATABASE_URL" -f backend/src/main/resources/db/migration/V1__init_schema.sql
 psql "$DATABASE_URL" -f backend/src/main/resources/db/seed/demo_data.sql   # chạy lại được, xóa sạch rồi nạp lại
 ```
@@ -108,16 +108,38 @@ erDiagram
 
 ## Các quyết định
 
-- **VARCHAR + CHECK thay vì ENUM của PostgreSQL:** map thẳng với `@Enumerated(EnumType.STRING)`
-  của JPA, và thêm trạng thái mới chỉ cần sửa CHECK chứ không phải `ALTER TYPE`.
+- **VARCHAR + CHECK thay vì ENUM của PostgreSQL:** map được với enum Java mà không cần kiểu
+  riêng của Hibernate, và thêm trạng thái mới chỉ cần sửa CHECK chứ không phải `ALTER TYPE`.
 - **`TIMESTAMPTZ` cho mọi mốc thời gian.** API đổi sang epoch ms vì frontend dùng `Date.now()`.
 - **Bộ test lưu trong DB (`TEXT`)**, phù hợp với cỡ dữ liệu của đồ án. Nếu test lên tới vài MB,
   nên chuyển sang lưu file, DB chỉ giữ đường dẫn và checksum.
 - **Mã nguồn tối đa 64 KB** (CHECK). Payload gửi tới Worker vẫn nằm dưới trần 10 MB của giao thức.
 
-## Nối với Spring Boot
+## Spring Boot / JPA
 
-`backend/pom.xml` hiện mới có `spring-boot-starter`. Để dùng schema này cần thêm
-`spring-boot-starter-data-jpa`, `spring-boot-starter-flyway` và driver `org.postgresql:postgresql`,
-rồi cấu hình `spring.datasource.*` trong `application.yaml`. Flyway sẽ tự chạy `V1__init_schema.sql`.
+- **Flyway quản lý schema; Hibernate chỉ `validate`.** Nếu entity lệch với bảng, ứng dụng không
+  khởi động được. Kết nối mặc định trỏ tới `compose.yaml`; ghi đè bằng `DB_URL`, `DB_USERNAME`,
+  `DB_PASSWORD`.
+- **Entity** nằm trong `com.cplusplus.backend.domain`, mỗi bảng một entity, chia theo nghiệp vụ:
+
+  | Package | Entity / enum |
+  | --- | --- |
+  | `domain.user` | `User`, `UserSession`, `Role` |
+  | `domain.problem` | `Problem`, `TestCase`, `Difficulty`, `CheckerType` |
+  | `domain.contest` | `Contest`, `ContestProblem`, `ContestParticipant`, `ContestPhase` |
+  | `domain.submission` | `Submission`, `SubmissionTestResult`, `SubmissionEvent`, `SubmissionStatus`, `SubmissionEventType`, `Verdict`, `TestStatus`, `Language` |
+  | `domain.worker` | `JudgeWorker`, `SystemLog`, `WorkerStatus`, `LogLevel` |
+  | `domain.common` | `CodedEnum`, `CodedEnumConverter` |
+- **Enum:** giá trị chữ hoa dùng `@Enumerated(STRING)`. Giá trị chữ thường (`easy`, `lines`,
+  `cpp17`, `info`) dùng `CodedEnum` + converter `autoApply`.
+- **Vòng đời bài nộp nằm trong `Submission`:** `assignTo` → `updateStatus` → `finish` /
+  `requeue` / `fail` / `rejudge`. Mỗi bước tự thêm một `SubmissionEvent`. Mỗi lần Failover tính
+  một lượt (tối đa 3); `REJECTED` (Worker bận) không tính lượt.
+- **View** được đọc bằng native query trả về interface projection trong repository:
+  `ProblemRepository.findAllStats`, `SubmissionRepository.findLeaderboard` / `findBestCells`,
+  `ContestRepository.findStandings` / `findStandingCells`.
+- **Lỗi từ trigger kỳ thi** (`check_violation`) được Spring chuyển thành
+  `DataIntegrityViolationException`. Vì khóa là IDENTITY, lỗi xuất hiện ngay ở `save()`.
+- **Test** (`./mvnw test`) chạy trên PostgreSQL 18 thật qua Testcontainers, nên cần Docker.
+
 Không đưa `demo_data.sql` vào thư mục migration: nó xóa sạch dữ liệu, chỉ nạp tay khi phát triển.

@@ -74,9 +74,25 @@ class SamplesTest(unittest.TestCase):
         result = self.judge.judge(task_for("int main(){ return 3; }"))
         self.assertEqual((result.verdict, result.tests[0].exit_code), ("RTE", 3))
 
-    def test_huge_static_array_is_mle(self):
-        src = "#include <cstdio>\nint a[500000000];\nint main(){ a[1]=1; printf(\"%d\", a[1]); }"
-        self.assertEqual(self.judge.judge(task_for(src)).verdict, "MLE")
+    def test_static_array_counts_only_touched_memory(self):
+        """Như go-judge (cgroup): chỉ tính bộ nhớ thực dùng, không tính kích thước khai báo."""
+        untouched = "#include <bits/stdc++.h>\nint a[500000000];\nint main(){long long x,y;std::cin>>x>>y;a[1]=1;std::cout<<x+y-1+a[1];}"
+        self.assertEqual(self.judge.judge(task_for(untouched)).verdict, "AC")
+        touched = (
+            "#include <bits/stdc++.h>\nint a[100000000];\nint main(){ memset(a, 1, sizeof a);"
+            " long long s=0; for(int i=0;i<100000000;i+=4096) s+=a[i]; std::cout<<s; }"
+        )
+        result = self.judge.judge(task_for(touched))
+        self.assertEqual(result.verdict, "MLE")
+        self.assertEqual(result.tests[0].detail, "Memory Limit Exceeded")
+
+    def test_threads_are_allowed(self):
+        """RLIMIT_AS + stack = ML từng làm pthread_create thất bại (RTE) – go-judge cho AC."""
+        src = (
+            "#include <bits/stdc++.h>\nint main(){ long long a,b; std::cin>>a>>b; long long r[2];"
+            " std::thread t1([&]{r[0]=a;}), t2([&]{r[1]=b;}); t1.join(); t2.join(); std::cout<<r[0]+r[1]; }"
+        )
+        self.assertEqual(self.judge.judge(task_for(src)).verdict, "AC")
 
     def test_memory_over_limit_is_mle(self):
         src = (

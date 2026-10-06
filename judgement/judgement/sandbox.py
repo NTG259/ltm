@@ -5,9 +5,13 @@ khởi động, giống ``runner`` của go-sandbox):
 
 * tiến trình con nằm trong process group riêng, ``PR_SET_PDEATHSIG`` để chết
   theo launcher; khi quá giờ launcher ``kill(-pgid)`` cả cây tiến trình;
-* giới hạn bằng ``setrlimit``: ``RLIMIT_AS`` (bộ nhớ + phần dư), ``RLIMIT_STACK``,
-  ``RLIMIT_FSIZE`` (giới hạn output vì stdout ghi ra file tạm), ``RLIMIT_NOFILE``,
-  ``RLIMIT_CPU`` (dự phòng), ``RLIMIT_CORE = 0``;
+* bộ nhớ giới hạn theo **RSS thực dùng** như ``memory.max`` cgroup của go-judge:
+  launcher đọc ``/proc/<pid>/statm`` mỗi 5 ms và diệt tiến trình khi vượt. Không đặt
+  ``RLIMIT_AS`` mặc định vì glibc lấy ``RLIMIT_STACK`` làm stack cho mỗi luồng mới,
+  nên chương trình tạo luồng sẽ bị abort (go-judge cũng chỉ đặt AS khi được yêu cầu);
+* giới hạn bằng ``setrlimit``: ``RLIMIT_STACK``, ``RLIMIT_FSIZE`` (giới hạn output vì
+  stdout ghi ra file tạm), ``RLIMIT_NOFILE``, ``RLIMIT_CPU`` (dự phòng),
+  ``RLIMIT_CORE = 0``; ``RLIMIT_AS`` chỉ khi ``address_space_bytes`` > 0;
 * vòng "waiter" mỗi 5 ms (giống ``worker/waiter.go``) kiểm tra thời gian thực và
   thời gian CPU;
 * CPU time và RSS đỉnh lấy từ ``wait4`` của chính launcher, nên không bị lẫn
@@ -53,8 +57,8 @@ class Status(enum.Enum):
 class Limits:
     cpu_ms: int = 1000
     clock_ms: int = 0  # 0 = 3 x cpu_ms + 1s (chờ I/O, máy bận)
-    memory_bytes: int = 256 * MiB
-    extra_memory_bytes: int = 64 * MiB  # phần dư cho RLIMIT_AS (libc, libstdc++, ...)
+    memory_bytes: int = 256 * MiB  # giới hạn RSS; 0 = không giới hạn
+    address_space_bytes: int = 0  # RLIMIT_AS, 0 = không đặt (như go-judge mặc định)
     stack_bytes: int = 0  # 0 = bằng memory_bytes
     output_bytes: int = 64 * MiB
     open_files: int = 64
@@ -175,8 +179,9 @@ def run(cmd: Cmd) -> Result:
     launcher = ensure_launcher()
     limits = cmd.limits
     clock_ms = limits.effective_clock_ms
-    address_space = limits.memory_bytes + limits.extra_memory_bytes
-    stack = min(limits.stack_bytes or limits.memory_bytes, address_space)
+    stack = limits.stack_bytes or limits.memory_bytes
+    if limits.address_space_bytes:
+        stack = min(stack, limits.address_space_bytes)
 
     rfd, wfd = os.pipe()
     with (
@@ -188,7 +193,8 @@ def run(cmd: Cmd) -> Result:
         fin.write(cmd.stdin)
         fin.seek(0)
         args = [
-            launcher, str(wfd), str(limits.cpu_ms), str(clock_ms), str(address_space), str(stack),
+            launcher, str(wfd), str(limits.cpu_ms), str(clock_ms), str(limits.memory_bytes),
+            str(limits.address_space_bytes), str(stack),
             str(limits.output_bytes), str(limits.open_files), "--", *cmd.args,
         ]
         try:
@@ -237,7 +243,7 @@ def run(cmd: Cmd) -> Result:
 
     if exec_errno:
         if exec_errno in (errno.ENOMEM, errno.E2BIG):
-            # Nạp ELF vượt RLIMIT_AS (mảng tĩnh quá lớn) -> exec thất bại.
+            # Nạp ELF vượt RLIMIT_AS (chỉ khi đặt address_space_bytes) -> exec thất bại.
             result.status = Status.MEMORY_LIMIT_EXCEEDED
             result.error = os.strerror(exec_errno)
         else:
@@ -255,9 +261,9 @@ def run(cmd: Cmd) -> Result:
         result.status = Status.NONZERO_EXIT_STATUS
 
     # Giống envexec/run_single.go: kiểm tra lại theo số đo thực tế, MLE ưu tiên sau cùng.
-    if killed or result.time_ms > limits.cpu_ms:
+    if killed == 1 or result.time_ms > limits.cpu_ms:
         result.status = Status.TIME_LIMIT_EXCEEDED
-    if result.memory_bytes > limits.memory_bytes:
+    if killed == 2 or (limits.memory_bytes and result.memory_bytes > limits.memory_bytes):
         result.status = Status.MEMORY_LIMIT_EXCEEDED
     return result
 

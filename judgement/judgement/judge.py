@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import shutil
-import struct
 import subprocess
 import tempfile
 import threading
@@ -192,39 +191,6 @@ def static_link_supported(compiler: str = "g++") -> bool:
         return r.returncode == 0
 
 
-def static_memory_bytes(path: str) -> int:
-    """Tổng ``p_memsz`` các segment ``PT_LOAD`` của file ELF (code + data + bss).
-
-    Mảng toàn cục khổng lồ làm tiến trình chết ngay lúc nạp (SIGSEGV, RSS ~ 0)
-    khi vượt ``RLIMIT_AS``; đo trước từ ELF để báo đúng ``MLE`` thay vì ``RTE``.
-    """
-    try:
-        with open(path, "rb") as f:
-            ident = f.read(64)
-            if ident[:4] != b"\x7fELF":
-                return 0
-            is64, little = ident[4] == 2, ident[5] == 1
-            e = "<" if little else ">"
-            if is64:
-                phoff, = struct.unpack_from(e + "Q", ident, 0x20)
-                phentsize, phnum = struct.unpack_from(e + "HH", ident, 0x36)
-            else:
-                phoff, = struct.unpack_from(e + "I", ident, 0x1C)
-                phentsize, phnum = struct.unpack_from(e + "HH", ident, 0x2A)
-            f.seek(phoff)
-            table = f.read(phentsize * phnum)
-    except (OSError, struct.error):
-        return 0
-    total = 0
-    for i in range(phnum):
-        entry = table[i * phentsize : (i + 1) * phentsize]
-        p_type, = struct.unpack_from(e + "I", entry, 0)
-        if p_type != 1:  # PT_LOAD
-            continue
-        memsz, = struct.unpack_from(e + "Q", entry, 0x28) if is64 else struct.unpack_from(e + "I", entry, 0x14)
-        total += memsz
-    return total
-
 
 class Judge:
     def __init__(self, config: JudgeConfig | None = None) -> None:
@@ -281,20 +247,13 @@ class Judge:
                 # Binary tĩnh không cần mở thư viện .so -> chỉ để lại stdin/stdout/stderr.
                 open_files=3 if self.config.static else 64,
             )
-            static_mem = static_memory_bytes(binary)
 
             tests: list[TestResult] = []
             for pos, tc in enumerate(task.tests, start=1):
                 if cancel is not None and cancel.is_set():
                     raise Cancelled(f"bài #{task.submission_id} bị hủy ở test {pos}/{total}")
                 notify({"status": "TESTING", "progress": {"current": pos, "total": total}, "running": tc.index})
-                if static_mem > limits.memory_bytes:
-                    tr = TestResult(
-                        tc.index, "MLE", time_ms=0, memory_kb=static_mem // 1024,
-                        detail=f"Bộ nhớ tĩnh {static_mem // MiB} MB vượt giới hạn {task.memory_limit_mb} MB",
-                    )
-                else:
-                    tr = self._run_test(binary, workdir, tc, limits, compare)
+                tr = self._run_test(binary, workdir, tc, limits, compare)
                 tests.append(tr)
                 notify({"status": "TESTING", "progress": {"current": pos, "total": total}, "test": tr.to_json()})
                 if tr.status != "AC" and task.stop_on_first_failure:
@@ -324,7 +283,8 @@ class Judge:
                 cpu_ms=cfg.compile_cpu_ms,
                 clock_ms=cfg.compile_clock_ms,
                 memory_bytes=cfg.compile_memory_mb * MiB,
-                extra_memory_bytes=512 * MiB,
+                # Watchdog RSS chỉ theo dõi g++; cc1plus/ld là tiến trình con nên chặn bằng RLIMIT_AS.
+                address_space_bytes=(cfg.compile_memory_mb + 512) * MiB,
                 output_bytes=256 * MiB,
                 open_files=256,
             ),
@@ -374,7 +334,7 @@ class Judge:
         elif st is Status.TIME_LIMIT_EXCEEDED:
             tr.status = "TLE"
         elif st is Status.MEMORY_LIMIT_EXCEEDED or b"std::bad_alloc" in res.stderr:
-            # Cấp phát vượt RLIMIT_AS -> new ném bad_alloc -> abort (SIGABRT), RSS chưa kịp tăng.
+            # Cấp phát lớn bị kernel từ chối (overcommit) -> new ném bad_alloc -> abort, RSS chưa kịp tăng.
             if st is not Status.MEMORY_LIMIT_EXCEEDED:
                 tr.detail = "std::bad_alloc – cấp phát vượt giới hạn bộ nhớ"
             tr.status = "MLE"

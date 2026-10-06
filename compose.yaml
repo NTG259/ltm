@@ -1,24 +1,122 @@
-# PostgreSQL cho môi trường phát triển / demo.
-#   docker compose up -d db
-#   psql postgresql://codejudge:codejudge@127.0.0.1:5432/codejudge -f backend/src/main/resources/db/migration/V1__init_schema.sql
-#   psql postgresql://codejudge:codejudge@127.0.0.1:5432/codejudge -f backend/src/main/resources/db/seed/demo_data.sql
+# CodeJudge – toàn bộ hệ thống.
+#
+#   cp .env.example .env              # (tùy chọn) đổi mật khẩu / cổng
+#   docker compose up -d --build      # db + backend + frontend + 3 worker
+#   docker compose --profile demo up -d seed   # nạp dữ liệu demo (admin/admin123, 10 đề, 3 kỳ thi)
+#
+#   Web:       http://localhost:8080
+#   Master:    HTTP :8000, WebSocket :8001, TCP Worker :9000
+#   Failover:  docker compose stop worker-1   (bài đang chấm được giao cho worker khác)
+#   Chỉ DB:    docker compose up -d db
+
+name: codejudge
+
+x-worker: &worker
+  build: ./judgement
+  image: codejudge/worker
+  restart: unless-stopped
+  depends_on:
+    - backend
+  # Chỉ ở mạng nội bộ "judge": code thí sinh không ra được Internet và không thấy DB.
+  networks: [judge]
+  # Bù cho việc judgement không có namespace/seccomp như go-judge.
+  read_only: true
+  tmpfs:
+    - /tmp:exec,size=512m,mode=1777   # thư mục chấm + launcher; cần exec để chạy binary
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 256
+  mem_limit: 2g
+  cpus: 1.0
+
 services:
   db:
     image: postgres:18
     restart: unless-stopped
     environment:
-      POSTGRES_DB: codejudge
-      POSTGRES_USER: codejudge
-      POSTGRES_PASSWORD: codejudge
+      POSTGRES_DB: ${DB_NAME:-codejudge}
+      POSTGRES_USER: ${DB_USERNAME:-codejudge}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-codejudge}
       TZ: Asia/Ho_Chi_Minh
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"   # 5433: tránh đụng PostgreSQL cài sẵn trên máy
     volumes:
       - db-data:/var/lib/postgresql   # postgres:18 lưu dữ liệu dưới /var/lib/postgresql/18/docker
+    networks: [default]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U codejudge -d codejudge"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       retries: 10
+
+  backend:
+    build: ./backend
+    image: codejudge/backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-codejudge}
+      DB_USERNAME: ${DB_USERNAME:-codejudge}
+      DB_PASSWORD: ${DB_PASSWORD:-codejudge}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "8000:8000"   # HTTP REST
+      - "8001:8001"   # WebSocket (frontend kết nối thẳng ws://<host>:8001)
+      - "9000:9000"   # TCP cho Worker chạy ở máy khác trong LAN
+    networks: [default, judge]
+    healthcheck:
+      # Image JRE không có curl: gọi /actuator/health bằng /dev/tcp của bash.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      start_period: 40s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_USE_MOCK: ${VITE_USE_MOCK:-true}
+    image: codejudge/frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    networks: [default]
+
+  worker-1:
+    <<: *worker
+    command: ["worker", "--id", "worker-1", "--master-host", "backend", "--master-port", "9000"]
+  worker-2:
+    <<: *worker
+    command: ["worker", "--id", "worker-2", "--master-host", "backend", "--master-port", "9000"]
+  worker-3:
+    <<: *worker
+    command: ["worker", "--id", "worker-3", "--master-host", "backend", "--master-port", "9000"]
+
+  # Nạp dữ liệu demo sau khi Flyway (trong backend) đã tạo bảng. Xóa sạch dữ liệu cũ!
+  seed:
+    image: postgres:18
+    profiles: [demo]
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: ${DB_NAME:-codejudge}
+      PGUSER: ${DB_USERNAME:-codejudge}
+      PGPASSWORD: ${DB_PASSWORD:-codejudge}
+    volumes:
+      - ./backend/src/main/resources/db/seed:/seed:ro
+    entrypoint: ["psql", "-v", "ON_ERROR_STOP=1", "-q", "-f", "/seed/demo_data.sql"]
+    networks: [default]
+    restart: "no"
+
+networks:
+  default:
+  judge:
+    internal: true   # không có đường ra Internet
 
 volumes:
   db-data:

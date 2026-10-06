@@ -4,13 +4,19 @@
  * Python không thể đo RSS của tiến trình con chính xác: ru_maxrss được giữ qua
  * execve nên luôn chứa RSS của trình thông dịch đã fork ra nó (~12 MB). Launcher
  * nhỏ này đóng vai "runner" của go-sandbox: fork -> setrlimit -> execvp ở tiến
- * trình con, còn tiến trình cha theo dõi thời gian thực + CPU và đo bằng wait4.
+ * trình con, còn tiến trình cha theo dõi thời gian thực, CPU, RSS và đo bằng wait4.
+ *
+ * Bộ nhớ được giới hạn theo RSS (như memory.max của cgroup trong go-judge), không
+ * theo RLIMIT_AS: glibc lấy RLIMIT_STACK làm stack mặc định cho mỗi luồng, nên
+ * RLIMIT_AS khiến chương trình tạo luồng bị abort dù gần như không dùng bộ nhớ.
  *
  * Cách dùng:
- *   launcher RESULT_FD CPU_MS CLOCK_MS AS_BYTES STACK_BYTES FSIZE_BYTES NOFILE -- prog [args...]
+ *   launcher RESULT_FD CPU_MS CLOCK_MS MEM_BYTES AS_BYTES STACK_BYTES FSIZE_BYTES NOFILE -- prog [args...]
+ * (MEM_BYTES / AS_BYTES = 0: không giới hạn)
  *
  * Kết quả ghi ra RESULT_FD một dòng:
- *   signaled exit_code signal cpu_us wall_us maxrss_kb killed_for_time exec_errno
+ *   signaled exit_code signal cpu_us wall_us maxrss_kb killed exec_errno
+ * killed: 0 = tự kết thúc, 1 = quá thời gian, 2 = quá bộ nhớ
  *
  * Viết bằng C thuần nhưng biên dịch được cả bằng g++.
  */
@@ -67,6 +73,18 @@ static void on_term(int sig) {
     _exit(137);
 }
 
+/* RSS hiện tại (byte) từ /proc/<pid>/statm: trường thứ 2 = số trang thường trú. */
+static long long rss_bytes_of(pid_t pid, long page_size) {
+    char path[64];
+    snprintf(path, sizeof path, "/proc/%d/statm", (int)pid);
+    FILE *f = fopen(path, "r");
+    if (!f) return 0;
+    long long size = 0, resident = 0;
+    if (fscanf(f, "%lld %lld", &size, &resident) != 2) resident = 0;
+    fclose(f);
+    return resident * page_size;
+}
+
 static void set_limit(int resource, long long value) {
     struct rlimit r;
     r.rlim_cur = r.rlim_max = (rlim_t)value;
@@ -74,15 +92,16 @@ static void set_limit(int resource, long long value) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < 10 || strcmp(argv[8], "--") != 0) {
-        fprintf(stderr, "usage: %s RESULT_FD CPU_MS CLOCK_MS AS STACK FSIZE NOFILE -- prog [args...]\n", argv[0]);
+    if (argc < 11 || strcmp(argv[9], "--") != 0) {
+        fprintf(stderr, "usage: %s RESULT_FD CPU_MS CLOCK_MS MEM AS STACK FSIZE NOFILE -- prog [args...]\n", argv[0]);
         return 2;
     }
     int rfd = atoi(argv[1]);
-    long long cpu_ms = atoll(argv[2]), clock_ms = atoll(argv[3]);
-    long long as = atoll(argv[4]), stack = atoll(argv[5]), fsize = atoll(argv[6]), nofile = atoll(argv[7]);
-    char **prog = argv + 9;
+    long long cpu_ms = atoll(argv[2]), clock_ms = atoll(argv[3]), mem = atoll(argv[4]);
+    long long as = atoll(argv[5]), stack = atoll(argv[6]), fsize = atoll(argv[7]), nofile = atoll(argv[8]);
+    char **prog = argv + 10;
     long clk_tck = sysconf(_SC_CLK_TCK);
+    long page_size = sysconf(_SC_PAGESIZE);
 
     fcntl(rfd, F_SETFD, FD_CLOEXEC);
     int errpipe[2];
@@ -132,6 +151,10 @@ int main(int argc, char **argv) {
         if (w < 0 && errno != EINTR) break;
         if ((now_us() - start) / 1000 > clock_ms || cpu_ms_of(pid, clk_tck) > cpu_ms) {
             killed = 1;
+        } else if (mem > 0 && rss_bytes_of(pid, page_size) > mem) {
+            killed = 2;
+        }
+        if (killed) {
             kill(-pid, SIGKILL);
             kill(pid, SIGKILL);
             while (wait4(pid, &status, 0, &ru) < 0 && errno == EINTR) {}
