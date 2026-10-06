@@ -5,9 +5,9 @@ spring:
   # Mặc định trỏ tới PostgreSQL của compose.yaml (cổng 5433 trên máy);
   # ghi đè bằng biến môi trường khi triển khai.
   datasource:
-    url: ${DB_URL:jdbc:postgresql://127.0.0.1:5433/codejudge}
-    username: ${DB_USERNAME:codejudge}
-    password: ${DB_PASSWORD:codejudge}
+    url: ${DB_URL:jdbc:postgresql://ep-rapid-bar-az6bb10g-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require}
+    username: ${DB_USERNAME:neondb_owner}
+    password: ${DB_PASSWORD:npg_JFQV3Eyr0iaN}
 
   # Lược đồ do Flyway quản lý (db/migration); Hibernate chỉ kiểm tra entity khớp với bảng.
   flyway:

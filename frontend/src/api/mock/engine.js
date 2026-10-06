@@ -16,13 +16,54 @@ const SECURITY_PATTERNS = [
   { re: /#\s*include\s*<\s*(unistd|sys\/socket)\.h\s*>/, msg: 'Phát hiện thư viện hệ điều hành bị cấm' },
 ]
 
+const STORAGE_PREFIX = 'cj.mock.'
+const KEY_SUBS = STORAGE_PREFIX + 'submissions'
+const KEY_CONTEST_PARTS = STORAGE_PREFIX + 'contest_participants'
+const KEY_STUDENTS = STORAGE_PREFIX + 'students'
+const KEY_PROBLEMS = STORAGE_PREFIX + 'problems'
+
+function getLocal(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function setLocal(key, val) {
+  try {
+    localStorage.setItem(key, JSON.stringify(val))
+  } catch {
+    /* bỏ qua lỗi hạn mức lưu trữ */
+  }
+}
+
 const listeners = new Set()
-const problems = PROBLEMS.map((p) => ({ ...p }))
+const savedProblems = getLocal(KEY_PROBLEMS)
+const problems = Array.isArray(savedProblems) && savedProblems.length ? savedProblems : PROBLEMS.map((p) => ({ ...p }))
 const submissions = new Map()
 const queue = []
 const logs = []
 let nextSubmissionId = 1001
 let nextProblemId = problems.length + 1
+
+function persistSubmissions() {
+  const userSubs = [...submissions.values()].filter((s) => s.isUserCreated)
+  setLocal(KEY_SUBS, userSubs)
+}
+
+function persistContestParticipants() {
+  const map = {}
+  contests.forEach((c) => {
+    map[c.id] = c.participants
+  })
+  setLocal(KEY_CONTEST_PARTS, map)
+}
+
+function persistProblems() {
+  setLocal(KEY_PROBLEMS, problems)
+}
 
 const workers = ['worker-1', 'worker-2', 'worker-3'].map((id, i) => ({
   id,
@@ -258,6 +299,7 @@ function finish(w, sub) {
   w.currentTask = null
   w.completed += 1
   clearTimers(w)
+  if (sub.isUserCreated) persistSubmissions()
   emitSubmission(sub)
   emitWorkers()
   schedule()
@@ -433,6 +475,16 @@ function seedHistory() {
       k++
     }
   })
+  // Khôi phục các bài nộp của người dùng đã lưu trong LocalStorage
+  const savedSubs = getLocal(KEY_SUBS)
+  if (Array.isArray(savedSubs)) {
+    savedSubs.forEach((sub) => {
+      submissions.set(sub.id, sub)
+      if (sub.id >= nextSubmissionId) {
+        nextSubmissionId = sub.id + 1
+      }
+    })
+  }
   log('success', 'Master khởi động: HTTP :8000, WebSocket :8001, TCP :9000')
   workers.forEach((w) => log('info', `OP_WORKER_REGISTER: ${w.id} kết nối từ ${w.address}`))
 }
@@ -507,6 +559,18 @@ function seedContests() {
     problemIds: [8, 9, 10, 3],
     participants: STUDENTS.slice(0, 3).map((s) => s.id),
   })
+  // Khôi phục đăng ký kỳ thi từ LocalStorage
+  const savedParts = getLocal(KEY_CONTEST_PARTS)
+  if (savedParts && typeof savedParts === 'object') {
+    Object.entries(savedParts).forEach(([cid, parts]) => {
+      const c = contests.find((x) => x.id === Number(cid))
+      if (c && Array.isArray(parts)) {
+        parts.forEach((uid) => {
+          if (!c.participants.includes(uid)) c.participants.push(uid)
+        })
+      }
+    })
+  }
 }
 seedContests()
 
@@ -536,6 +600,7 @@ export const engine = {
     const id = nextSubmissionId++
     const sub = {
       id,
+      isUserCreated: true,
       contestId: contestId ? Number(contestId) : null,
       problemId: problem.id,
       problemTitle: problem.title,
@@ -557,6 +622,7 @@ export const engine = {
     }
     pushHistory(sub, 'IN_QUEUE', 'Nhận bài qua HTTP POST /api/submissions, lưu SQLite và đưa vào hàng đợi FIFO')
     submissions.set(id, sub)
+    persistSubmissions()
     queue.push(id)
     log('info', `Nhận bài #${id} (${user.id} – bài #${problem.id}), hàng đợi: ${queue.length}`)
     emitSubmission(sub)
@@ -587,6 +653,7 @@ export const engine = {
         queue.unshift(sub.id)
         log('warning', `FAILOVER: thu hồi bài #${sub.id} từ ${w.id}, đưa về đầu hàng đợi`)
       }
+      if (sub.isUserCreated) persistSubmissions()
       emitSubmission(sub)
     }
     emitWorkers()
@@ -606,11 +673,13 @@ export const engine = {
     if (data.id) {
       const i = problems.findIndex((p) => p.id === data.id)
       problems[i] = { ...problems[i], ...data }
+      persistProblems()
       log('info', `Admin cập nhật đề bài #${data.id}`)
       return problems[i]
     }
     const p = { ...data, id: nextProblemId++ }
     problems.push(p)
+    persistProblems()
     log('info', `Admin thêm đề bài #${p.id}`)
     return p
   },
@@ -622,10 +691,25 @@ export const engine = {
     const c = contests.find((x) => x.id === Number(id))
     if (!c) throw new Error('Không tìm thấy kỳ thi')
     if (contestStatus(c) === 'ENDED') throw new Error('Kỳ thi đã kết thúc')
-    if (!c.participants.includes(user.id)) c.participants.push(user.id)
+    if (!c.participants.includes(user.id)) {
+      c.participants.push(user.id)
+      persistContestParticipants()
+    }
     log('info', `${user.id} đăng ký kỳ thi #${c.id}`)
     emit({ type: 'CONTEST_UPDATE', contestId: c.id })
     return c
+  },
+
+  registerStudent(user) {
+    if (!user || user.role === 'admin') return
+    const saved = getLocal(KEY_STUDENTS) || []
+    if (!saved.some((s) => s.id === user.id)) {
+      saved.push({ id: user.id, name: user.name })
+      setLocal(KEY_STUDENTS, saved)
+    }
+    if (!STUDENTS.some((s) => s.id === user.id)) {
+      STUDENTS.push({ id: user.id, name: user.name })
+    }
   },
 
   saveContest(data) {
@@ -651,7 +735,10 @@ export const engine = {
 
   deleteProblem(id) {
     const i = problems.findIndex((p) => p.id === Number(id))
-    if (i >= 0) problems.splice(i, 1)
+    if (i >= 0) {
+      problems.splice(i, 1)
+      persistProblems()
+    }
     log('warning', `Admin xóa đề bài #${id}`)
   },
 }

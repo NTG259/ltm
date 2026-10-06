@@ -185,6 +185,11 @@ function findContest(id) {
   return c
 }
 
+const savedSession = getStoredSession()
+if (savedSession?.user) {
+  engine.registerStudent(savedSession.user)
+}
+
 const mockApi = {
   async login(payload) {
     if (payload.role === 'admin') {
@@ -192,9 +197,11 @@ const mockApi = {
       return delay({ token: 'mock-admin-token', user: { id: 'admin', name: 'Quản trị viên', role: 'admin' } })
     }
     if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(payload.studentId)) throw new Error('MSSV không hợp lệ (ví dụ: B20DCCN001)')
+    const user = { id: payload.studentId.toUpperCase(), name: payload.fullName.trim(), role: 'student' }
+    engine.registerStudent(user)
     return delay({
       token: `mock-${payload.studentId}`,
-      user: { id: payload.studentId.toUpperCase(), name: payload.fullName.trim(), role: 'student' },
+      user,
     })
   },
   listProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
