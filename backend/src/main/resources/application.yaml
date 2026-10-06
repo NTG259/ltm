@@ -9,11 +9,17 @@ spring:
     username: ${DB_USERNAME:neondb_owner}
     password: ${DB_PASSWORD:npg_JFQV3Eyr0iaN}
 
+    hikari:
+      max-lifetime: 300000
+      idle-timeout: 120000
+      connection-timeout: 30000
+      keepalive-time: 45000
+
   # Lược đồ do Flyway quản lý (db/migration); Hibernate chỉ kiểm tra entity khớp với bảng.
   flyway:
     locations: classpath:db/migration
   jpa:
-    open-in-view: false
+    open-in-view: true
     hibernate:
       ddl-auto: validate
     properties:

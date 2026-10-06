@@ -23,6 +23,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     }
 
     /** Kho bài cho thí sinh: chưa xóa và công khai. */
+    @EntityGraph(attributePaths = "testCases")
     List<Problem> findByDeletedAtIsNullAndPublicVisibleTrueOrderById();
 
     /** Trang quản trị: mọi đề chưa xóa. */
