@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "title": "A + B Problem",
+  "timeLimitMs": 1000,
+  "memoryLimitMb": 256,
+  "tests": [
+    { "input": "3 5", "output": "8" },
+    { "input": "-7 10", "output": "3" },
+    { "input": "1000000000 1000000000", "output": "2000000000" },
+    { "input": "0 0", "output": "0" }
+  ]
+}

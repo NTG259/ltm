@@ -44,7 +44,8 @@ export function useLiveSubmission(id) {
       off()
     }
   }, [id])
-  return { sub: id == null ? null : sub, error }
+  // Không trả về dữ liệu của bài nộp trước trong lúc đang tải bài mới.
+  return { sub: sub && sub.id === Number(id) ? sub : null, error }
 }
 
 /** Lắng nghe mọi bản tin WebSocket. */

@@ -1,0 +1,24 @@
+# PostgreSQL cho môi trường phát triển / demo.
+#   docker compose up -d db
+#   psql postgresql://codejudge:codejudge@127.0.0.1:5432/codejudge -f backend/src/main/resources/db/migration/V1__init_schema.sql
+#   psql postgresql://codejudge:codejudge@127.0.0.1:5432/codejudge -f backend/src/main/resources/db/seed/demo_data.sql
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: codejudge
+      POSTGRES_USER: codejudge
+      POSTGRES_PASSWORD: codejudge
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql   # postgres:18 lưu dữ liệu dưới /var/lib/postgresql/18/docker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codejudge -d codejudge"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  db-data:

@@ -163,9 +163,18 @@ export default function SubmissionsPage({ admin }) {
             {
               title: 'Bài',
               render: (_, s) => (
-                <Link to={`/problems/${s.problemId}`}>
-                  #{s.problemId} {s.problemTitle}
-                </Link>
+                <Space size={6} wrap>
+                  <Link to={`/problems/${s.problemId}`}>
+                    #{s.problemId} {s.problemTitle}
+                  </Link>
+                  {s.contestId && (
+                    <Link to={`/contests/${s.contestId}`}>
+                      <Tag color="purple" style={{ margin: 0 }}>
+                        Kỳ thi #{s.contestId}
+                      </Tag>
+                    </Link>
+                  )}
+                </Space>
               ),
             },
             { title: 'Kết quả', width: 150, render: (_, s) => <VerdictTag submission={s} /> },

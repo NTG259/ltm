@@ -102,6 +102,89 @@ function problemStats(problems, subs) {
   })
 }
 
+const LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const PENALTY_PER_WRONG = 20
+// Lỗi biên dịch / vi phạm bảo mật không tính phạt (giống ICPC).
+const NO_PENALTY = new Set(['CE', 'SEC'])
+
+function contestView(c, user, subs) {
+  const status = engine.contestStatus(c)
+  const isAdmin = user?.role === 'admin'
+  const showProblems = status !== 'UPCOMING' || isAdmin
+  const contestSubs = subs.filter((s) => s.contestId === c.id && s.status === 'FINISHED')
+  return {
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    startAt: c.startAt,
+    durationMin: c.durationMin,
+    endAt: c.startAt + c.durationMin * 60_000,
+    status,
+    participantCount: c.participants.length,
+    registered: !!user && c.participants.includes(user.id),
+    problemIds: isAdmin ? c.problemIds : undefined,
+    problems: showProblems
+      ? c.problemIds.map((pid, i) => {
+          const p = engine.problems().find((x) => x.id === pid)
+          const ps = contestSubs.filter((s) => s.problemId === pid)
+          return {
+            label: LABELS[i],
+            problemId: pid,
+            title: p?.title ?? '(đã xoá)',
+            timeLimitMs: p?.timeLimitMs,
+            memoryLimitMb: p?.memoryLimitMb,
+            solvedCount: new Set(ps.filter((s) => s.verdict === 'AC').map((s) => s.userId)).size,
+            attemptCount: new Set(ps.map((s) => s.userId)).size,
+          }
+        })
+      : [],
+  }
+}
+
+/** Bảng xếp hạng ICPC: số bài AC giảm dần, rồi tổng phạt (phút) tăng dần. */
+function icpcStandings(c, subs) {
+  const endAt = c.startAt + c.durationMin * 60_000
+  const labels = c.problemIds.map((_, i) => LABELS[i])
+  const rows = new Map(c.participants.map((uid) => [uid, { userId: uid, userName: uid, solved: 0, penalty: 0, cells: {} }]))
+  const firstSolve = {}
+  ;[...subs]
+    .filter((s) => s.contestId === c.id && s.createdAt <= endAt)
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .forEach((s) => {
+      const row = rows.get(s.userId)
+      if (!row) return
+      row.userName = s.userName
+      const label = labels[c.problemIds.indexOf(s.problemId)]
+      const cell = (row.cells[label] ??= { solved: false, wrong: 0, pending: 0, minute: null })
+      if (cell.solved) return
+      if (s.status !== 'FINISHED') cell.pending += 1
+      else if (s.verdict === 'AC') {
+        cell.solved = true
+        cell.minute = Math.floor((s.createdAt - c.startAt) / 60_000)
+        row.solved += 1
+        row.penalty += cell.minute + cell.wrong * PENALTY_PER_WRONG
+        if (!firstSolve[label] || s.createdAt < firstSolve[label].at) firstSolve[label] = { at: s.createdAt, userId: s.userId }
+      } else if (!NO_PENALTY.has(s.verdict)) cell.wrong += 1
+    })
+  Object.entries(firstSolve).forEach(([label, f]) => (rows.get(f.userId).cells[label].first = true))
+  const list = [...rows.values()].sort((a, b) => b.solved - a.solved || a.penalty - b.penalty)
+  let rank = 0
+  return {
+    labels,
+    penaltyPerWrong: PENALTY_PER_WRONG,
+    rows: list.map((r, i) => {
+      if (i === 0 || r.solved !== list[i - 1].solved || r.penalty !== list[i - 1].penalty) rank = i + 1
+      return { ...r, rank }
+    }),
+  }
+}
+
+function findContest(id) {
+  const c = engine.contests().find((x) => x.id === Number(id))
+  if (!c) throw new Error('Không tìm thấy kỳ thi')
+  return c
+}
+
 const mockApi = {
   async login(payload) {
     if (payload.role === 'admin') {
@@ -120,11 +203,12 @@ const mockApi = {
     return p ? delay(p) : Promise.reject(new Error('Không tìm thấy đề bài'))
   },
   submit: (payload, user) => delay(engine.submit({ ...payload, user }), 120),
-  listSubmissions: ({ userId, problemId, verdict } = {}) =>
+  listSubmissions: ({ userId, problemId, verdict, contestId } = {}) =>
     delay(
       engine
         .submissions()
         .filter((s) => (!userId || s.userId === userId) && (!problemId || s.problemId === Number(problemId)))
+        .filter((s) => !contestId || s.contestId === Number(contestId))
         .filter((s) => !verdict || s.verdict === verdict)
         // eslint-disable-next-line no-unused-vars
         .map(({ sourceCode, tests, history, ...rest }) => rest),
@@ -134,6 +218,16 @@ const mockApi = {
     return s ? delay(s) : Promise.reject(new Error('Không tìm thấy bài nộp'))
   },
   leaderboard: () => delay(leaderboardFrom(engine.submissions(), engine.problems())),
+  // ---- Kỳ thi ----
+  listContests: (user) => {
+    const subs = engine.submissions()
+    return delay(engine.contests().map((c) => contestView(c, user, subs)))
+  },
+  getContest: async (id, user) => delay(contestView(findContest(id), user, engine.submissions())),
+  registerContest: async (id, user) => delay(contestView(engine.registerContest(id, user), user, engine.submissions())),
+  contestStandings: async (id) => delay(icpcStandings(findContest(id), engine.submissions())),
+  saveContest: (data) => delay(engine.saveContest(data)),
+  deleteContest: (id) => delay(engine.deleteContest(id)),
   // ---- Admin ----
   adminOverview: () =>
     delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
@@ -151,6 +245,12 @@ const realApi = {
   listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
   getSubmission: (id) => http('GET', `/submissions/${id}`),
   leaderboard: () => http('GET', '/leaderboard'),
+  listContests: () => http('GET', '/contests'),
+  getContest: (id) => http('GET', `/contests/${id}`),
+  registerContest: (id) => http('POST', `/contests/${id}/register`),
+  contestStandings: (id) => http('GET', `/contests/${id}/standings`),
+  saveContest: (data) => (data.id ? http('PUT', `/admin/contests/${data.id}`, data) : http('POST', '/admin/contests', data)),
+  deleteContest: (id) => http('DELETE', `/admin/contests/${id}`),
   adminOverview: () => http('GET', '/admin/overview'),
   saveProblem: (data) => (data.id ? http('PUT', `/admin/problems/${data.id}`, data) : http('POST', '/admin/problems', data)),
   deleteProblem: (id) => http('DELETE', `/admin/problems/${id}`),

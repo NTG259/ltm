@@ -253,60 +253,60 @@ setInterval(() => {
 }, HEARTBEAT_INTERVAL)
 
 // ---------- Dữ liệu lịch sử ----------
+function finishedSubmission({ problem, user, verdict, createdAt, k, contestId }) {
+  const total = problem.tests.length
+  const passed = verdict === 'AC' ? total : ['CE', 'SEC'].includes(verdict) ? 0 : Math.floor(total / 2)
+  const worker = workers[k % 3]
+  const id = nextSubmissionId++
+  worker.completed += 1
+  return {
+    id,
+    contestId: contestId ?? null,
+    problemId: problem.id,
+    problemTitle: problem.title,
+    userId: user.id,
+    userName: user.name,
+    language: 'C++17',
+    sourceCode: verdict === 'AC' ? STARTER_CODE : SAMPLE_SOURCES[`${verdict.toLowerCase()}.cpp`] || STARTER_CODE,
+    status: 'FINISHED',
+    verdict,
+    score: Math.round((passed / total) * 100),
+    timeMs: ['CE', 'SEC'].includes(verdict) ? 0 : verdict === 'TLE' ? problem.timeLimitMs + 5 : 12 + ((k * 13) % 80),
+    memoryKb: ['CE', 'SEC'].includes(verdict) ? 0 : verdict === 'MLE' ? 262272 : 3100 + ((k * 211) % 2000),
+    workerId: worker.id,
+    attempts: 1,
+    createdAt,
+    finishedAt: createdAt + 1800,
+    progress: { current: total, total },
+    tests: problem.tests.map((t, i) => ({
+      index: i + 1,
+      input: t.input,
+      expected: t.output,
+      output: i < passed ? t.output : i === passed && verdict === 'WA' ? corrupt(t.output) : undefined,
+      status: i < passed ? 'AC' : i === passed && !['CE', 'SEC'].includes(verdict) ? verdict : 'SKIPPED',
+      timeMs: i <= passed && !['CE', 'SEC'].includes(verdict) ? 8 + i * 5 : undefined,
+      memoryKb: i <= passed && !['CE', 'SEC'].includes(verdict) ? 3200 + i * 100 : undefined,
+    })),
+    compileLog: verdict === 'CE' ? "solution.cpp:5:15: error: expected initializer before 'cin'" : undefined,
+    securityMessage: verdict === 'SEC' ? 'Phát hiện thư viện cấm `#include <windows.h>`' : undefined,
+    history: [
+      { time: createdAt, status: 'IN_QUEUE', note: 'Nhận bài qua HTTP POST /api/submissions' },
+      { time: createdAt + 30, status: 'ASSIGNED', workerId: worker.id, note: `OP_TASK_ASSIGN → ${worker.id}` },
+      { time: createdAt + 1800, status: 'FINISHED', workerId: worker.id, note: `Kết quả ${verdict}` },
+    ],
+  }
+}
+
 function seedHistory() {
   const verdictPool = ['AC', 'AC', 'AC', 'WA', 'AC', 'TLE', 'AC', 'CE', 'AC', 'RTE', 'AC', 'WA', 'MLE', 'AC', 'SEC']
   const now = Date.now()
   let k = 0
-  STUDENTS.forEach((s, si) => {
-    const count = 9 - si
-    for (let j = 0; j < count; j++) {
+  STUDENTS.forEach((user, si) => {
+    for (let j = 0; j < 9 - si; j++) {
       const problem = problems[(si * 3 + j * 2) % problems.length]
       const verdict = verdictPool[(si * 5 + j * 3) % verdictPool.length]
-      const total = problem.tests.length
-      const passed = verdict === 'AC' ? total : ['CE', 'SEC'].includes(verdict) ? 0 : Math.floor(total / 2)
-      const createdAt = now - (k * 47 + 12) * 60_000
-      const id = nextSubmissionId++
-      submissions.set(id, {
-        id,
-        problemId: problem.id,
-        problemTitle: problem.title,
-        userId: s.id,
-        userName: s.name,
-        language: 'C++17',
-        sourceCode: verdict === 'AC' ? STARTER_CODE : SAMPLE_SOURCES[`${verdict.toLowerCase()}.cpp`] || STARTER_CODE,
-        status: 'FINISHED',
-        verdict,
-        score: Math.round((passed / total) * 100),
-        timeMs: ['CE', 'SEC'].includes(verdict) ? 0 : verdict === 'TLE' ? problem.timeLimitMs + 5 : 12 + ((k * 13) % 80),
-        memoryKb: ['CE', 'SEC'].includes(verdict) ? 0 : verdict === 'MLE' ? 262272 : 3100 + ((k * 211) % 2000),
-        workerId: workers[k % 3].id,
-        attempts: 1,
-        createdAt,
-        finishedAt: createdAt + 1800,
-        progress: { current: total, total },
-        tests: problem.tests.map((t, i) => ({
-          index: i + 1,
-          input: t.input,
-          expected: t.output,
-          output: i < passed ? t.output : i === passed && verdict === 'WA' ? corrupt(t.output) : undefined,
-          status: i < passed ? 'AC' : i === passed && !['CE', 'SEC'].includes(verdict) ? verdict : 'SKIPPED',
-          timeMs: i <= passed && !['CE', 'SEC'].includes(verdict) ? 8 + i * 5 : undefined,
-          memoryKb: i <= passed && !['CE', 'SEC'].includes(verdict) ? 3200 + i * 100 : undefined,
-        })),
-        compileLog: verdict === 'CE' ? "solution.cpp:5:15: error: expected initializer before 'cin'" : undefined,
-        securityMessage: verdict === 'SEC' ? 'Phát hiện thư viện cấm `#include <windows.h>`' : undefined,
-        history: [
-          { time: createdAt, status: 'IN_QUEUE', note: 'Nhận bài qua HTTP POST /api/submissions' },
-          {
-            time: createdAt + 30,
-            status: 'ASSIGNED',
-            workerId: workers[k % 3].id,
-            note: `OP_TASK_ASSIGN → ${workers[k % 3].id}`,
-          },
-          { time: createdAt + 1800, status: 'FINISHED', workerId: workers[k % 3].id, note: `Kết quả ${verdict}` },
-        ],
-      })
-      workers[k % 3].completed += 1
+      const sub = finishedSubmission({ problem, user, verdict, createdAt: now - (k * 47 + 12) * 60_000, k })
+      submissions.set(sub.id, sub)
       k++
     }
   })
@@ -314,6 +314,78 @@ function seedHistory() {
   workers.forEach((w) => log('info', `OP_WORKER_REGISTER: ${w.id} kết nối từ ${w.address}`))
 }
 seedHistory()
+
+// ---------- Kỳ thi ----------
+const HOUR = 3_600_000
+const contests = []
+let nextContestId = 1
+
+function contestStatus(c, now = Date.now()) {
+  if (now < c.startAt) return 'UPCOMING'
+  if (now < c.startAt + c.durationMin * 60_000) return 'RUNNING'
+  return 'ENDED'
+}
+
+function addContest(data) {
+  // id đặt sau ...data: form tạo mới gửi id: undefined.
+  const c = { participants: [], createdAt: Date.now(), ...data, id: nextContestId++ }
+  contests.push(c)
+  return c
+}
+
+// Sinh bài nộp trong khung giờ thi để bảng xếp hạng có dữ liệu.
+function seedContestSubmissions(c, upTo) {
+  const wrong = ['WA', 'TLE', 'WA', 'RTE', 'CE']
+  let k = 0
+  c.participants.forEach((uid, ui) => {
+    const user = STUDENTS.find((s) => s.id === uid)
+    c.problemIds.forEach((pid, pi) => {
+      if ((ui + pi) % 4 === 3) return // thí sinh bỏ qua bài này
+      const tries = (ui + pi) % 3 // số lần nộp sai trước lần cuối
+      const solvesInTheEnd = (ui + pi * 2) % 5 !== 4
+      for (let t = 0; t <= tries; t++) {
+        const createdAt = c.startAt + (6 + pi * 17 + ui * 5 + t * 9) * 60_000
+        if (createdAt > upTo) return
+        const verdict = t === tries && solvesInTheEnd ? 'AC' : wrong[(ui * 3 + pi + t) % wrong.length]
+        const problem = problems.find((p) => p.id === pid)
+        const sub = finishedSubmission({ problem, user, verdict, createdAt, k: k++, contestId: c.id })
+        submissions.set(sub.id, sub)
+      }
+    })
+  })
+}
+
+function seedContests() {
+  const now = Date.now()
+  const ended = addContest({
+    title: 'Kỳ thi thử Lập trình mạng – Vòng 1',
+    description: 'Vòng làm quen với hệ thống chấm tự động. 4 bài cơ bản về I/O, số học và xâu.',
+    startAt: now - 26 * HOUR,
+    durationMin: 120,
+    problemIds: [1, 3, 5, 6],
+    participants: STUDENTS.map((s) => s.id),
+  })
+  seedContestSubmissions(ended, ended.startAt + ended.durationMin * 60_000)
+  const running = addContest({
+    title: 'Kỳ thi giữa kỳ – Thuật toán cơ bản',
+    description:
+      'Kỳ thi giữa kỳ học phần. Thể thức ICPC: xếp hạng theo số bài đúng, sau đó theo tổng thời gian phạt.\nMỗi lần nộp sai (trừ lỗi biên dịch) trước khi AC bị cộng 20 phút phạt.',
+    startAt: now - 50 * 60_000,
+    durationMin: 150,
+    problemIds: [2, 4, 7, 8, 9],
+    participants: STUDENTS.slice(0, 6).map((s) => s.id),
+  })
+  seedContestSubmissions(running, now)
+  addContest({
+    title: 'Kỳ thi cuối kỳ – Quy hoạch động & Số lớn',
+    description: 'Kỳ thi cuối kỳ gồm 4 bài. Đăng ký trước khi kỳ thi bắt đầu.',
+    startAt: now + 20 * HOUR,
+    durationMin: 180,
+    problemIds: [8, 9, 10, 3],
+    participants: STUDENTS.slice(0, 3).map((s) => s.id),
+  })
+}
+seedContests()
 
 // ---------- API công khai cho lớp mock ----------
 export const engine = {
@@ -328,12 +400,20 @@ export const engine = {
   queue: () => [...queue],
   logs: () => [...logs],
 
-  submit({ problemId, sourceCode, user }) {
+  submit({ problemId, sourceCode, user, contestId }) {
     const problem = problems.find((p) => p.id === Number(problemId))
     if (!problem) throw new Error('Không tìm thấy đề bài')
+    if (contestId) {
+      const c = contests.find((x) => x.id === Number(contestId))
+      if (!c) throw new Error('Không tìm thấy kỳ thi')
+      if (contestStatus(c) !== 'RUNNING') throw new Error('Kỳ thi không trong thời gian làm bài')
+      if (!c.participants.includes(user.id)) throw new Error('Bạn chưa đăng ký kỳ thi này')
+      if (!c.problemIds.includes(problem.id)) throw new Error('Bài không thuộc kỳ thi')
+    }
     const id = nextSubmissionId++
     const sub = {
       id,
+      contestId: contestId ? Number(contestId) : null,
       problemId: problem.id,
       problemTitle: problem.title,
       userId: user.id,
@@ -410,6 +490,40 @@ export const engine = {
     problems.push(p)
     log('info', `Admin thêm đề bài #${p.id}`)
     return p
+  },
+
+  contests: () => contests,
+  contestStatus,
+
+  registerContest(id, user) {
+    const c = contests.find((x) => x.id === Number(id))
+    if (!c) throw new Error('Không tìm thấy kỳ thi')
+    if (contestStatus(c) === 'ENDED') throw new Error('Kỳ thi đã kết thúc')
+    if (!c.participants.includes(user.id)) c.participants.push(user.id)
+    log('info', `${user.id} đăng ký kỳ thi #${c.id}`)
+    emit({ type: 'CONTEST_UPDATE', contestId: c.id })
+    return c
+  },
+
+  saveContest(data) {
+    if (data.id) {
+      const c = contests.find((x) => x.id === data.id)
+      Object.assign(c, data)
+      log('info', `Admin cập nhật kỳ thi #${c.id}`)
+      emit({ type: 'CONTEST_UPDATE', contestId: c.id })
+      return c
+    }
+    const c = addContest(data)
+    log('info', `Admin tạo kỳ thi #${c.id}: ${c.title}`)
+    emit({ type: 'CONTEST_UPDATE', contestId: c.id })
+    return c
+  },
+
+  deleteContest(id) {
+    const i = contests.findIndex((x) => x.id === Number(id))
+    if (i >= 0) contests.splice(i, 1)
+    log('warning', `Admin xoá kỳ thi #${id}`)
+    emit({ type: 'CONTEST_UPDATE', contestId: Number(id) })
   },
 
   deleteProblem(id) {

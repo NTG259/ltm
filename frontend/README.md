@@ -32,9 +32,13 @@ Mật khẩu admin là `admin123`. Trong trang làm bài, menu **Mã mẫu** n�
 | `#/submissions` | Thí sinh | Lịch sử bài nộp (cập nhật realtime) |
 | `#/submissions/:id` | Thí sinh/Admin | Chi tiết: kết quả, từng test, log CE, cảnh báo SEC, mã nguồn, dòng thời gian (cả Failover) |
 | `#/leaderboard` | Tất cả | Bảng xếp hạng, tự làm mới khi có bài chấm xong |
+| `#/contests` | Thí sinh | Danh sách kỳ thi (đang / sắp / đã diễn ra), đăng ký |
+| `#/contests/:id` | Tất cả | Trang kỳ thi: đồng hồ, đề bài A/B/C…, bảng xếp hạng ICPC, bài nộp, thể lệ |
+| `#/contests/:id/problems/:label` | Thí sinh | Làm bài trong kỳ thi (nộp kèm `contestId`) |
 | `#/admin` | Admin | Giám sát Worker (Heartbeat, bận/rảnh, độ trễ), hàng đợi FIFO, nhật ký Master, giả lập sự cố |
 | `#/admin/problems` | Admin | CRUD đề bài + ví dụ + bộ test chấm |
 | `#/admin/submissions` | Admin | Tra cứu, lọc toàn bộ bài nộp |
+| `#/admin/contests` | Admin | Tạo / sửa / xoá kỳ thi, chọn bộ đề và lịch thi |
 
 ## Hợp đồng API mà Master cần cài đặt (`src/api/index.js`)
 
@@ -45,10 +49,15 @@ Mọi request (trừ login) gửi header `Authorization: Bearer <token>`. Lỗi 
 | POST | `/api/auth/login` | `{role:"student", studentId, fullName}` hoặc `{role:"admin", password}` | `{token, user:{id,name,role}}` |
 | GET | `/api/problems` | – | `Problem[]` (không kèm `tests`, có `testCount`, `totalSubmissions`, `acceptedSubmissions`) |
 | GET | `/api/problems/:id` | – | `Problem` (admin nhận thêm `tests`) |
-| POST | `/api/submissions` | `{problemId, language:"cpp17", sourceCode}` | `Submission` (status `IN_QUEUE`) |
-| GET | `/api/submissions` | `?userId=&problemId=&verdict=` | `Submission[]` (không kèm `sourceCode/tests/history`) |
+| POST | `/api/submissions` | `{problemId, language:"cpp17", sourceCode, contestId?}` | `Submission` (status `IN_QUEUE`) |
+| GET | `/api/submissions` | `?userId=&problemId=&verdict=&contestId=` | `Submission[]` (không kèm `sourceCode/tests/history`) |
 | GET | `/api/submissions/:id` | – | `Submission` đầy đủ |
 | GET | `/api/leaderboard` | – | `{problems:[{id,title}], rows:[{rank,userId,userName,solved,score,attempts,cells:{[problemId]:{best,tries,solved}}}]}` |
+| GET | `/api/contests` | – | `Contest[]` |
+| GET | `/api/contests/:id` | – | `Contest` (`problems` rỗng với thí sinh khi chưa bắt đầu) |
+| POST | `/api/contests/:id/register` | – | `Contest` |
+| GET | `/api/contests/:id/standings` | – | `{labels, penaltyPerWrong, rows:[{rank,userId,userName,solved,penalty,cells:{[label]:{solved,wrong,pending,minute,first?}}}]}` |
+| POST/PUT/DELETE | `/api/admin/contests[/:id]` | `{title, description, startAt, durationMin, problemIds[]}` | `Contest` |
 | GET | `/api/admin/overview` | – | `{workers: Worker[], queue: number[], logs: Log[], submissions: number}` |
 | POST/PUT/DELETE | `/api/admin/problems[/:id]` | `Problem` | `Problem` |
 | POST | `/api/admin/workers/:id/disconnect` | – | `204` |
@@ -56,12 +65,15 @@ Mọi request (trừ login) gửi header `Authorization: Bearer <token>`. Lỗi 
 ```ts
 Problem    { id, title, difficulty:'easy'|'medium'|'hard', tags[], timeLimitMs, memoryLimitMb,
              statement, inputSpec, outputSpec, samples:[{input,output}], tests?:[{input,output}] }
-Submission { id, problemId, problemTitle, userId, userName, language, sourceCode,
+Submission { id, contestId, problemId, problemTitle, userId, userName, language, sourceCode,
              status:'IN_QUEUE'|'COMPILING'|'TESTING'|'FINISHED',
              verdict:'AC'|'WA'|'TLE'|'MLE'|'RTE'|'CE'|'SEC'|null, score, timeMs, memoryKb,
              workerId, attempts, createdAt, progress:{current,total},
              tests:[{index,status,input,expected,output?,timeMs?,memoryKb?,stderr?}],
              compileLog?, securityMessage?, history:[{time,status,workerId?,note}] }
+Contest    { id, title, description, startAt, endAt, durationMin, status:'UPCOMING'|'RUNNING'|'ENDED',
+             participantCount, registered, problemIds? (admin),
+             problems:[{label, problemId, title, timeLimitMs, memoryLimitMb, solvedCount, attemptCount}] }
 Worker     { id, address, status:'IDLE'|'BUSY'|'DEAD', currentTask, completed, connectedAt, lastHeartbeat, latencyMs }
 ```
 
@@ -72,6 +84,7 @@ Client gửi `{"type":"AUTH","token":"..."}` ngay khi kết nối. Master phát 
 ```jsonc
 { "type": "SUBMISSION_UPDATE", "submission": { /* Submission, có thể chỉ gồm các trường thay đổi + id */ } }
 { "type": "WORKER_UPDATE", "workers": [ /* Worker[] */ ], "queue": [1045, 1046] }
+{ "type": "CONTEST_UPDATE", "contestId": 2 }
 { "type": "LOG", "entry": { "id": "...", "time": 1730000000000, "level": "info|success|warning|error", "message": "..." } }
 ```
 

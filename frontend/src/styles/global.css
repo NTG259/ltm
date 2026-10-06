@@ -170,3 +170,32 @@ body { margin: 0; }
   .login-hero { padding: 28px 20px; }
   .workspace { height: auto; }
 }
+
+/* ---------- Result summary ---------- */
+.result-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 16px; border: 1px solid; border-radius: 8px; }
+.result-summary.tone-running { display: grid; gap: 8px; }
+.result-main { flex: 1; min-width: 220px; display: grid; gap: 2px; color: var(--text); }
+.result-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.result-summary:not(.tone-running) .result-title { color: inherit; }
+.result-summary.tone-ac .result-title { color: var(--ac-fg); }
+.result-summary.tone-wa .result-title { color: var(--wa-fg); }
+.result-summary.tone-tle .result-title { color: var(--tle-fg); }
+.result-summary.tone-mle .result-title { color: var(--mle-fg); }
+.result-summary.tone-rte .result-title { color: var(--rte-fg); }
+.result-summary.tone-ce .result-title { color: var(--ce-fg); }
+.result-summary.tone-sec .result-title { color: var(--sec-fg); }
+.result-summary.tone-running .result-title { color: var(--running-fg); }
+.result-side { display: grid; justify-items: end; gap: 2px; color: var(--text-2); }
+.result-score { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.result-score small { font-size: 13px; font-weight: 500; color: var(--text-2); margin-left: 2px; }
+.limits-inline { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 14px; font-size: 13px; color: var(--text-2); }
+.limits-inline b { font-family: var(--mono); font-weight: 600; color: var(--text); }
+
+/* ---------- Contest ---------- */
+.contest-clock { display: grid; gap: 4px; min-width: 200px; }
+.contest-clock-time { font-size: 28px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.15; }
+.contest-clock-time.urgent { color: #ef4444; }
+.lb-cell { flex-direction: row; gap: 3px; }
+.lb-cell.first { box-shadow: inset 0 0 0 1px #f59e0b; }
+.contest-card .ant-card-body { display: grid; gap: 10px; }
+.contest-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--text-2); font-size: 13px; }

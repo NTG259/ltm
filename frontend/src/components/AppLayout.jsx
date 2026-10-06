@@ -8,6 +8,7 @@ import {
   OrderedListOutlined,
   ProfileOutlined,
   SunOutlined,
+  FlagOutlined,
   TrophyOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -36,10 +37,12 @@ export default function AppLayout() {
       ? [
           { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát Worker</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Ngân hàng đề</Link> },
+          { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
           { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Toàn bộ bài nộp</Link> },
         ]
       : [
           { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
+          { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
           { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp của tôi</Link> },
         ]),
     { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Bảng xếp hạng</Link> },
@@ -48,7 +51,14 @@ export default function AppLayout() {
     items
       .map((i) => i.key)
       .filter((k) => location.pathname === k || location.pathname.startsWith(`${k}/`))
-      .sort((a, b) => b.length - a.length)[0] || (location.pathname.startsWith('/problems') ? '/problems' : '')
+      .sort((a, b) => b.length - a.length)[0] ||
+    (location.pathname.startsWith('/problems')
+      ? '/problems'
+      : location.pathname.startsWith('/contests')
+        ? isAdmin
+          ? '/admin/contests'
+          : '/contests'
+        : '')
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -128,7 +138,7 @@ export default function AppLayout() {
       <Layout.Content>
         <Outlet />
       </Layout.Content>
-      {!location.pathname.match(/^\/problems\/\d+/) && (
+      {!location.pathname.match(/^\/(problems\/\d+|contests\/\d+\/problems\/)/) && (
         <Layout.Footer style={{ textAlign: 'center', padding: '14px 20px', fontSize: 12, color: 'var(--text-2)' }}>
           CodeJudge – Hệ thống chấm bài C++ phân tán · Master HTTP :8000 · WebSocket :8001 · Worker TCP :9000
           {USE_MOCK && ' · Chế độ mock'}

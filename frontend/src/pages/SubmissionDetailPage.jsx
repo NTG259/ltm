@@ -3,9 +3,9 @@ import { CopyOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useLiveSubmission } from '../lib/hooks'
-import { formatClock, formatDateTime, formatMemory, formatTime } from '../lib/format'
+import { formatClock, formatDateTime } from '../lib/format'
 import CodeEditor from '../components/CodeEditor'
-import JudgeProgress from '../components/JudgeProgress'
+import ResultSummary from '../components/ResultSummary'
 import TestResults from '../components/TestResults'
 
 const HISTORY_COLOR = {
@@ -58,12 +58,12 @@ export default function SubmissionDetailPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
           <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-            <Card>
-              <JudgeProgress submission={s} />
-            </Card>
-            <Card title="Kết quả từng test case">
-              <TestResults submission={s} />
-            </Card>
+            <ResultSummary submission={s} />
+            {(s.tests?.length > 0 || ['CE', 'SEC'].includes(s.verdict)) && (
+              <Card title="Test case">
+                <TestResults submission={s} />
+              </Card>
+            )}
             <Card
               title={<span className="mono">solution.cpp</span>}
               extra={
@@ -132,9 +132,6 @@ export default function SubmissionDetailPage() {
                     ),
                   },
                   { key: 'l', label: 'Ngôn ngữ', children: <span className="mono">{s.language} · g++ -O2</span> },
-                  { key: 't', label: 'Thời gian chạy', children: <span className="mono">{formatTime(s.timeMs)}</span> },
-                  { key: 'm', label: 'Bộ nhớ', children: <span className="mono">{formatMemory(s.memoryKb)}</span> },
-                  { key: 'w', label: 'Worker', children: <span className="mono">{s.workerId || '—'}</span> },
                   { key: 'c', label: 'Nộp lúc', children: formatDateTime(s.createdAt) },
                 ]}
               />

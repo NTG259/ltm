@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   App,
+  Badge,
   Button,
-  Card,
   Dropdown,
   Empty,
   Result,
@@ -20,11 +20,9 @@ import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
   CopyOutlined,
-  ExperimentOutlined,
-  FileTextOutlined,
+  EllipsisOutlined,
   FolderOpenOutlined,
-  HistoryOutlined,
-  ReloadOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
@@ -34,9 +32,10 @@ import { DIFFICULTIES } from '../lib/verdicts'
 import { formatMemory, formatRelative, formatTime } from '../lib/format'
 import { SAMPLE_SOURCES, STARTER_CODE } from '../api/mock/data'
 import CodeEditor from '../components/CodeEditor'
-import JudgeProgress from '../components/JudgeProgress'
+import ResultSummary from '../components/ResultSummary'
 import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
+import ContestClock from '../components/ContestClock'
 
 const DIFF_COLOR = { easy: 'green', medium: 'gold', hard: 'red' }
 const draftKey = (pid, uid) => `cj.draft.${uid}.${pid}`
@@ -70,33 +69,20 @@ function Statement({ problem }) {
   }
   return (
     <div className="statement">
-      <Space wrap size={6}>
-        <Tag className="mono">#{problem.id}</Tag>
-        <Tag color={DIFF_COLOR[problem.difficulty]}>{DIFFICULTIES[problem.difficulty].label}</Tag>
-        {problem.tags.map((t) => (
-          <Tag key={t} variant="filled">
-            {t}
-          </Tag>
-        ))}
-      </Space>
-      <h2>{problem.title}</h2>
-      <div className="limits">
-        <div>
-          <small>Thời gian</small>
-          <b>{(problem.timeLimitMs / 1000).toFixed(2)} s</b>
-        </div>
-        <div>
-          <small>Bộ nhớ</small>
-          <b>{problem.memoryLimitMb} MB</b>
-        </div>
-        <div>
-          <small>Vào / Ra</small>
-          <b>stdin / stdout</b>
-        </div>
-        <div>
-          <small>Ngôn ngữ</small>
-          <b>C++17 (g++)</b>
-        </div>
+      <div className="limits-inline">
+        <span>
+          Thời gian: <b>{problem.timeLimitMs / 1000} s</b>
+        </span>
+        <span>
+          Bộ nhớ: <b>{problem.memoryLimitMb} MB</b>
+        </span>
+        <span>
+          {problem.tags.map((t) => (
+            <Tag key={t} variant="filled" style={{ marginInlineEnd: 4 }}>
+              {t}
+            </Tag>
+          ))}
+        </span>
       </div>
       <Rich text={problem.statement} />
       <h3>Dữ liệu vào</h3>
@@ -131,9 +117,12 @@ function Statement({ problem }) {
   )
 }
 
-function MySubmissions({ problemId, userId, onPick, refreshKey }) {
+function MySubmissions({ problemId, userId, contestId, onPick, refreshKey }) {
   const now = useNow(15000)
-  const { data, loading } = useFetch(() => api.listSubmissions({ userId, problemId }), [problemId, userId, refreshKey])
+  const { data, loading } = useFetch(
+    () => api.listSubmissions({ userId, problemId, contestId }),
+    [problemId, userId, contestId, refreshKey],
+  )
   return (
     <Table
       size="small"
@@ -147,11 +136,7 @@ function MySubmissions({ problemId, userId, onPick, refreshKey }) {
         {
           title: 'ID',
           dataIndex: 'id',
-          render: (id) => (
-            <Link to={`/submissions/${id}`} className="mono">
-              #{id}
-            </Link>
-          ),
+          render: (id) => <span className="mono">#{id}</span>,
         },
         { title: 'Kết quả', render: (_, r) => <VerdictTag submission={r} /> },
         { title: 'Điểm', dataIndex: 'score', render: (v) => v ?? '—' },
@@ -163,7 +148,8 @@ function MySubmissions({ problemId, userId, onPick, refreshKey }) {
   )
 }
 
-function Workspace({ id }) {
+/** contest/label có giá trị khi làm bài trong kỳ thi (route /contests/:cid/problems/:label). */
+export function Workspace({ id, contest, label }) {
   const { user } = useAuth()
   const { message, modal } = App.useApp()
   const navigate = useNavigate()
@@ -204,13 +190,18 @@ function Workspace({ id }) {
       message.warning('Mã nguồn đang trống')
       return
     }
+    if (contest && Date.now() > contest.endAt) {
+      message.error('Kỳ thi đã kết thúc, không thể nộp bài')
+      return
+    }
     setSubmitting(true)
+    setActiveId(null)
+    setTab('result')
     try {
-      const s = await api.submit({ problemId: Number(id), language: 'cpp17', sourceCode: code }, user)
+      const s = await api.submit({ problemId: Number(id), language: 'cpp17', sourceCode: code, contestId: contest?.id }, user)
       setActiveId(s.id)
       setTab('result')
       setRefreshKey((k) => k + 1)
-      message.success(`Đã nộp bài #${s.id} – đang chờ chấm`)
     } catch (e) {
       message.error(e.message)
     } finally {
@@ -236,7 +227,7 @@ function Workspace({ id }) {
 
   const resetCode = () =>
     modal.confirm({
-      title: 'Khôi phục mã nguồn mẫu?',
+      title: 'Khôi phục mã ban đầu?',
       content: 'Mã hiện tại trong trình soạn thảo sẽ bị thay thế.',
       okText: 'Khôi phục',
       cancelText: 'Huỷ',
@@ -260,30 +251,37 @@ function Workspace({ id }) {
   return (
     <div className="workspace">
       <div className="workspace-bar">
-        <Tooltip title="Danh sách bài">
-          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/problems')} />
+        <Tooltip title={contest ? 'Về trang kỳ thi' : 'Danh sách bài'}>
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate(contest ? `/contests/${contest.id}` : '/problems')}
+          />
         </Tooltip>
-        <span className="title">
-          <span className="mono muted">#{problem.id}</span> {problem.title}
-        </span>
+        {contest ? (
+          <>
+            <span className="title">
+              <b>{label}.</b> {problem.title}
+            </span>
+            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>
+              {contest.title}
+            </Typography.Text>
+          </>
+        ) : (
+          <>
+            <span className="title">
+              <span className="mono muted">#{problem.id}</span> {problem.title}
+            </span>
+            <Tag color={DIFF_COLOR[problem.difficulty]} style={{ margin: 0 }}>
+              {DIFFICULTIES[problem.difficulty].label}
+            </Tag>
+          </>
+        )}
         <span style={{ flex: 1 }} />
-        <Dropdown
-          menu={{
-            items: Object.keys(SAMPLE_SOURCES).map((k) => ({ key: k, label: <span className="mono">samples/{k}</span> })),
-            onClick: ({ key }) => {
-              setCode(SAMPLE_SOURCES[key])
-              message.info(`Đã nạp samples/${key}`)
-            },
-          }}
-        >
-          <Button icon={<ExperimentOutlined />}>Mã mẫu</Button>
-        </Dropdown>
-        <Upload accept=".cpp,.cc,.cxx" showUploadList={false} beforeUpload={loadFile}>
-          <Button icon={<FolderOpenOutlined />}>Tải tệp .cpp</Button>
-        </Upload>
+        {contest && <ContestClock contest={contest} compact />}
         <Tooltip title="Ctrl + Enter">
-          <Button type="primary" icon={<CloudUploadOutlined />} loading={submitting} onClick={submit}>
-            Nộp bài
+          <Button type="primary" icon={<CloudUploadOutlined />} loading={submitting || judging} onClick={submit}>
+            {judging ? 'Đang chấm…' : 'Nộp bài'}
           </Button>
         </Tooltip>
       </div>
@@ -291,12 +289,6 @@ function Workspace({ id }) {
       <Splitter style={{ flex: 1, minHeight: 0 }}>
         <Splitter.Panel defaultSize="42%" min="24%" collapsible>
           <div className="pane">
-            <div className="pane-head">
-              <Space>
-                <FileTextOutlined />
-                <Typography.Text strong>Đề bài</Typography.Text>
-              </Space>
-            </div>
             <div className="pane-body">
               <Statement problem={problem} />
             </div>
@@ -307,21 +299,41 @@ function Workspace({ id }) {
             <Splitter.Panel defaultSize="58%" min="20%">
               <div className="pane">
                 <div className="pane-head">
-                  <Space size={8}>
-                    <Tag color="blue" className="mono" style={{ margin: 0 }}>
-                      solution.cpp
-                    </Tag>
-                    <Typography.Text type="secondary" className="mono" style={{ fontSize: 12 }}>
-                      C++17 · g++ -O2
+                  <Typography.Text className="mono" style={{ fontSize: 12 }}>
+                    solution.cpp <span className="muted">· C++17</span>
+                  </Typography.Text>
+                  <Space size={4}>
+                    <Typography.Text type="secondary" className="mono" style={{ fontSize: 12, marginInlineEnd: 4 }}>
+                      Dòng {cursor.line}, Cột {cursor.col}
                     </Typography.Text>
-                  </Space>
-                  <Space size={8}>
-                    <Typography.Text type="secondary" className="mono" style={{ fontSize: 12 }}>
-                      Dòng {cursor.line}, Cột {cursor.col} · {code.split('\n').length} dòng
-                    </Typography.Text>
-                    <Tooltip title="Khôi phục mã mẫu">
-                      <Button size="small" type="text" icon={<ReloadOutlined />} onClick={resetCode} />
-                    </Tooltip>
+                    <Upload accept=".cpp,.cc,.cxx" showUploadList={false} beforeUpload={loadFile}>
+                      <Button size="small" type="text" icon={<FolderOpenOutlined />}>
+                        Tải tệp .cpp
+                      </Button>
+                    </Upload>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: [
+                          {
+                            key: 'samples',
+                            label: 'Nạp mã mẫu',
+                            children: Object.keys(SAMPLE_SOURCES).map((k) => ({
+                              key: k,
+                              label: <span className="mono">{k}</span>,
+                            })),
+                          },
+                          { type: 'divider' },
+                          { key: 'reset', label: 'Khôi phục mã ban đầu', danger: true },
+                        ],
+                        onClick: ({ key }) => {
+                          if (key === 'reset') resetCode()
+                          else setCode(SAMPLE_SOURCES[key])
+                        },
+                      }}
+                    >
+                      <Button size="small" type="text" icon={<EllipsisOutlined />} aria-label="Thao tác khác" />
+                    </Dropdown>
                   </Space>
                 </div>
                 <div className="pane-body" style={{ overflow: 'hidden' }}>
@@ -336,34 +348,49 @@ function Workspace({ id }) {
                   onChange={setTab}
                   size="small"
                   style={{ padding: '0 12px' }}
-                  tabBarExtraContent={judging ? <Tag color="processing">Đang chấm realtime</Tag> : null}
                   items={[
-                    { key: 'result', label: 'Kết quả chấm' },
-                    { key: 'history', label: 'Lịch sử nộp', icon: <HistoryOutlined /> },
+                    {
+                      key: 'result',
+                      label: (
+                        <Badge dot={!!judging} offset={[6, 0]}>
+                          Kết quả
+                        </Badge>
+                      ),
+                    },
+                    { key: 'history', label: 'Lịch sử nộp' },
                   ]}
                 />
                 <div className="pane-body" style={{ padding: '0 14px 14px' }}>
                   {tab === 'result' ? (
                     active ? (
                       <Space orientation="vertical" size={14} style={{ width: '100%' }}>
-                        <Card size="small">
-                          <JudgeProgress submission={active} />
-                        </Card>
+                        <ResultSummary
+                          submission={active}
+                          problem={problem}
+                          extra={
+                            active.status === 'FINISHED' && (
+                              <Link to={`/submissions/${active.id}`} style={{ fontSize: 12 }}>
+                                Xem chi tiết →
+                              </Link>
+                            )
+                          }
+                        />
                         <TestResults submission={active} />
-                        {active.status === 'FINISHED' && (
-                          <Link to={`/submissions/${active.id}`}>Xem chi tiết bài nộp #{active.id} →</Link>
-                        )}
                       </Space>
+                    ) : submitting || activeId ? (
+                      <div className="result-summary tone-running">
+                        <div className="result-title">
+                          <LoadingOutlined /> Đang gửi bài…
+                        </div>
+                      </div>
                     ) : (
-                      <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description="Nộp bài để xem tiến trình chấm từng test case theo thời gian thực"
-                      />
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Kết quả chấm sẽ hiện ở đây sau khi bạn nộp bài" />
                     )
                   ) : (
                     <MySubmissions
                       problemId={problem.id}
                       userId={user.id}
+                      contestId={contest?.id}
                       refreshKey={refreshKey}
                       onPick={(sid) => {
                         setActiveId(sid)

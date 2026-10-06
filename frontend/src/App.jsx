@@ -13,6 +13,10 @@ const WorkspacePage = lazy(() => import('./pages/WorkspacePage'))
 const SubmissionsPage = lazy(() => import('./pages/SubmissionsPage'))
 const SubmissionDetailPage = lazy(() => import('./pages/SubmissionDetailPage'))
 const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
+const ContestsPage = lazy(() => import('./pages/ContestsPage'))
+const ContestDetailPage = lazy(() => import('./pages/ContestDetailPage'))
+const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
+const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminProblemsPage = lazy(() => import('./pages/admin/AdminProblemsPage'))
 
@@ -53,6 +57,9 @@ function AppRoutes() {
           <Route path="/submissions" element={<SubmissionsPage />} />
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/contests" element={<ContestsPage />} />
+          <Route path="/contests/:id" element={<ContestDetailPage />} />
+          <Route path="/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
           <Route
             path="/admin"
             element={
@@ -66,6 +73,14 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <AdminProblemsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/contests"
+            element={
+              <RequireAuth admin>
+                <AdminContestsPage />
               </RequireAuth>
             }
           />
