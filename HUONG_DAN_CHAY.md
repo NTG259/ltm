@@ -38,25 +38,35 @@ Truy cập trình duyệt tại: **`http://localhost:5173`**
 
 ---
 
-### 🔹 Cửa sổ 3: Khởi chạy 3 Judge Workers (Chạy 1 phát cả 3 máy chấm)
+### 🔹 Cửa sổ 3: Khởi chạy Judge Workers (Máy chấm thật)
 
-Mở Terminal tại thư mục gốc dự án và **chọn 1 trong các cách sau**:
+Mở Terminal tại thư mục gốc dự án và chạy:
 
-* **Cách 1 (Gõ 1 dòng lệnh PowerShell duy nhất):**
+* **Chạy cùng lúc cả 3 Workers (Khuyên dùng):**
   ```powershell
   1..3 | ForEach-Object { Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:PYTHONUTF8='1'; python -m judgement worker --id worker-`$_ --master-host 127.0.0.1 --master-port 9000" }
   ```
-  *(Lệnh này sẽ tự động bật 3 cửa sổ riêng biệt tương ứng `worker-1`, `worker-2`, `worker-3` kết nối thẳng vào Master Server).*
+  *(Lệnh này tự động bật 3 cửa sổ tương ứng `worker-1`, `worker-2`, `worker-3` kết nối vào Master Server).*
 
-* **Cách 2 (Dùng file script có sẵn):**
-  - Trong PowerShell: `.\start_workers.ps1`
-  - Hoặc nhấp đúp file: `start_workers.bat`
+* **Hoặc chỉ chạy 1 Worker duy nhất:**
+  ```powershell
+  $env:PYTHONUTF8="1"
+  python -m judgement worker --id worker-1 --master-host 127.0.0.1 --master-port 9000
+  ```
 
 ---
 
-## 3. Tài khoản kiểm thử có sẵn
+## 3. Cách đăng nhập trên Giao diện Web
 
-| Tên đăng nhập | Mật khẩu | Quyền hạn |
-| :--- | :--- | :--- |
-| `student1` | `password123` | Sinh viên (Nộp bài thật, xem bảng xếp hạng, thi contest) |
-| `admin` | `admin123` | Quản trị viên (Giám sát danh sách Worker, quản lý bài toán) |
+Trên màn hình đăng nhập (`http://localhost:5173`), bạn chọn vai trò:
+
+### 🔹 Vai trò: Quản trị viên (Admin)
+* **Giao diện yêu cầu:** Chỉ có 1 ô nhập mật khẩu.
+* **Mật khẩu quản trị:** **`admin123`**
+* *(Vào trang quản trị để giám sát trạng thái 3 Worker, quản lý đề thi).*
+
+### 🔹 Vai trò: Thí sinh (Sinh viên)
+* **Giao diện yêu cầu:** Không cần mật khẩu, chỉ cần nhập thông tin sinh viên:
+  - **Mã sinh viên:** `B20DCCN001` *(hoặc bất kỳ MSSV nào đúng chuẩn, ví dụ: `B21DCCN002`)*
+  - **Họ và tên:** `Nguyễn Văn A` *(hoặc tên bạn)*
+* Bấm **"Bắt đầu làm bài"** $\rightarrow$ Hệ thống tự động tạo/lưu phiên làm việc vào Database và chuyển thẳng vào làm bài!
