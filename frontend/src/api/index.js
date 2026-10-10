@@ -210,6 +210,17 @@ const mockApi = {
     return p ? delay(p) : Promise.reject(new Error('Không tìm thấy đề bài'))
   },
   submit: (payload, user) => delay(engine.submit({ ...payload, user }), 120),
+  runTest: (payload) =>
+    delay({
+      verdict: 'AC',
+      output: payload.input ? `[Mô phỏng đầu ra cho dữ liệu: ${payload.input.trim()}]` : 'Output',
+      stderr: '',
+      expectedOutput: payload.expectedOutput || '',
+      timeMs: 42,
+      memoryKb: 2048,
+      compileLog: null,
+      securityMessage: null,
+    }, 300),
   listSubmissions: ({ userId, problemId, verdict, contestId } = {}) =>
     delay(
       engine
@@ -249,6 +260,7 @@ const realApi = {
   listProblems: () => http('GET', '/problems'),
   getProblem: (id) => http('GET', `/problems/${id}`),
   submit: (payload) => http('POST', '/submissions', payload),
+  runTest: (payload) => http('POST', '/submissions/run', payload),
   listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
   getSubmission: (id) => http('GET', `/submissions/${id}`),
   leaderboard: () => http('GET', '/leaderboard'),

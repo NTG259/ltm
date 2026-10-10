@@ -29,6 +29,21 @@ public class SubmissionController {
     }
 
     public record SubmitRequest(Long problemId, String language, String sourceCode, Long contestId) {}
+    public record RunTestRequest(Long problemId, String sourceCode, String input, String expectedOutput) {}
+
+    @PostMapping("/run")
+    public ResponseEntity<?> runTest(@RequestBody RunTestRequest req) {
+        if (req.sourceCode() == null || req.sourceCode().isBlank()) {
+            throw new IllegalArgumentException("Mã nguồn không được để trống");
+        }
+        Map<String, Object> result = judgeMasterService.runCustomTest(
+                req.problemId(),
+                req.sourceCode(),
+                req.input(),
+                req.expectedOutput()
+        );
+        return ResponseEntity.ok(result);
+    }
 
     @PostMapping
     public ResponseEntity<?> submit(@RequestBody SubmitRequest req, HttpServletRequest servletReq) {

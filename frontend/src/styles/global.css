@@ -137,6 +137,8 @@ body { margin: 0; }
 .io-box.bad .io-box-head { background: var(--wa-bg); color: var(--wa-fg); }
 .io-box.good .io-box-head { background: var(--ac-bg); color: var(--ac-fg); }
 .io-box pre { margin: 0; padding: 8px 10px; font-family: var(--mono); font-size: 12.5px; line-height: 20px; white-space: pre-wrap; word-break: break-all; max-height: 220px; overflow: auto; }
+.custom-test-editor { display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 8px 10px; font-family: var(--mono); font-size: 12.5px; line-height: 20px; border: none; background: transparent; color: var(--text); resize: vertical; outline: none; min-height: 70px; }
+.custom-test-editor:focus { background: var(--inset); }
 .diff-bad { background: var(--wa-bg); color: var(--wa-fg); border-radius: 3px; outline: 1px solid var(--wa-bd); }
 .console-log { margin: 0; padding: 12px 14px; font-family: var(--mono); font-size: 12.5px; line-height: 20px; white-space: pre-wrap; background: #0f172a; color: #e2e8f0; border-radius: 6px; overflow: auto; }
 

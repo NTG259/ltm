@@ -18,6 +18,7 @@ import {
 } from 'antd'
 import {
   ArrowLeftOutlined,
+  CaretRightOutlined,
   CloudUploadOutlined,
   CopyOutlined,
   EllipsisOutlined,
@@ -32,6 +33,7 @@ import { DIFFICULTIES } from '../lib/verdicts'
 import { formatMemory, formatRelative, formatTime } from '../lib/format'
 import { SAMPLE_SOURCES, STARTER_CODE } from '../api/mock/data'
 import CodeEditor from '../components/CodeEditor'
+import CustomTestRunner from '../components/CustomTestRunner'
 import ResultSummary from '../components/ResultSummary'
 import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
@@ -164,9 +166,14 @@ export function Workspace({ id, contest, label }) {
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
   const [submitting, setSubmitting] = useState(false)
   const [activeId, setActiveId] = useState(null)
-  const [tab, setTab] = useState('result')
+  const [tab, setTab] = useState('testcase')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [customInput, setCustomInput] = useState(null)
+  const [runningTest, setRunningTest] = useState(false)
+  const [testResult, setTestResult] = useState(null)
   const { sub: active } = useLiveSubmission(activeId)
+
+  const activeInput = customInput ?? (problem?.samples?.[0]?.input || '')
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -212,6 +219,30 @@ export function Workspace({ id, contest, label }) {
       message.error(e.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const runTest = async (overrideInput, overrideExpected) => {
+    if (!code.trim()) {
+      message.warning('Mã nguồn đang trống')
+      return
+    }
+    setRunningTest(true)
+    setTab('testcase')
+    const inVal = overrideInput !== undefined ? overrideInput : activeInput
+    const expVal = overrideExpected !== undefined ? overrideExpected : ''
+    try {
+      const res = await api.runTest({
+        problemId: Number(id),
+        sourceCode: code,
+        input: inVal,
+        expectedOutput: expVal,
+      })
+      setTestResult(res)
+    } catch (e) {
+      message.error(e.message || 'Lỗi khi chạy thử')
+    } finally {
+      setRunningTest(false)
     }
   }
 
@@ -356,10 +387,19 @@ export function Workspace({ id, contest, label }) {
                   style={{ padding: '0 12px' }}
                   items={[
                     {
+                      key: 'testcase',
+                      label: (
+                        <span>
+                          <CaretRightOutlined style={{ marginRight: 4, color: 'var(--primary)' }} />
+                          Chạy thử
+                        </span>
+                      ),
+                    },
+                    {
                       key: 'result',
                       label: (
                         <Badge dot={!!judging} offset={[6, 0]}>
-                          Kết quả
+                          Kết quả nộp
                         </Badge>
                       ),
                     },
@@ -367,7 +407,16 @@ export function Workspace({ id, contest, label }) {
                   ]}
                 />
                 <div className="pane-body" style={{ padding: '0 14px 14px' }}>
-                  {tab === 'result' ? (
+                  {tab === 'testcase' ? (
+                    <CustomTestRunner
+                      problem={problem}
+                      running={runningTest}
+                      result={testResult}
+                      onRun={runTest}
+                      input={activeInput}
+                      setInput={setCustomInput}
+                    />
+                  ) : tab === 'result' ? (
                     active ? (
                       <Space orientation="vertical" size={14} style={{ width: '100%' }}>
                         <ResultSummary

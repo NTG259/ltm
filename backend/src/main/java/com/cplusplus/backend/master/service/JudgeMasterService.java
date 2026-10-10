@@ -34,6 +34,7 @@ import java.net.Socket;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class JudgeMasterService {
@@ -61,6 +62,8 @@ public class JudgeMasterService {
 
     private final Map<String, WorkerSession> activeWorkers = new ConcurrentHashMap<>();
     private final Queue<Long> submissionQueue = new ConcurrentLinkedQueue<>();
+    private final Map<Long, CompletableFuture<Map<String, Object>>> pendingRunTests = new ConcurrentHashMap<>();
+    private final AtomicLong nextRunTestId = new AtomicLong(-1000);
     private volatile boolean running = true;
 
     public JudgeMasterService(
@@ -253,7 +256,7 @@ public class JudgeMasterService {
     private void onWorkerTaskStatus(WorkerSession session, Map<String, Object> payload) {
         Long sid = getLong(payload.get("submissionId"));
         String statusStr = String.valueOf(payload.get("status"));
-        if (sid == null) return;
+        if (sid == null || sid < 0) return;
 
         transactionTemplate.executeWithoutResult(status -> {
             submissionRepository.findDetailed(sid).ifPresent(sub -> {
@@ -273,6 +276,19 @@ public class JudgeMasterService {
     private void onWorkerTaskResult(WorkerSession session, Map<String, Object> payload) {
         Long sid = getLong(payload.get("submissionId"));
         if (sid == null) return;
+
+        if (sid < 0) {
+            CompletableFuture<Map<String, Object>> future = pendingRunTests.remove(sid);
+            if (future != null) {
+                session.setBusy(false);
+                session.setCurrentTask(null);
+                session.setCompleted(session.getCompleted() + 1);
+                future.complete(payload);
+                broadcastWorkerUpdate();
+                dispatchNext();
+                return;
+            }
+        }
 
         session.setBusy(false);
         session.setCurrentTask(null);
@@ -376,18 +392,25 @@ public class JudgeMasterService {
 
             // Failover: nếu worker đang chấm một bài, đưa bài đó về hàng đợi
             if (runningSubId != null) {
-                submissionRepository.findDetailed(runningSubId).ifPresent(sub -> {
-                    boolean canRequeue = sub.requeue(SubmissionEventType.REQUEUED,
-                            "Mất kết nối tới " + workerId + " khi đang chấm", now);
-                    submissionRepository.save(sub);
-                    if (canRequeue) {
-                        submissionQueue.add(runningSubId);
-                        log.info("Bài #{} đã được đưa trở lại hàng đợi (Failover)", runningSubId);
-                    } else {
-                        log.warn("Bài #{} đã vượt quá số lần thử tối đa, đánh dấu FAILED", runningSubId);
+                if (runningSubId < 0) {
+                    CompletableFuture<Map<String, Object>> future = pendingRunTests.remove(runningSubId);
+                    if (future != null) {
+                        future.completeExceptionally(new RuntimeException("Worker đã mất kết nối trong khi chạy thử"));
                     }
-                    broadcastSubmissionUpdate(sub);
-                });
+                } else {
+                    submissionRepository.findDetailed(runningSubId).ifPresent(sub -> {
+                        boolean canRequeue = sub.requeue(SubmissionEventType.REQUEUED,
+                                "Mất kết nối tới " + workerId + " khi đang chấm", now);
+                        submissionRepository.save(sub);
+                        if (canRequeue) {
+                            submissionQueue.add(runningSubId);
+                            log.info("Bài #{} đã được đưa trở lại hàng đợi (Failover)", runningSubId);
+                        } else {
+                            log.warn("Bài #{} đã vượt quá số lần thử tối đa, đánh dấu FAILED", runningSubId);
+                        }
+                        broadcastSubmissionUpdate(sub);
+                    });
+                }
             }
         });
 
@@ -513,6 +536,105 @@ public class JudgeMasterService {
             dispatchNext();
         }
         return sub;
+    }
+
+    public Map<String, Object> runCustomTest(Long problemId, String sourceCode, String input, String expectedOutput) {
+        if (activeWorkers.isEmpty()) {
+            throw new IllegalStateException("Không có máy chấm Worker nào đang online");
+        }
+
+        WorkerSession target = null;
+        for (WorkerSession w : activeWorkers.values()) {
+            if (!w.isClosed() && !w.isBusy()) {
+                target = w;
+                break;
+            }
+        }
+        if (target == null) {
+            target = activeWorkers.values().stream().filter(w -> !w.isClosed()).findFirst().orElse(null);
+        }
+        if (target == null) {
+            throw new IllegalStateException("Không có máy chấm Worker nào sẵn sàng");
+        }
+
+        int timeLimitMs = 1000;
+        int memoryLimitMb = 256;
+        if (problemId != null) {
+            var probOpt = problemRepository.findById(problemId);
+            if (probOpt.isPresent()) {
+                timeLimitMs = probOpt.get().getTimeLimitMs();
+                memoryLimitMb = probOpt.get().getMemoryLimitMb();
+            }
+        }
+
+        long runId = nextRunTestId.decrementAndGet();
+        CompletableFuture<Map<String, Object>> future = new CompletableFuture<>();
+        pendingRunTests.put(runId, future);
+
+        Map<String, Object> taskPayload = new LinkedHashMap<>();
+        taskPayload.put("submissionId", runId);
+        taskPayload.put("sourceCode", sourceCode);
+        taskPayload.put("timeLimitMs", timeLimitMs > 0 ? timeLimitMs : 1000);
+        taskPayload.put("memoryLimitMb", memoryLimitMb > 0 ? memoryLimitMb : 256);
+        taskPayload.put("language", "cpp17");
+        taskPayload.put("stopOnFirstFailure", true);
+
+        Map<String, Object> testMap = new LinkedHashMap<>();
+        testMap.put("index", 1);
+        testMap.put("input", input != null ? input : "");
+        testMap.put("output", expectedOutput != null ? expectedOutput : "");
+        taskPayload.put("tests", List.of(testMap));
+
+        try {
+            target.setBusy(true);
+            target.setCurrentTask(runId);
+            target.send(MasterProtocol.OP_TASK_ASSIGN, objectMapper.writeValueAsString(taskPayload));
+            broadcastWorkerUpdate();
+
+            Map<String, Object> resultPayload = future.get(15, TimeUnit.SECONDS);
+
+            boolean hasExpected = expectedOutput != null && !expectedOutput.trim().isEmpty();
+            String rawVerdict = String.valueOf(resultPayload.getOrDefault("verdict", "RTE"));
+            String verdict = rawVerdict;
+            // Nếu người dùng không nhập expected output (chỉ nhập input để xem output):
+            // Nếu chương trình chạy thoát bình thường (worker trả WA vì so sánh với chuỗi rỗng), ta coi là AC/thành công.
+            if (!hasExpected && "WA".equalsIgnoreCase(rawVerdict)) {
+                verdict = "AC";
+            }
+
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("verdict", verdict);
+            res.put("hasExpected", hasExpected);
+            res.put("timeMs", resultPayload.getOrDefault("timeMs", 0));
+            res.put("memoryKb", resultPayload.getOrDefault("memoryKb", 0));
+            res.put("compileLog", resultPayload.get("compileLog"));
+            res.put("securityMessage", resultPayload.get("securityMessage"));
+
+            String stdout = "";
+            String stderr = "";
+            Object rawTests = resultPayload.get("tests");
+            if (rawTests instanceof List<?> list && !list.isEmpty()) {
+                Object first = list.get(0);
+                if (first instanceof Map<?, ?> tm) {
+                    stdout = (String) tm.get("output");
+                    stderr = (String) tm.get("stderr");
+                }
+            }
+            res.put("output", stdout != null ? stdout : "");
+            res.put("stderr", stderr != null ? stderr : "");
+            res.put("expectedOutput", expectedOutput != null ? expectedOutput : "");
+            return res;
+        } catch (TimeoutException e) {
+            pendingRunTests.remove(runId);
+            target.setBusy(false);
+            target.setCurrentTask(null);
+            throw new RuntimeException("Chạy thử vượt quá thời gian phản hồi (15s)");
+        } catch (Exception e) {
+            pendingRunTests.remove(runId);
+            target.setBusy(false);
+            target.setCurrentTask(null);
+            throw new RuntimeException("Lỗi khi chạy thử: " + e.getMessage(), e);
+        }
     }
 
     public List<Long> getQueue() {
