@@ -15,12 +15,12 @@ Hệ thống Chấm bài Trực tuyến theo kiến trúc phân tán gồm các 
 
 ---
 
-## 2. Các bước chạy hệ thống (Chạy 3 cửa sổ Terminal)
+## 2. Các bước chạy hệ thống (Bấm nút Copy ở góc phải mỗi ô)
 
 ### 🔹 Cửa sổ 1: Khởi chạy Master Server (Backend)
+Copy và dán vào Terminal 1:
 ```powershell
-cd backend
-.\mvnw spring-boot:run
+cd backend; .\mvnw spring-boot:run
 ```
 * **HTTP REST API:** `http://127.0.0.1:8000`
 * **WebSocket RFC 6455:** `ws://127.0.0.1:8001`
@@ -29,44 +29,56 @@ cd backend
 ---
 
 ### 🔹 Cửa sổ 2: Khởi chạy Giao diện Web (Frontend)
+Copy và dán vào Terminal 2:
 ```powershell
-cd frontend
-npm install
-npm run dev
+cd frontend; npm run dev
 ```
-Truy cập trình duyệt tại: **`http://localhost:5173`**
+*(Nếu lần đầu clone về chưa tải thư viện thì chạy: `cd frontend; npm install; npm run dev`)*
+
+👉 Mở trình duyệt truy cập: **`http://localhost:5173`**
 
 ---
 
 ### 🔹 Cửa sổ 3: Khởi chạy Judge Workers (Máy chấm thật)
 
-Mở Terminal tại thư mục gốc dự án và chạy:
+Mở Terminal 3 tại thư mục gốc dự án và chọn 1 trong 2 ô copy bên dưới:
 
-* **Chạy cùng lúc cả 3 Workers (Khuyên dùng):**
-  ```powershell
-  1..3 | ForEach-Object { Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:PYTHONUTF8='1'; python -m judgement worker --id worker-`$_ --master-host 127.0.0.1 --master-port 9000" }
-  ```
-  *(Lệnh này tự động bật 3 cửa sổ tương ứng `worker-1`, `worker-2`, `worker-3` kết nối vào Master Server).*
+* **Chạy cùng lúc cả 3 Workers (Khuyên dùng - bấm 1 phát bật 3 máy chấm):**
+```powershell
+1..3 | ForEach-Object { Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:PYTHONUTF8='1'; python -m judgement worker --id worker-`$_ --master-host 127.0.0.1 --master-port 9000" }
+```
 
-* **Hoặc chỉ chạy 1 Worker duy nhất:**
-  ```powershell
-  $env:PYTHONUTF8="1"
-  python -m judgement worker --id worker-1 --master-host 127.0.0.1 --master-port 9000
-  ```
+* **Hoặc chỉ chạy 1 Worker đơn lẻ:**
+```powershell
+$env:PYTHONUTF8="1"; python -m judgement worker --id worker-1 --master-host 127.0.0.1 --master-port 9000
+```
 
 ---
 
-## 3. Cách đăng nhập trên Giao diện Web
+## 3. Thông tin Đăng nhập trên Web (Copy & Paste vào ô)
 
-Trên màn hình đăng nhập (`http://localhost:5173`), bạn chọn vai trò:
+Truy cập: **`http://localhost:5173`**
 
-### 🔹 Vai trò: Quản trị viên (Admin)
-* **Giao diện yêu cầu:** Chỉ có 1 ô nhập mật khẩu.
-* **Mật khẩu quản trị:** **`admin123`**
-* *(Vào trang quản trị để giám sát trạng thái 3 Worker, quản lý đề thi).*
+### 🔹 Đăng nhập Quản trị viên (Admin)
+Chọn vai trò **Quản trị viên** $\rightarrow$ Copy mật khẩu dán vào ô:
+```text
+admin123
+```
+*(Dùng để vào trang quản trị giám sát trạng thái 3 Worker, xem log TCP, quản lý đề bài).*
 
-### 🔹 Vai trò: Thí sinh (Sinh viên)
-* **Giao diện yêu cầu:** Không cần mật khẩu, chỉ cần nhập thông tin sinh viên:
-  - **Mã sinh viên:** `B20DCCN001` *(hoặc bất kỳ MSSV nào đúng chuẩn, ví dụ: `B21DCCN002`)*
-  - **Họ và tên:** `Nguyễn Văn A` *(hoặc tên bạn)*
-* Bấm **"Bắt đầu làm bài"** $\rightarrow$ Hệ thống tự động tạo/lưu phiên làm việc vào Database và chuyển thẳng vào làm bài!
+---
+
+### 🔹 Đăng nhập Thí sinh (Sinh viên)
+Chọn vai trò **Thí sinh** $\rightarrow$ Copy thông tin dán vào 2 ô tương ứng:
+
+* **Mã sinh viên (MSSV):**
+```text
+B20DCCN001
+```
+
+* **Họ và tên:**
+```text
+Nguyễn Văn A
+```
+
+Bấm nút **"Bắt đầu làm bài"** để vào làm bài thi trực tiếp!
