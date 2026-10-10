@@ -45,12 +45,12 @@ Mở Terminal 3 tại thư mục gốc dự án và chọn 1 trong 2 ô copy bê
 
 * **Chạy cùng lúc cả 3 Workers (Khuyên dùng - bấm 1 phát bật 3 máy chấm):**
 ```powershell
-1..3 | ForEach-Object { Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:PYTHONUTF8='1'; python -m judgement worker --id worker-`$_ --master-host 127.0.0.1 --master-port 9000" }
+1..3 | ForEach-Object { $id = "worker-$_"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\judgement'; python -X utf8 -m judgement worker --id $id --master-host 127.0.0.1 --master-port 9000" }
 ```
 
 * **Hoặc chỉ chạy 1 Worker đơn lẻ:**
 ```powershell
-$env:PYTHONUTF8="1"; python -m judgement worker --id worker-1 --master-host 127.0.0.1 --master-port 9000
+cd judgement; python -X utf8 -m judgement worker --id worker-1 --master-host 127.0.0.1 --master-port 9000
 ```
 
 ---
