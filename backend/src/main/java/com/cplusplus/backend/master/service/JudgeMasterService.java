@@ -743,6 +743,24 @@ public class JudgeMasterService {
         }
     }
 
+    public void broadcastProctorAlert(Long contestId, String username, String fullName, String violationType, int violationCount, String details) {
+        if (wsServer == null) return;
+        try {
+            Map<String, Object> msg = new LinkedHashMap<>();
+            msg.put("type", "PROCTOR_ALERT");
+            msg.put("contestId", contestId);
+            msg.put("username", username);
+            msg.put("fullName", fullName != null ? fullName : username);
+            msg.put("violationType", violationType);
+            msg.put("violationCount", violationCount);
+            msg.put("details", details != null ? details : "");
+            msg.put("timestamp", System.currentTimeMillis());
+            wsServer.broadcastText(objectMapper.writeValueAsString(msg));
+        } catch (Exception e) {
+            log.warn("Lỗi broadcast PROCTOR_ALERT: {}", e.getMessage());
+        }
+    }
+
     public void addLog(LogLevel level, String message, JudgeWorker worker, Submission sub) {
         try {
             Instant now = Instant.now();

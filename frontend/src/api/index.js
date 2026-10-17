@@ -246,6 +246,11 @@ const mockApi = {
   contestStandings: async (id) => delay(icpcStandings(findContest(id), engine.submissions())),
   saveContest: (data) => delay(engine.saveContest(data)),
   deleteContest: (id) => delay(engine.deleteContest(id)),
+  reportViolation: () => delay({ success: true, violationCount: 1 }),
+  getProctorStatus: (id) => delay({ contestId: id, participants: [], recentViolations: [] }),
+  runPlagiarismCheck: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
+  getPlagiarismStatus: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
+  compareSubmissions: () => delay({ similarityScore: 95.0, verdictLevel: 'HIGH_RISK', submissionA: { id: 1, username: 'A', sourceCode: '// code A' }, submissionB: { id: 2, username: 'B', sourceCode: '// code B' } }),
   // ---- Admin ----
   adminOverview: () =>
     delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
@@ -268,6 +273,11 @@ const realApi = {
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),
   contestStandings: (id) => http('GET', `/contests/${id}/standings`),
+  reportViolation: (id, data) => http('POST', `/contests/${id}/proctor/violation`, data),
+  getProctorStatus: (id) => http('GET', `/contests/${id}/proctor/status`),
+  runPlagiarismCheck: (id) => http('POST', `/contests/${id}/plagiarism/run`),
+  getPlagiarismStatus: (id) => http('GET', `/contests/${id}/plagiarism/status`),
+  compareSubmissions: (id, subA, subB) => http('GET', `/contests/${id}/plagiarism/compare?subA=${subA}&subB=${subB}`),
   saveContest: (data) => (data.id ? http('PUT', `/admin/contests/${data.id}`, data) : http('POST', '/admin/contests', data)),
   deleteContest: (id) => http('DELETE', `/admin/contests/${id}`),
   adminOverview: () => http('GET', '/admin/overview'),

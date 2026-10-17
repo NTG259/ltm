@@ -24,11 +24,14 @@ import {
   EllipsisOutlined,
   FolderOpenOutlined,
   LoadingOutlined,
+  SafetyCertificateOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useLiveSubmission, useNow, useSocket } from '../lib/hooks'
+import { useProctoring } from '../lib/useProctoring'
 import { DIFFICULTIES } from '../lib/verdicts'
 import { formatMemory, formatRelative, formatTime } from '../lib/format'
 import { SAMPLE_SOURCES, STARTER_CODE } from '../api/mock/data'
@@ -198,6 +201,45 @@ export function Workspace({ id, contest, label }) {
     ),
   )
 
+  const handleViolation = useCallback(
+    (count, type) => {
+      modal.warning({
+        title: '⚠️ CẢNH BÁO GIÁM SÁT THI CỬ',
+        centered: true,
+        okText: 'Tôi hiểu và tiếp tục làm bài',
+        okButtonProps: { danger: true },
+        content: (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ color: '#ef4444', fontWeight: 600 }}>
+              Hệ thống phát hiện bạn vừa rời khỏi màn hình làm bài thi!
+            </p>
+            <ul style={{ paddingLeft: 20, margin: '8px 0', color: 'var(--text-secondary)' }}>
+              <li>
+                Hành vi:{' '}
+                <b>{type === 'TAB_SWITCH' ? 'Chuyển tab / Thu nhỏ trình duyệt' : 'Mất tiêu điểm cửa sổ làm bài'}</b>
+              </li>
+              <li>
+                Số lần vi phạm đã ghi nhận: <b style={{ color: '#ef4444', fontSize: 16 }}>{count}</b> lần
+              </li>
+            </ul>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
+              Hành vi này đã được gửi trực tiếp tới Giám thị phòng thi theo thời gian thực.
+              Vui lòng không chuyển tab hoặc mở ứng dụng khác để tránh bị huỷ tư cách dự thi.
+            </p>
+          </div>
+        ),
+      })
+    },
+    [modal],
+  )
+
+  const { violationCount } = useProctoring({
+    contest,
+    user,
+    enabled: !!contest && !user?.role?.includes('admin'),
+    onViolation: handleViolation,
+  })
+
   const submit = async () => {
     if (!code.trim()) {
       message.warning('Mã nguồn đang trống')
@@ -315,7 +357,24 @@ export function Workspace({ id, contest, label }) {
           </>
         )}
         <span style={{ flex: 1 }} />
-        {contest && <ContestClock contest={contest} compact />}
+        {contest && (
+          <Space size={8}>
+            {violationCount > 0 ? (
+              <Tooltip title={`Hệ thống ghi nhận bạn đã rời màn hình thi ${violationCount} lần`}>
+                <Tag color="error" icon={<WarningOutlined />} style={{ fontWeight: 600 }}>
+                  Vi phạm: {violationCount} lần
+                </Tag>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Chế độ giám sát thi đang bật">
+                <Tag color="success" icon={<SafetyCertificateOutlined />}>
+                  Giám sát: Nghiêm túc
+                </Tag>
+              </Tooltip>
+            )}
+            <ContestClock contest={contest} compact />
+          </Space>
+        )}
         <Tooltip title="Ctrl + Enter">
           <Button type="primary" icon={<CloudUploadOutlined />} loading={submitting || judging} onClick={submit}>
             {judging ? 'Đang chấm…' : 'Nộp bài'}

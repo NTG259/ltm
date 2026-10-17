@@ -73,6 +73,12 @@ public class ContestParticipant {
     @Column(name = "registered_at", nullable = false)
     private Instant registeredAt;
 
+    @Column(name = "tab_switch_count", nullable = false)
+    private int tabSwitchCount = 0;
+
+    @Column(name = "last_violation_at")
+    private Instant lastViolationAt;
+
     protected ContestParticipant() {
     }
 
@@ -81,6 +87,7 @@ public class ContestParticipant {
         this.contest = contest;
         this.user = user;
         this.registeredAt = registeredAt;
+        this.tabSwitchCount = 0;
     }
 
     public Id getId() {
@@ -97,6 +104,20 @@ public class ContestParticipant {
 
     public Instant getRegisteredAt() {
         return registeredAt;
+    }
+
+    public int getTabSwitchCount() {
+        return tabSwitchCount;
+    }
+
+    public Instant getLastViolationAt() {
+        return lastViolationAt;
+    }
+
+    public int incrementTabSwitch(Instant at) {
+        this.tabSwitchCount++;
+        this.lastViolationAt = at;
+        return this.tabSwitchCount;
     }
 
     @Override

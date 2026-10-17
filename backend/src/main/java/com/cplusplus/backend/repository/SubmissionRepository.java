@@ -115,4 +115,13 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             from v_user_problem_best
             """, nativeQuery = true)
     List<BestCell> findBestCells();
+
+    @Query("""
+            select s from Submission s
+            join fetch s.user
+            join fetch s.problem
+            where s.contest.id = :contestId
+            order by s.id asc
+            """)
+    List<Submission> findAllByContestIdWithDetails(Long contestId);
 }

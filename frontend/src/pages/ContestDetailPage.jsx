@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { App, Breadcrumb, Button, Card, Empty, Result, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from 'antd'
-import { CheckCircleFilled, ExclamationCircleFilled, LockOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, DiffOutlined, ExclamationCircleFilled, LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -9,6 +9,8 @@ import { formatDateTime, formatDuration, formatRelative } from '../lib/format'
 import { CONTEST_STATUS, liveStatus } from '../lib/contest'
 import ContestClock from '../components/ContestClock'
 import ContestStandings from '../components/ContestStandings'
+import ContestProctoring from '../components/ContestProctoring'
+import ContestPlagiarism from '../components/ContestPlagiarism'
 import VerdictTag from '../components/VerdictTag'
 
 function ProblemsTab({ contest, status, mySubs, canSolve }) {
@@ -259,6 +261,30 @@ export default function ContestDetailPage() {
               label: isAdmin ? 'Tất cả bài nộp' : 'Bài nộp của tôi',
               children: <SubmissionsTab subs={subs.data || []} labels={labels} showUser={isAdmin} />,
             },
+            ...(isAdmin
+              ? [
+                  {
+                    key: 'proctor',
+                    label: (
+                      <Space size={6}>
+                        <SafetyCertificateOutlined style={{ color: '#ef4444' }} />
+                        <span>Giám sát phòng thi</span>
+                      </Space>
+                    ),
+                    children: <ContestProctoring contestId={c.id} />,
+                  },
+                  {
+                    key: 'plagiarism',
+                    label: (
+                      <Space size={6}>
+                        <DiffOutlined style={{ color: '#f59e0b' }} />
+                        <span>Chống đạo văn (MOSS)</span>
+                      </Space>
+                    ),
+                    children: <ContestPlagiarism contestId={c.id} />,
+                  },
+                ]
+              : []),
             {
               key: 'rules',
               label: 'Thể lệ',
