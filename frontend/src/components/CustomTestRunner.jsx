@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons'
 import { formatMemory, formatTime } from '../lib/format'
 import { VERDICTS } from '../lib/verdicts'
+import CompilerErrorExplainer from './CompilerErrorExplainer'
 
 function DiffText({ output, expected }) {
   if (!expected) return output
@@ -207,12 +208,7 @@ export default function CustomTestRunner({
 
           {/* Lỗi biên dịch g++ nếu có */}
           {result.compileLog && (
-            <div style={{ display: 'grid', gap: 4 }}>
-              <Typography.Text strong style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                Chi tiết lỗi biên dịch:
-              </Typography.Text>
-              <pre className="console-log">{result.compileLog}</pre>
-            </div>
+            <CompilerErrorExplainer compileLog={result.compileLog} />
           )}
 
           {/* Lỗi bảo mật nếu có */}

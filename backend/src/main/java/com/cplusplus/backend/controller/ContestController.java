@@ -130,47 +130,10 @@ public class ContestController {
     }
 
     private Map<String, Object> toContestMap(Contest c, User user) {
-        Instant now = Instant.now();
-        ContestPhase phase = c.phaseAt(now);
         boolean isAdmin = user != null && user.isAdmin();
         boolean isRegistered = user != null && contestRepository.isRegistered(c.getId(), user.getId());
         long participantCount = contestRepository.countParticipants(c.getId());
-
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("id", c.getId());
-        map.put("title", c.getTitle());
-        map.put("description", c.getDescription());
-        map.put("startAt", c.getStartAt().toEpochMilli());
-        map.put("endAt", c.getEndAt().toEpochMilli());
-        map.put("durationMin", c.getDurationMinutes());
-        map.put("status", phase.name());
-        map.put("participantCount", participantCount);
-        map.put("registered", isRegistered);
-
-        if (isAdmin) {
-            List<Long> pids = c.getProblems().stream().map(cp -> cp.getProblem().getId()).toList();
-            map.put("problemIds", pids);
-        }
-
-        boolean showProblems = phase != ContestPhase.UPCOMING || isAdmin;
-        List<Map<String, Object>> problems = new ArrayList<>();
-        if (showProblems && c.getProblems() != null) {
-            for (ContestProblem cp : c.getProblems()) {
-                Problem p = cp.getProblem();
-                Map<String, Object> pm = new LinkedHashMap<>();
-                pm.put("label", cp.getLabel());
-                pm.put("problemId", p.getId());
-                pm.put("title", p.getTitle());
-                pm.put("timeLimitMs", p.getTimeLimitMs());
-                pm.put("memoryLimitMb", p.getMemoryLimitMb());
-                pm.put("solvedCount", 0);
-                pm.put("attemptCount", 0);
-                problems.add(pm);
-            }
-        }
-        map.put("problems", problems);
-
-        return map;
+        return com.cplusplus.backend.dto.DtoMapper.toContestMap(c, isAdmin, isRegistered, participantCount);
     }
 
     @PostMapping("/{id}/proctor/violation")

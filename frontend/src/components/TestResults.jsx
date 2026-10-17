@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Space, Tooltip, Typography } from 'antd'
 import { testStatusLabel, testTone, VERDICTS } from '../lib/verdicts'
 import { formatMemory, formatTime } from '../lib/format'
+import CompilerErrorExplainer from './CompilerErrorExplainer'
 
 function DiffText({ output, expected }) {
   const a = output.split(/(\s+)/)
@@ -69,16 +70,7 @@ export default function TestResults({ submission: s }) {
   if (!s) return null
 
   if (s.verdict === 'CE') {
-    return (
-      <div>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Thông báo từ trình biên dịch g++
-        </Typography.Text>
-        <pre className="console-log" style={{ marginTop: 6 }}>
-          {s.compileLog || 'Không có thông báo'}
-        </pre>
-      </div>
-    )
+    return <CompilerErrorExplainer compileLog={s.compileLog} />
   }
   if (s.verdict === 'SEC') {
     return (

@@ -111,7 +111,7 @@ public final class DtoMapper {
         map.put("outputSpec", p.getOutputSpec());
 
         List<Map<String, Object>> samples = new ArrayList<>();
-        List<Map<String, Object>> allTests = new ArrayList<>();
+        List<Map<String, Object>> hiddenTests = new ArrayList<>();
 
         if (p.getTestCases() != null) {
             for (TestCase tc : p.getTestCases()) {
@@ -121,16 +121,65 @@ public final class DtoMapper {
                 testMap.put("sample", tc.isSample());
                 if (tc.isSample()) {
                     samples.add(Map.of("input", tc.getInput(), "output", tc.getExpectedOutput()));
+                } else {
+                    hiddenTests.add(testMap);
                 }
-                allTests.add(testMap);
             }
         }
         map.put("samples", samples);
         map.put("testCount", p.getTestCases() != null ? p.getTestCases().size() : 0);
 
         if (includeTests) {
-            map.put("tests", allTests);
+            map.put("tests", hiddenTests);
         }
+        return map;
+    }
+
+    public static Map<String, Object> toContestMap(
+            Contest c,
+            boolean isAdmin,
+            boolean isRegistered,
+            long participantCount) {
+        if (c == null) return null;
+        Instant now = Instant.now();
+        com.cplusplus.backend.domain.contest.ContestPhase phase = c.phaseAt(now);
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", c.getId());
+        map.put("title", c.getTitle());
+        map.put("description", c.getDescription());
+        map.put("startAt", c.getStartAt().toEpochMilli());
+        map.put("endAt", c.getEndAt().toEpochMilli());
+        map.put("durationMin", c.getDurationMinutes());
+        map.put("status", phase.name());
+        map.put("participantCount", participantCount);
+        map.put("registered", isRegistered);
+
+        if (isAdmin) {
+            List<Long> pids = c.getProblems() != null
+                    ? c.getProblems().stream().map(cp -> cp.getProblem().getId()).toList()
+                    : List.of();
+            map.put("problemIds", pids);
+        }
+
+        boolean showProblems = phase != com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING || isAdmin;
+        List<Map<String, Object>> problems = new ArrayList<>();
+        if (showProblems && c.getProblems() != null) {
+            for (com.cplusplus.backend.domain.contest.ContestProblem cp : c.getProblems()) {
+                Problem p = cp.getProblem();
+                Map<String, Object> pm = new LinkedHashMap<>();
+                pm.put("label", cp.getLabel());
+                pm.put("problemId", p.getId());
+                pm.put("title", p.getTitle());
+                pm.put("timeLimitMs", p.getTimeLimitMs());
+                pm.put("memoryLimitMb", p.getMemoryLimitMb());
+                pm.put("solvedCount", 0);
+                pm.put("attemptCount", 0);
+                problems.add(pm);
+            }
+        }
+        map.put("problems", problems);
+
         return map;
     }
 }

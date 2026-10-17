@@ -26,8 +26,13 @@ public class ProblemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listProblems() {
-        List<Problem> problems = problemRepository.findByDeletedAtIsNullAndPublicVisibleTrueOrderById();
+    public ResponseEntity<List<Map<String, Object>>> listProblems(HttpServletRequest req) {
+        User currentUser = req != null ? (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR) : null;
+        boolean isAdmin = currentUser != null && currentUser.isAdmin();
+
+        List<Problem> problems = isAdmin
+                ? problemRepository.findByDeletedAtIsNullOrderById()
+                : problemRepository.findByDeletedAtIsNullAndPublicVisibleTrueOrderById();
         Map<Long, ProblemRepository.Stats> statsMap = problemRepository.findAllStats().stream()
                 .collect(Collectors.toMap(ProblemRepository.Stats::getProblemId, s -> s));
 
