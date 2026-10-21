@@ -251,6 +251,17 @@ const mockApi = {
   runPlagiarismCheck: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
   getPlagiarismStatus: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
   compareSubmissions: () => delay({ similarityScore: 95.0, verdictLevel: 'HIGH_RISK', submissionA: { id: 1, username: 'A', sourceCode: '// code A' }, submissionB: { id: 2, username: 'B', sourceCode: '// code B' } }),
+  // ---- Lớp học (mock stub) ----
+  listClassrooms: () => delay([]),
+  createClassroom: (data) => delay({ id: Date.now(), ...data, createdAt: Date.now() }),
+  updateClassroom: (_id, data) => delay(data),
+  deleteClassroom: () => delay(null),
+  listClassroomStudents: () => delay([]),
+  importClassroomStudents: () => delay({ imported: 0, alreadyEnrolled: 0, created: 0, skippedInOtherClass: 0, skippedInvalid: 0 }),
+  removeClassroomStudent: () => delay(null),
+  listClassroomContests: () => delay([]),
+  assignClassroomContest: (_id, contestId) => delay({ contestId, title: '(mock)' }),
+  unassignClassroomContest: () => delay(null),
   // ---- Admin ----
   adminOverview: () =>
     delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
@@ -285,6 +296,33 @@ const realApi = {
   deleteProblem: (id) => http('DELETE', `/admin/problems/${id}`),
   killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
   reviveWorker: () => Promise.reject(new Error('Hãy khởi động lại tiến trình judge_worker.py')),
+  // ---- Lớp học ----
+  listClassrooms: () => http('GET', '/classrooms'),
+  createClassroom: (data) => http('POST', '/classrooms', data),
+  updateClassroom: (id, data) => http('PUT', `/classrooms/${id}`, data),
+  deleteClassroom: (id) => http('DELETE', `/classrooms/${id}`),
+  listClassroomStudents: (id) => http('GET', `/classrooms/${id}/students`),
+  importClassroomStudents: (id, file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/classrooms/${id}/students/import`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
+  removeClassroomStudent: (classroomId, userId) => http('DELETE', `/classrooms/${classroomId}/students/${userId}`),
+  listClassroomContests: (id) => http('GET', `/classrooms/${id}/contests`),
+  assignClassroomContest: (id, contestId) => http('POST', `/classrooms/${id}/contests`, { contestId }),
+  unassignClassroomContest: (classroomId, contestId) => http('DELETE', `/classrooms/${classroomId}/contests/${contestId}`),
+  // ---- Monitor ----
+  getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),
+  getContestMonitor: (cid, kid) => http('GET', `/classrooms/${cid}/contests/${kid}/monitor`),
 }
 
 export const api = USE_MOCK ? mockApi : realApi

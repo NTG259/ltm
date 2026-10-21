@@ -9,6 +9,7 @@ import {
   ProfileOutlined,
   SunOutlined,
   FlagOutlined,
+  TeamOutlined,
   TrophyOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -38,12 +39,14 @@ export default function AppLayout() {
           { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát Worker</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Ngân hàng đề</Link> },
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
+          { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
           { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Toàn bộ bài nộp</Link> },
         ]
       : [
           { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
           { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
           { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp của tôi</Link> },
+          { key: '/my-classrooms', icon: <TeamOutlined />, label: <Link to="/my-classrooms">Lớp của tôi</Link> },
         ]),
     { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Bảng xếp hạng</Link> },
   ]

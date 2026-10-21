@@ -18,6 +18,7 @@ import com.cplusplus.backend.repository.JudgeWorkerRepository;
 import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import com.cplusplus.backend.repository.SystemLogRepository;
+import com.cplusplus.backend.security.SecurityService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -48,6 +49,7 @@ public class JudgeMasterService {
     private final ContestRepository contestRepository;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
+    private final SecurityService securityService;
 
     @Value("${master.tcp.port:9000}")
     private int tcpPort;
@@ -73,7 +75,8 @@ public class JudgeMasterService {
             SystemLogRepository systemLogRepository,
             ContestRepository contestRepository,
             TransactionTemplate transactionTemplate,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            SecurityService securityService) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.judgeWorkerRepository = judgeWorkerRepository;
@@ -81,6 +84,7 @@ public class JudgeMasterService {
         this.contestRepository = contestRepository;
         this.transactionTemplate = transactionTemplate;
         this.objectMapper = objectMapper;
+        this.securityService = securityService;
     }
 
     @PostConstruct
@@ -94,7 +98,7 @@ public class JudgeMasterService {
 
         // 2. Khởi động WebSocket Server :8001
         try {
-            wsServer = new MasterWebSocketServer(wsPort);
+            wsServer = new MasterWebSocketServer(wsPort, securityService, objectMapper);
             wsServer.start();
             log.info("WebSocket server đã khởi động trên cổng {}", wsPort);
         } catch (Exception e) {
@@ -807,5 +811,11 @@ public class JudgeMasterService {
             try { return Integer.parseInt(s); } catch (Exception ignored) {}
         }
         return null;
+    }
+
+    /** Trả về userId của tất cả student đang kết nối WebSocket (không bao gồm admin). */
+    public java.util.Set<Long> getOnlineUserIds() {
+        if (wsServer == null) return java.util.Set.of();
+        return wsServer.getOnlineUserIds();
     }
 }

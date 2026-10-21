@@ -19,6 +19,11 @@ const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
 const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminProblemsPage = lazy(() => import('./pages/admin/AdminProblemsPage'))
+const AdminClassroomsPage = lazy(() => import('./pages/admin/AdminClassroomsPage'))
+const AdminClassroomDetailPage = lazy(() => import('./pages/admin/AdminClassroomDetailPage'))
+const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroomMonitorPage'))
+const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
+const MyClassroomsPage = lazy(() => import('./pages/MyClassroomsPage'))
 
 const THEME_KEY = 'cj.theme'
 
@@ -60,6 +65,7 @@ function AppRoutes() {
           <Route path="/contests" element={<ContestsPage />} />
           <Route path="/contests/:id" element={<ContestDetailPage />} />
           <Route path="/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
+          <Route path="/my-classrooms" element={<MyClassroomsPage />} />
           <Route
             path="/admin"
             element={
@@ -89,6 +95,38 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <SubmissionsPage admin />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/classrooms"
+            element={
+              <RequireAuth admin>
+                <AdminClassroomsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/classrooms/:id"
+            element={
+              <RequireAuth admin>
+                <AdminClassroomDetailPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/classrooms/:id/monitor"
+            element={
+              <RequireAuth admin>
+                <AdminClassroomMonitorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/classrooms/:cid/contests/:kid/monitor"
+            element={
+              <RequireAuth admin>
+                <AdminContestMonitorPage />
               </RequireAuth>
             }
           />

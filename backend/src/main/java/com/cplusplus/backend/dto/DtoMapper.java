@@ -1,5 +1,7 @@
 package com.cplusplus.backend.dto;
 
+import com.cplusplus.backend.domain.classroom.Classroom;
+import com.cplusplus.backend.domain.classroom.ClassroomStudent;
 import com.cplusplus.backend.domain.contest.Contest;
 import com.cplusplus.backend.domain.problem.Problem;
 import com.cplusplus.backend.domain.problem.TestCase;
@@ -180,6 +182,27 @@ public final class DtoMapper {
         }
         map.put("problems", problems);
 
+        return map;
+    }
+
+    public static Map<String, Object> toClassroomMap(Classroom c) {
+        if (c == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", c.getId());
+        map.put("name", c.getName());
+        map.put("semester", c.getSemester());
+        map.put("createdBy", c.getCreatedBy() != null ? c.getCreatedBy().getUsername() : null);
+        map.put("createdAt", c.getCreatedAt().toEpochMilli());
+        return map;
+    }
+
+    public static Map<String, Object> toClassroomStudentMap(ClassroomStudent cs) {
+        if (cs == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("userId", cs.getUser().getId());
+        map.put("username", cs.getUser().getUsername());
+        map.put("fullName", cs.getUser().getFullName());
+        map.put("joinedAt", cs.getJoinedAt().toEpochMilli());
         return map;
     }
 }
