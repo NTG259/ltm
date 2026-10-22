@@ -282,6 +282,12 @@ const mockApi = {
   updateClassroom: (_id, data) => delay(data),
   deleteClassroom: () => delay(null),
   listClassroomStudents: () => delay([]),
+  addClassroomStudent: (_id, data) => delay({
+    userId: Date.now(),
+    username: (data.studentId || data.username || '').toUpperCase(),
+    fullName: data.fullName || data.studentId || data.username,
+    joinedAt: Date.now()
+  }),
   importClassroomStudents: () => delay({ imported: 0, alreadyEnrolled: 0, created: 0, skippedInOtherClass: 0, skippedInvalid: 0 }),
   removeClassroomStudent: () => delay(null),
   listClassroomContests: () => delay([]),
@@ -518,6 +524,47 @@ const realApi = {
   updateClassroom: (id, data) => http('PUT', `/classrooms/${id}`, data),
   deleteClassroom: (id) => http('DELETE', `/classrooms/${id}`),
   listClassroomStudents: (id) => http('GET', `/classrooms/${id}/students`),
+  addClassroomStudent: async (id, payload) => {
+    try {
+      return await http('POST', `/classrooms/${id}/students`, payload)
+    } catch (err) {
+      // Fallback nếu backend đang chạy phiên bản cũ chưa restart (lỗi 405 Method Not Allowed hoặc 404)
+      const isMethodNotAllowed = err.message && (err.message.includes('405') || err.message.includes('POST') || err.message.includes('404'))
+      if (isMethodNotAllowed) {
+        let csvLines = 'MSSV, Họ tên\n'
+        if (Array.isArray(payload.students) && payload.students.length > 0) {
+          payload.students.forEach((s) => {
+            const sid = (s.studentId || s.username || '').trim().toUpperCase()
+            const name = (s.fullName || sid).trim()
+            if (sid) csvLines += `${sid}, ${name}\n`
+          })
+        } else {
+          const sid = (payload.studentId || payload.username || '').trim().toUpperCase()
+          const name = (payload.fullName || sid).trim()
+          csvLines += `${sid}, ${name}\n`
+        }
+
+        const blob = new Blob([csvLines], { type: 'text/csv;charset=utf-8;' })
+        const file = new File([blob], 'student.csv', { type: 'text/csv' })
+        const res = await api.importClassroomStudents(id, file)
+
+        if (res.imported > 0) {
+          return { success: true, ...res }
+        }
+        if (res.alreadyEnrolled > 0) {
+          throw new Error('Sinh viên này đã có trong lớp rồi')
+        }
+        if (res.skippedInOtherClass > 0) {
+          throw new Error('Sinh viên này hiện đã thuộc lớp khác (mỗi sinh viên chỉ được ở 1 lớp)')
+        }
+        if (res.skippedInvalid > 0) {
+          throw new Error('Mã sinh viên không đúng định dạng (VD: B20DCCN001)')
+        }
+        throw new Error('Không thể thêm sinh viên vào lớp')
+      }
+      throw err
+    }
+  },
   importClassroomStudents: (id, file) => {
     const token = storageGet(TOKEN_KEY)
     const form = new FormData()

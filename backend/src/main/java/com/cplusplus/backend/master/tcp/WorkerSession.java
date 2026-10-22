@@ -1,8 +1,6 @@
 package com.cplusplus.backend.master.tcp;
 
 import com.cplusplus.backend.master.protocol.MasterProtocol;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -10,8 +8,6 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class WorkerSession {
-
-    private static final Logger log = LoggerFactory.getLogger(WorkerSession.class);
 
     private final Socket socket;
     private final DataInputStream in;

@@ -1,10 +1,8 @@
 package com.cplusplus.backend.service;
 
-import com.cplusplus.backend.domain.course.Course;
 import com.cplusplus.backend.domain.course.CourseUnit;
 import com.cplusplus.backend.domain.course.CourseUnitProblem;
 import com.cplusplus.backend.domain.course.UserUnitProgress;
-import com.cplusplus.backend.domain.submission.Verdict;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.repository.*;
 import org.slf4j.Logger;
@@ -23,19 +21,13 @@ public class CourseProgressService {
     private final CourseUnitProblemRepository unitProblemRepository;
     private final UserUnitProgressRepository progressRepository;
     private final CourseUnitRepository courseUnitRepository;
-    private final CourseRepository courseRepository;
-    private final SubmissionRepository submissionRepository;
 
     public CourseProgressService(CourseUnitProblemRepository unitProblemRepository,
                                  UserUnitProgressRepository progressRepository,
-                                 CourseUnitRepository courseUnitRepository,
-                                 CourseRepository courseRepository,
-                                 SubmissionRepository submissionRepository) {
+                                 CourseUnitRepository courseUnitRepository) {
         this.unitProblemRepository = unitProblemRepository;
         this.progressRepository = progressRepository;
         this.courseUnitRepository = courseUnitRepository;
-        this.courseRepository = courseRepository;
-        this.submissionRepository = submissionRepository;
     }
 
     /**

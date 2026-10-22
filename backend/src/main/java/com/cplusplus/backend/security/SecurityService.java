@@ -1,6 +1,5 @@
 package com.cplusplus.backend.security;
 
-import com.cplusplus.backend.domain.user.Role;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.domain.user.UserSession;
 import com.cplusplus.backend.repository.UserRepository;

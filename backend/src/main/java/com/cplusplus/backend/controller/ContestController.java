@@ -1,12 +1,9 @@
 package com.cplusplus.backend.controller;
 
 import com.cplusplus.backend.domain.contest.Contest;
-import com.cplusplus.backend.domain.contest.ContestPhase;
 import com.cplusplus.backend.domain.contest.ContestProblem;
-import com.cplusplus.backend.domain.problem.Problem;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.repository.ContestRepository;
-import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -21,7 +18,6 @@ import com.cplusplus.backend.repository.ContestViolationRepository;
 import com.cplusplus.backend.service.plagiarism.PlagiarismService;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
@@ -31,7 +27,6 @@ import java.util.*;
 public class ContestController {
 
     private final ContestRepository contestRepository;
-    private final ProblemRepository problemRepository;
     private final ContestParticipantRepository contestParticipantRepository;
     private final ContestViolationRepository contestViolationRepository;
     private final JudgeMasterService judgeMasterService;
@@ -39,13 +34,11 @@ public class ContestController {
 
     public ContestController(
             ContestRepository contestRepository,
-            ProblemRepository problemRepository,
             ContestParticipantRepository contestParticipantRepository,
             ContestViolationRepository contestViolationRepository,
             JudgeMasterService judgeMasterService,
             PlagiarismService plagiarismService) {
         this.contestRepository = contestRepository;
-        this.problemRepository = problemRepository;
         this.contestParticipantRepository = contestParticipantRepository;
         this.contestViolationRepository = contestViolationRepository;
         this.judgeMasterService = judgeMasterService;
@@ -196,8 +189,9 @@ public class ContestController {
                     .body(Map.of("message", "Vui lòng đăng nhập"));
         }
 
-        Contest contest = contestRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+        if (!contestRepository.existsById(id)) {
+            throw new IllegalArgumentException("Không tìm thấy kỳ thi #" + id);
+        }
 
         boolean isAdmin = currentUser.isAdmin();
 

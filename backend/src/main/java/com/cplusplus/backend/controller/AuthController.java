@@ -1,6 +1,5 @@
 package com.cplusplus.backend.controller;
 
-import com.cplusplus.backend.domain.user.Role;
 import com.cplusplus.backend.security.SecurityService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

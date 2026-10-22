@@ -65,9 +65,11 @@ export default function AdminClassroomsPage() {
       width: 120,
       render: (_, row) => (
         <Space>
-          <Button size="small" icon={<TeamOutlined />} onClick={() => window.location.assign(`#/admin/classrooms/${row.id}`)}>
-            Chi tiết
-          </Button>
+          <Link to={`/admin/classrooms/${row.id}`}>
+            <Button size="small" icon={<TeamOutlined />}>
+              Chi tiết
+            </Button>
+          </Link>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />
           <Popconfirm title="Xóa lớp này?" onConfirm={() => remove(row.id)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
             <Button size="small" danger icon={<DeleteOutlined />} />

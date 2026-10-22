@@ -12,6 +12,7 @@ import com.cplusplus.backend.repository.ClassroomStudentRepository;
 import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
 import com.cplusplus.backend.service.ClassroomCsvImporter;
+import com.cplusplus.backend.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,17 +34,20 @@ public class ClassroomController {
     private final ClassroomContestRepository classroomContestRepository;
     private final ContestRepository contestRepository;
     private final ClassroomCsvImporter csvImporter;
+    private final UserRepository userRepository;
 
     public ClassroomController(ClassroomRepository classroomRepository,
                                ClassroomStudentRepository classroomStudentRepository,
                                ClassroomContestRepository classroomContestRepository,
                                ContestRepository contestRepository,
-                               ClassroomCsvImporter csvImporter) {
+                               ClassroomCsvImporter csvImporter,
+                               UserRepository userRepository) {
         this.classroomRepository = classroomRepository;
         this.classroomStudentRepository = classroomStudentRepository;
         this.classroomContestRepository = classroomContestRepository;
         this.contestRepository = contestRepository;
         this.csvImporter = csvImporter;
+        this.userRepository = userRepository;
     }
 
     // -------------------------------------------------------------------------
@@ -130,6 +134,50 @@ public class ClassroomController {
                 .findAllWithUserByClassroomId(id)
                 .stream().map(DtoMapper::toClassroomStudentMap).toList();
         return ResponseEntity.ok(students);
+    }
+
+    @PostMapping("/{id}/students")
+    @Transactional
+    public ResponseEntity<?> addStudent(@PathVariable Long id,
+                                         @RequestBody Map<String, Object> body,
+                                         HttpServletRequest req) {
+        User user = currentUser(req);
+        if (user == null) return unauthorized();
+        if (!user.isAdmin()) return forbidden();
+
+        Classroom classroom = classroomRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lớp #" + id));
+
+        Object rawStudents = body.get("students");
+        if (rawStudents instanceof List<?> list && !list.isEmpty()) {
+            int added = 0;
+            List<String> errors = new java.util.ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    String sid = map.get("studentId") != null ? map.get("studentId").toString()
+                            : (map.get("username") != null ? map.get("username").toString() : "");
+                    String name = map.get("fullName") != null ? map.get("fullName").toString() : "";
+                    try {
+                        enrollSingleStudent(classroom, sid, name);
+                        added++;
+                    } catch (Exception e) {
+                        errors.add(sid + ": " + e.getMessage());
+                    }
+                }
+            }
+            return ResponseEntity.ok(Map.of("added", added, "errors", errors));
+        }
+
+        String studentId = body.get("studentId") != null ? body.get("studentId").toString()
+                : (body.get("username") != null ? body.get("username").toString() : "");
+        String fullName = body.get("fullName") != null ? body.get("fullName").toString() : "";
+
+        try {
+            ClassroomStudent cs = enrollSingleStudent(classroom, studentId, fullName);
+            return ResponseEntity.status(HttpStatus.CREATED).body(DtoMapper.toClassroomStudentMap(cs));
+        } catch (IllegalArgumentException e) {
+            return badRequest(e.getMessage());
+        }
     }
 
     @PostMapping("/{id}/students/import")
@@ -249,5 +297,43 @@ public class ClassroomController {
     private ResponseEntity<Map<String, String>> forbidden() {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", "Chỉ quản trị viên mới có quyền thực hiện thao tác này"));
+    }
+
+    private ClassroomStudent enrollSingleStudent(Classroom classroom, String studentId, String fullName) {
+        if (studentId == null || studentId.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập mã sinh viên (MSSV)");
+        }
+        studentId = studentId.trim().toUpperCase();
+        if (!studentId.matches("^[A-Z][0-9]{2}[A-Z]{4}[0-9]{3}$")) {
+            throw new IllegalArgumentException("Mã sinh viên không đúng định dạng (VD: B20DCCN001)");
+        }
+        if (fullName == null || fullName.isBlank()) {
+            fullName = studentId;
+        } else {
+            fullName = fullName.trim();
+        }
+
+        User studentUser = userRepository.findByUsernameIgnoreCase(studentId).orElse(null);
+        if (studentUser == null) {
+            studentUser = userRepository.save(User.student(studentId, fullName));
+        } else if (!fullName.equals(studentId) && (studentUser.getFullName() == null || studentUser.getFullName().equals(studentId))) {
+            studentUser.setFullName(fullName);
+            userRepository.save(studentUser);
+        }
+
+        if (classroomStudentRepository.existsByClassroomIdAndUserId(classroom.getId(), studentUser.getId())) {
+            throw new IllegalArgumentException("Sinh viên " + studentId + " đã có trong lớp này rồi");
+        }
+
+        List<Classroom> otherClasses = classroomRepository.findByStudentUserId(studentUser.getId());
+        if (!otherClasses.isEmpty()) {
+            throw new IllegalArgumentException("Sinh viên " + studentId + " hiện đã thuộc lớp '" + otherClasses.get(0).getName() + "'. Mỗi sinh viên chỉ được thuộc 1 lớp.");
+        }
+
+        return classroomStudentRepository.save(new ClassroomStudent(classroom, studentUser, Instant.now()));
+    }
+
+    private ResponseEntity<Map<String, String>> badRequest(String message) {
+        return ResponseEntity.badRequest().body(Map.of("message", message));
     }
 }

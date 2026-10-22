@@ -280,7 +280,6 @@ public class JudgeMasterService {
         });
     }
 
-    @SuppressWarnings("unchecked")
     private void onWorkerTaskResult(WorkerSession session, Map<String, Object> payload) {
         Long sid = getLong(payload.get("submissionId"));
         if (sid == null) return;
