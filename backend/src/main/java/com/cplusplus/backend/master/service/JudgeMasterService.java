@@ -19,6 +19,7 @@ import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import com.cplusplus.backend.repository.SystemLogRepository;
 import com.cplusplus.backend.security.SecurityService;
+import com.cplusplus.backend.service.CourseProgressService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -50,6 +51,7 @@ public class JudgeMasterService {
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
     private final SecurityService securityService;
+    private final CourseProgressService courseProgressService;
 
     @Value("${master.tcp.port:9000}")
     private int tcpPort;
@@ -76,7 +78,8 @@ public class JudgeMasterService {
             ContestRepository contestRepository,
             TransactionTemplate transactionTemplate,
             ObjectMapper objectMapper,
-            SecurityService securityService) {
+            SecurityService securityService,
+            CourseProgressService courseProgressService) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.judgeWorkerRepository = judgeWorkerRepository;
@@ -85,6 +88,7 @@ public class JudgeMasterService {
         this.transactionTemplate = transactionTemplate;
         this.objectMapper = objectMapper;
         this.securityService = securityService;
+        this.courseProgressService = courseProgressService;
     }
 
     @PostConstruct
@@ -364,6 +368,14 @@ public class JudgeMasterService {
                 addLog(LogLevel.SUCCESS, "Bài #" + sid + " đã chấm xong: " + verdict + " (" + score + "/100)",
                         sub.getWorker(), sub);
                 broadcastSubmissionUpdate(sub);
+
+                if (verdict == Verdict.AC && sub.getUser() != null && sub.getProblem() != null) {
+                    try {
+                        courseProgressService.recordProblemSolved(sub.getUser(), sub.getProblem().getId());
+                    } catch (Exception e) {
+                        log.warn("Không thể cập nhật tiến độ khóa học: {}", e.getMessage());
+                    }
+                }
 
                 if (sub.getContest() != null) {
                     broadcastContestUpdate(sub.getContest().getId());

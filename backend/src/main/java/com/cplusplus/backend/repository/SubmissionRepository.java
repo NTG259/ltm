@@ -124,4 +124,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             order by s.id asc
             """)
     List<Submission> findAllByContestIdWithDetails(Long contestId);
+
+    boolean existsByUserIdAndProblemIdAndVerdict(Long userId, Long problemId, Verdict verdict);
 }

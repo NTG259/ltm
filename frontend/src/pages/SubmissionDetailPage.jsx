@@ -1,5 +1,5 @@
-import { App, Breadcrumb, Button, Card, Col, Descriptions, Result, Row, Space, Spin, Timeline, Typography } from 'antd'
-import { CopyOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons'
+import { App, Breadcrumb, Button, Card, Col, Descriptions, Result, Row, Space, Spin, Tag, Timeline, Typography } from 'antd'
+import { ArrowLeftOutlined, CopyOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useLiveSubmission } from '../lib/hooks'
@@ -48,13 +48,19 @@ export default function SubmissionDetailPage() {
 
   return (
     <div className="page">
-      <Breadcrumb
-        style={{ marginBottom: 12 }}
-        items={[
-          { title: <Link to={isAdmin ? '/admin/submissions' : '/submissions'}>Bài nộp</Link> },
-          { title: <span className="mono">#{s.id}</span> },
-        ]}
-      />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <Space size={12}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(isAdmin ? '/admin/submissions' : '/submissions')}>
+            Quay lại danh sách bài nộp
+          </Button>
+          <Breadcrumb
+            items={[
+              { title: <Link to={isAdmin ? '/admin/submissions' : '/submissions'}>Danh sách bài nộp</Link> },
+              { title: <span className="mono">#{s.id}</span> },
+            ]}
+          />
+        </Space>
+      </div>
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
           <Space orientation="vertical" size={16} style={{ width: '100%' }}>
@@ -65,7 +71,12 @@ export default function SubmissionDetailPage() {
               </Card>
             )}
             <Card
-              title={<span className="mono">solution.cpp</span>}
+              title={
+                <Space>
+                  <span className="mono" style={{ fontWeight: 600 }}>solution.cpp</span>
+                  <Tag color="blue">{s.language || 'cpp17'}</Tag>
+                </Space>
+              }
               extra={
                 <Space>
                   <Button
@@ -99,7 +110,9 @@ export default function SubmissionDetailPage() {
               }
               styles={{ body: { padding: 0 } }}
             >
-              <CodeEditor value={s.sourceCode} readOnly markedLines={marked} />
+              <div style={{ height: '500px', minHeight: '400px', width: '100%' }}>
+                <CodeEditor value={s.sourceCode} readOnly markedLines={marked} height="500px" minHeight="400px" />
+              </div>
             </Card>
           </Space>
         </Col>
@@ -112,11 +125,14 @@ export default function SubmissionDetailPage() {
                 items={[
                   {
                     key: 'p',
-                    label: 'Bài',
+                    label: 'Đề bài',
                     children: (
-                      <Link to={`/problems/${s.problemId}`}>
-                        #{s.problemId} {s.problemTitle}
-                      </Link>
+                      <span>
+                        #{s.problemId} {s.problemTitle}{' '}
+                        <Link to={`/problems/${s.problemId}`} target="_blank" style={{ fontSize: 12, marginLeft: 6 }}>
+                          [Xem đề ↗]
+                        </Link>
+                      </span>
                     ),
                   },
                   {

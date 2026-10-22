@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
-import { App, Button, Card, Popconfirm, Select, Space, Table, Tabs, Tag, Typography, Upload } from 'antd'
-import { ArrowLeftOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, WifiOutlined } from '@ant-design/icons'
+import { useState } from 'react'
+import { App, Button, Card, Popconfirm, Select, Space, Table, Tabs, Tooltip, Typography, Upload } from 'antd'
+import { ArrowLeftOutlined, DeleteOutlined, EyeOutlined, ProfileOutlined, UploadOutlined, WifiOutlined } from '@ant-design/icons'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../api'
 import { useFetch } from '../../lib/hooks'
@@ -77,17 +77,34 @@ export default function AdminClassroomDetailPage() {
   }
 
   const studentColumns = [
-    { title: 'MSSV', dataIndex: 'username', key: 'username', className: 'mono' },
+    {
+      title: 'MSSV',
+      dataIndex: 'username',
+      key: 'username',
+      className: 'mono',
+      render: (v) => (
+        <Tooltip title={`Xem toàn bộ bài nộp của ${v}`}>
+          <Link to={`/admin/submissions?student=${v}`}>{v}</Link>
+        </Tooltip>
+      ),
+    },
     { title: 'Họ tên', dataIndex: 'fullName', key: 'fullName' },
     { title: 'Ngày thêm', dataIndex: 'joinedAt', key: 'joinedAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },
     {
       title: '',
       key: 'actions',
-      width: 80,
+      width: 110,
       render: (_, row) => (
-        <Popconfirm title="Xóa khỏi lớp?" onConfirm={() => removeStudent(row.userId)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
-          <Button size="small" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
+        <Space size={6}>
+          <Tooltip title={`Xem bài nộp của ${row.username}`}>
+            <Link to={`/admin/submissions?student=${row.username}`}>
+              <Button size="small" icon={<ProfileOutlined />} />
+            </Link>
+          </Tooltip>
+          <Popconfirm title="Xóa khỏi lớp?" onConfirm={() => removeStudent(row.userId)} okText="Xóa" cancelText="Hủy" okButtonProps={{ danger: true }}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ]

@@ -42,7 +42,7 @@ function WorkerCard({ w, now, onKill, onRevive }) {
   const age = now - w.lastHeartbeat
   const stale = w.status !== 'DEAD' && age > HEARTBEAT_TIMEOUT
   return (
-    <Card className="worker-card" style={{ borderColor: w.status === 'DEAD' ? '#fecaca' : undefined }}>
+    <Card className="worker-card" style={{ borderColor: w.status === 'DEAD' ? 'var(--wa-bd)' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <Space>
           <CloudServerOutlined style={{ fontSize: 20, color: st.color }} />

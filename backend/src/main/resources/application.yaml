@@ -18,6 +18,7 @@ spring:
   # Lược đồ do Flyway quản lý (db/migration); Hibernate chỉ kiểm tra entity khớp với bảng.
   flyway:
     locations: classpath:db/migration
+    out-of-order: true
   jpa:
     open-in-view: true
     hibernate:

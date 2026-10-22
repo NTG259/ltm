@@ -15,9 +15,10 @@ import {
   Table,
   Tabs,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd'
-import { DeleteOutlined, EditOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, MinusCircleOutlined, PlusOutlined, ProfileOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
 import { useFetch } from '../../lib/hooks'
@@ -250,9 +251,14 @@ export default function AdminProblemsPage() {
           <h1>Ngân hàng đề bài</h1>
           <p>Thêm, sửa, xoá đề bài và bộ test case dùng để chấm.</p>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
-          Thêm đề bài
-        </Button>
+        <Space>
+          <Link to="/admin/submissions">
+            <Button icon={<ProfileOutlined />}>Xem bài nộp sinh viên</Button>
+          </Link>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
+            Thêm đề bài
+          </Button>
+        </Space>
       </div>
       <Card styles={{ body: { padding: 0 } }}>
         <Table
@@ -260,7 +266,7 @@ export default function AdminProblemsPage() {
           loading={list.loading}
           dataSource={list.data || []}
           pagination={false}
-          scroll={{ x: 820 }}
+          scroll={{ x: 860 }}
           columns={[
             { title: 'Mã', dataIndex: 'id', width: 70, render: (id) => <span className="mono">#{id}</span> },
             {
@@ -296,19 +302,30 @@ export default function AdminProblemsPage() {
             { title: 'Số test', dataIndex: 'testCount', width: 80, align: 'center' },
             {
               title: 'Bài nộp (AC)',
-              width: 130,
+              width: 140,
               render: (_, p) => (
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {p.acceptedSubmissions}/{p.totalSubmissions} ({percent(p.acceptedSubmissions, p.totalSubmissions)}%)
-                </span>
+                <Tooltip title={`Xem toàn bộ bài nộp của đề #${p.id}`}>
+                  <Link to={`/admin/submissions?problemId=${p.id}`}>
+                    <Tag color={p.totalSubmissions > 0 ? 'blue' : 'default'} style={{ cursor: 'pointer', margin: 0 }}>
+                      <span className="mono" style={{ fontSize: 12 }}>
+                        {p.acceptedSubmissions}/{p.totalSubmissions} ({percent(p.acceptedSubmissions, p.totalSubmissions)}%)
+                      </span>
+                    </Tag>
+                  </Link>
+                </Tooltip>
               ),
             },
             {
               title: '',
-              width: 110,
+              width: 140,
               align: 'right',
               render: (_, p) => (
                 <Space>
+                  <Tooltip title="Xem bài nộp của đề này">
+                    <Link to={`/admin/submissions?problemId=${p.id}`}>
+                      <Button size="small" icon={<ProfileOutlined />} aria-label="Xem bài nộp" />
+                    </Link>
+                  </Tooltip>
                   <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(p.id)} aria-label="Sửa" />
                   <Popconfirm
                     title={`Xoá đề #${p.id}?`}

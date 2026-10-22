@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Card, Input, Select, Space, Statistic, Table, Tag, Typography } from 'antd'
 import { CloudServerOutlined, SearchOutlined } from '@ant-design/icons'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useNow, useSocket } from '../lib/hooks'
@@ -13,9 +13,40 @@ import VerdictTag from '../components/VerdictTag'
 export default function SubmissionsPage({ admin }) {
   const { user } = useAuth()
   const now = useNow(10000)
-  const [verdict, setVerdict] = useState(null)
-  const [problemId, setProblemId] = useState(null)
-  const [student, setStudent] = useState('')
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const verdict = searchParams.get('verdict') || null
+  const problemId = searchParams.get('problemId') ? Number(searchParams.get('problemId')) : null
+  const student = searchParams.get('student') || ''
+
+  const onProblemChange = (val) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (val) next.set('problemId', val)
+      else next.delete('problemId')
+      return next
+    }, { replace: true })
+  }
+
+  const onStudentChange = (val) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (val) next.set('student', val)
+      else next.delete('student')
+      return next
+    }, { replace: true })
+  }
+
+  const onVerdictChange = (val) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (val) next.set('verdict', val)
+      else next.delete('verdict')
+      return next
+    }, { replace: true })
+  }
+
   const subs = useFetch(() => api.listSubmissions(admin ? {} : { userId: user.id }), [admin, user.id])
   const problems = useFetch(() => api.listProblems(), [])
   const { setData } = subs
@@ -62,11 +93,11 @@ export default function SubmissionsPage({ admin }) {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>{admin ? 'Toàn bộ bài nộp' : 'Bài nộp của tôi'}</h1>
+          <h1>{admin ? 'Toàn bộ bài nộp của sinh viên' : 'Bài nộp của tôi'}</h1>
           <p>
             {admin
-              ? 'Tra cứu và lọc bài nộp của tất cả thí sinh. Trạng thái cập nhật realtime qua WebSocket.'
-              : 'Lịch sử nộp bài và kết quả chấm của bạn.'}
+              ? 'Tra cứu và lọc bài nộp của sinh viên. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn C++ và kết quả chấm.'
+              : 'Lịch sử nộp bài và kết quả chấm của bạn. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn và kết quả test.'}
           </p>
         </div>
       </div>
@@ -96,7 +127,7 @@ export default function SubmissionsPage({ admin }) {
               prefix={<SearchOutlined />}
               placeholder="MSSV hoặc họ tên"
               value={student}
-              onChange={(e) => setStudent(e.target.value)}
+              onChange={(e) => onStudentChange(e.target.value)}
               style={{ width: 220 }}
             />
           )}
@@ -104,7 +135,7 @@ export default function SubmissionsPage({ admin }) {
             allowClear
             placeholder="Đề bài"
             value={problemId}
-            onChange={setProblemId}
+            onChange={onProblemChange}
             style={{ width: 260 }}
             showSearch={{ optionFilterProp: 'label' }}
             options={(problems.data || []).map((p) => ({ value: p.id, label: `#${p.id} ${p.title}` }))}
@@ -113,7 +144,7 @@ export default function SubmissionsPage({ admin }) {
             allowClear
             placeholder="Kết quả"
             value={verdict}
-            onChange={setVerdict}
+            onChange={onVerdictChange}
             style={{ width: 220 }}
             options={[
               { value: 'PENDING', label: 'Đang chờ / đang chấm' },
@@ -126,15 +157,22 @@ export default function SubmissionsPage({ admin }) {
           rowKey="id"
           loading={subs.loading}
           dataSource={rows}
-          scroll={{ x: 900 }}
+          scroll={{ x: 920 }}
           pagination={{ pageSize: 15, showSizeChanger: false }}
+          onRow={(s) => ({
+            style: { cursor: 'pointer' },
+            onClick: (e) => {
+              if (e.target.closest('a, button, input, .ant-select')) return
+              navigate(`/submissions/${s.id}`)
+            },
+          })}
           columns={[
             {
-              title: 'ID',
+              title: 'Mã bài',
               dataIndex: 'id',
-              width: 80,
+              width: 85,
               render: (id) => (
-                <Link to={`/submissions/${id}`} className="mono">
+                <Link to={`/submissions/${id}`} className="mono" style={{ fontWeight: 600 }}>
                   #{id}
                 </Link>
               ),
@@ -151,24 +189,41 @@ export default function SubmissionsPage({ admin }) {
                     title: 'Thí sinh',
                     render: (_, s) => (
                       <div>
-                        <div>{s.userName}</div>
-                        <Typography.Text type="secondary" className="mono" style={{ fontSize: 12 }}>
+                        <div style={{ fontWeight: 600 }}>{s.userName}</div>
+                        <Tag
+                          color="geekblue"
+                          style={{ cursor: 'pointer', marginTop: 2 }}
+                          title="Bấm để lọc toàn bộ bài nộp của MSSV này"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onStudentChange(s.userId)
+                          }}
+                        >
                           {s.userId}
-                        </Typography.Text>
+                        </Tag>
                       </div>
                     ),
                   },
                 ]
               : []),
             {
-              title: 'Bài',
+              title: 'Đề bài',
               render: (_, s) => (
                 <Space size={6} wrap>
-                  <Link to={`/problems/${s.problemId}`}>
+                  <span style={{ fontWeight: 500 }}>
                     #{s.problemId} {s.problemTitle}
+                  </span>
+                  <Link
+                    to={`/problems/${s.problemId}`}
+                    target="_blank"
+                    title="Mở nội dung đề bài ở tab mới"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontSize: 12, color: 'var(--text-2)' }}
+                  >
+                    [Xem đề ↗]
                   </Link>
                   {s.contestId && (
-                    <Link to={`/contests/${s.contestId}`}>
+                    <Link to={`/contests/${s.contestId}`} onClick={(e) => e.stopPropagation()}>
                       <Tag color="purple" style={{ margin: 0 }}>
                         Kỳ thi #{s.contestId}
                       </Tag>
@@ -177,7 +232,7 @@ export default function SubmissionsPage({ admin }) {
                 </Space>
               ),
             },
-            { title: 'Kết quả', width: 150, render: (_, s) => <VerdictTag submission={s} /> },
+            { title: 'Kết quả', width: 140, render: (_, s) => <VerdictTag submission={s} /> },
             { title: 'Điểm', dataIndex: 'score', width: 70, render: (v) => v ?? '—' },
             { title: 'Thời gian', dataIndex: 'timeMs', width: 100, render: (v) => <span className="mono">{formatTime(v)}</span> },
             {

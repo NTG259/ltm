@@ -269,6 +269,167 @@ const mockApi = {
   deleteProblem: (id) => delay(engine.deleteProblem(id)),
   killWorker: (id) => delay(engine.killWorker(id), 50),
   reviveWorker: (id) => delay(engine.reviveWorker(id), 50),
+  // ---- Khóa học (Curriculum mock) ----
+  listCourses: () => delay([
+    { id: 1, title: 'Lập trình C++ Cơ bản (C++ Fundamentals)', description: 'Lộ trình nhập môn toàn diện: cú pháp, biến, điều kiện, vòng lặp, hàm và mảng.', published: true, unitCount: 7, createdAt: Date.now() - 86400000 * 5 },
+    { id: 2, title: 'Cấu trúc Dữ liệu & Giải thuật C++ (DSA)', description: 'Thư viện STL nâng cao (Vector, Map, Set), ngăn xếp, hàng đợi, đệ quy và quy hoạch động.', published: true, unitCount: 6, createdAt: Date.now() - 86400000 * 3 },
+    { id: 3, title: 'Lập trình Hướng đối tượng C++ (OOP)', description: 'Nắm vững 4 tính chất OOP: Đóng gói, Kế thừa, Đa hình và Trừu tượng hóa.', published: true, unitCount: 5, createdAt: Date.now() - 86400000 * 1 },
+    { id: 4, title: 'Kỹ thuật Lập trình C++ Nâng cao (Bản nháp)', description: 'Quản lý con trỏ thông minh (Smart Pointers), Move Semantics và Concurrency đa luồng.', published: false, unitCount: 2, createdAt: Date.now() }
+  ]),
+  getCourse: (id) => {
+    const numId = Number(id)
+    const unitsMap = {
+      1: [
+        { id: 101, courseId: 1, title: 'Chủ đề 1: Cấu trúc chương trình C++ và Nhập xuất (cin / cout)', orderIndex: 1, createdAt: Date.now() },
+        { id: 102, courseId: 1, title: 'Chủ đề 2: Biến, Kiểu dữ liệu nguyên thủy và Ép kiểu', orderIndex: 2, createdAt: Date.now() },
+        { id: 103, courseId: 1, title: 'Chủ đề 3: Các phép toán số học, logic và bitwise', orderIndex: 3, createdAt: Date.now() },
+        { id: 104, courseId: 1, title: 'Chủ đề 4: Cấu trúc rẽ nhánh if - else và switch - case', orderIndex: 4, createdAt: Date.now() },
+        { id: 105, courseId: 1, title: 'Chủ đề 5: Vòng lặp for, while, do-while và lệnh break / continue', orderIndex: 5, createdAt: Date.now() },
+        { id: 106, courseId: 1, title: 'Chủ đề 6: Hàm, truyền tham trị và truyền tham chiếu (&)', orderIndex: 6, createdAt: Date.now() },
+        { id: 107, courseId: 1, title: 'Chủ đề 7: Mảng 1 chiều và chuỗi ký tự cơ bản (std::string)', orderIndex: 7, createdAt: Date.now() }
+      ],
+      2: [
+        { id: 201, courseId: 2, title: 'Chủ đề 1: Thư viện chuẩn STL: std::vector và std::pair', orderIndex: 1, createdAt: Date.now() },
+        { id: 202, courseId: 2, title: 'Chủ đề 2: Ngăn xếp (Stack) và Hàng đợi (Queue, Priority Queue)', orderIndex: 2, createdAt: Date.now() },
+        { id: 203, courseId: 2, title: 'Chủ đề 3: Tập hợp (std::set) và Bảng ánh xạ (std::map, unordered_map)', orderIndex: 3, createdAt: Date.now() },
+        { id: 204, courseId: 2, title: 'Chủ đề 4: Kỹ thuật đệ quy và Quay lui (Backtracking)', orderIndex: 4, createdAt: Date.now() },
+        { id: 205, courseId: 2, title: 'Chủ đề 5: Thuật toán sắp xếp và Tìm kiếm nhị phân (Binary Search)', orderIndex: 5, createdAt: Date.now() },
+        { id: 206, courseId: 2, title: 'Chủ đề 6: Quy hoạch động 1 chiều (1D Dynamic Programming)', orderIndex: 6, createdAt: Date.now() }
+      ],
+      3: [
+        { id: 301, courseId: 3, title: 'Chủ đề 1: Lớp (Class), Đối tượng (Object) và Phạm vi truy cập', orderIndex: 1, createdAt: Date.now() },
+        { id: 302, courseId: 3, title: 'Chủ đề 2: Hàm khởi tạo (Constructor) và Hàm hủy (Destructor)', orderIndex: 2, createdAt: Date.now() },
+        { id: 303, courseId: 3, title: 'Chủ đề 3: Tính đóng gói (Encapsulation) và Tính kế thừa (Inheritance)', orderIndex: 3, createdAt: Date.now() },
+        { id: 304, courseId: 3, title: 'Chủ đề 4: Tính đa hình (Polymorphism) và Hàm ảo (Virtual Functions)', orderIndex: 4, createdAt: Date.now() },
+        { id: 305, courseId: 3, title: 'Chủ đề 5: Nạp chồng toán tử (Operator Overloading)', orderIndex: 5, createdAt: Date.now() }
+      ],
+      4: [
+        { id: 401, courseId: 4, title: 'Chủ đề 1: Con trỏ thô (Raw Pointers) và Vùng nhớ Heap', orderIndex: 1, createdAt: Date.now() },
+        { id: 402, courseId: 4, title: 'Chủ đề 2: Smart Pointers (unique_ptr, shared_ptr, weak_ptr)', orderIndex: 2, createdAt: Date.now() }
+      ]
+    }
+    const courseTitles = {
+      1: { title: 'Lập trình C++ Cơ bản (C++ Fundamentals)', description: 'Lộ trình nhập môn toàn diện: cú pháp, biến, điều kiện, vòng lặp, hàm và mảng.', published: true },
+      2: { title: 'Cấu trúc Dữ liệu & Giải thuật C++ (DSA)', description: 'Thư viện STL nâng cao (Vector, Map, Set), ngăn xếp, hàng đợi, đệ quy và quy hoạch động.', published: true },
+      3: { title: 'Lập trình Hướng đối tượng C++ (OOP)', description: 'Nắm vững 4 tính chất OOP: Đóng gói, Kế thừa, Đa hình và Trừu tượng hóa.', published: true },
+      4: { title: 'Kỹ thuật Lập trình C++ Nâng cao (Bản nháp)', description: 'Quản lý con trỏ thông minh (Smart Pointers), Move Semantics và Concurrency đa luồng.', published: false }
+    }
+    const c = courseTitles[numId] || courseTitles[1]
+    return delay({
+      id: numId,
+      title: c.title,
+      description: c.description,
+      published: c.published,
+      createdAt: Date.now() - 86400000 * 3,
+      units: unitsMap[numId] || []
+    })
+  },
+  createCourse: (data) => delay({ id: Date.now(), ...data, published: data.published || false, createdAt: Date.now(), unitCount: 0 }),
+  updateCourse: (id, data) => delay({ id: Number(id), ...data, createdAt: Date.now() }),
+  deleteCourse: () => delay(true),
+  addCourseUnit: (id, data) => delay({ id: Date.now(), courseId: Number(id), ...data, createdAt: Date.now() }),
+  updateCourseUnit: (id, uid, data) => delay({ id: Number(uid), courseId: Number(id), ...data, createdAt: Date.now() }),
+  deleteCourseUnit: () => delay(true),
+  reorderCourseUnits: (id, items) => delay(items),
+  getLesson: (unitId) => {
+    const raw = localStorage.getItem(`cj.lesson.${unitId}`)
+    if (raw) {
+      try { return delay(JSON.parse(raw)) } catch {}
+    }
+    return delay({
+      id: Number(unitId),
+      unitId: Number(unitId),
+      theoryContent: `### 1. Giới thiệu chủ đề\nĐây là bài giảng lý thuyết chi tiết cho chủ đề này.\n\n### 2. Kiến thức trọng tâm\n- Nắm vững cú pháp C++ cơ bản và giải thuật tương ứng.\n- Rèn luyện kỹ năng phân tích độ phức tạp thời gian và không gian bộ nhớ.\n\n> [!TIP]\n> Bạn có thể bấm nút **"Chạy thử ngay (Try it)"** để thực hành trực tiếp với mã nguồn mẫu!`,
+      sampleCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Xin chào từ CodeJudge LMS!" << endl;\n    return 0;\n}`,
+      sampleInput: '',
+      updatedAt: Date.now(),
+    })
+  },
+  updateLesson: (unitId, data) => {
+    const updated = {
+      id: Number(unitId),
+      unitId: Number(unitId),
+      theoryContent: data.theoryContent || '',
+      sampleCode: data.sampleCode || '',
+      sampleInput: data.sampleInput || '',
+      updatedAt: Date.now(),
+    }
+    try {
+      localStorage.setItem(`cj.lesson.${unitId}`, JSON.stringify(updated))
+    } catch {}
+    return delay(updated)
+  },
+  getUnitProblems: (unitId) => {
+    const raw = localStorage.getItem(`cj.unit_problems.${unitId}`)
+    if (raw) {
+      try { return delay(JSON.parse(raw)) } catch {}
+    }
+    const def = [
+      { id: 1, unitId: Number(unitId), problemId: 1, title: 'A + B Problem', difficulty: 'easy', orderIndex: 1, solved: false }
+    ]
+    return delay(def)
+  },
+  assignUnitProblem: (unitId, problemId) => {
+    const raw = localStorage.getItem(`cj.unit_problems.${unitId}`)
+    const list = raw ? JSON.parse(raw) : [
+      { id: 1, unitId: Number(unitId), problemId: 1, title: 'A + B Problem', difficulty: 'easy', orderIndex: 1, solved: false }
+    ]
+    const p = engine.problems().find((x) => x.id === Number(problemId))
+    const item = {
+      id: Date.now(),
+      unitId: Number(unitId),
+      problemId: Number(problemId),
+      title: p?.title || `Bài tập #${problemId}`,
+      difficulty: p?.difficulty || 'easy',
+      orderIndex: list.length + 1,
+      solved: false,
+    }
+    list.push(item)
+    try { localStorage.setItem(`cj.unit_problems.${unitId}`, JSON.stringify(list)) } catch {}
+    return delay(item)
+  },
+  removeUnitProblem: (unitId, problemId) => {
+    const raw = localStorage.getItem(`cj.unit_problems.${unitId}`)
+    if (raw) {
+      try {
+        const list = JSON.parse(raw).filter((x) => x.problemId !== Number(problemId))
+        localStorage.setItem(`cj.unit_problems.${unitId}`, JSON.stringify(list))
+      } catch {}
+    }
+    return delay(true)
+  },
+  getCourseProgress: (courseId) => {
+    let completedList = []
+    try {
+      const raw = localStorage.getItem('cj.user_completed_units')
+      if (raw) completedList = JSON.parse(raw)
+    } catch {}
+    return delay({
+      courseId: Number(courseId),
+      completedUnitIds: completedList.map(Number),
+      completedCount: completedList.length,
+      totalUnits: 7,
+      percent: Math.min(100, Math.round((completedList.length / 7) * 100)),
+    })
+  },
+  toggleUnitProgress: (unitId) => {
+    let completedList = []
+    try {
+      const raw = localStorage.getItem('cj.user_completed_units')
+      if (raw) completedList = JSON.parse(raw)
+    } catch {}
+    const id = Number(unitId)
+    const exists = completedList.includes(id)
+    if (exists) {
+      completedList = completedList.filter((x) => x !== id)
+    } else {
+      completedList.push(id)
+    }
+    try {
+      localStorage.setItem('cj.user_completed_units', JSON.stringify(completedList))
+    } catch {}
+    return delay({ unitId: id, completed: !exists })
+  },
 }
 
 const realApi = {
@@ -323,6 +484,23 @@ const realApi = {
   // ---- Monitor ----
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),
   getContestMonitor: (cid, kid) => http('GET', `/classrooms/${cid}/contests/${kid}/monitor`),
+  // ---- Khóa học (Curriculum) ----
+  listCourses: () => http('GET', '/courses').catch(() => mockApi.listCourses()),
+  getCourse: (id) => http('GET', `/courses/${id}`).catch(() => mockApi.getCourse(id)),
+  createCourse: (data) => http('POST', '/courses', data).catch(() => mockApi.createCourse(data)),
+  updateCourse: (id, data) => http('PUT', `/courses/${id}`, data).catch(() => mockApi.updateCourse(id, data)),
+  deleteCourse: (id) => http('DELETE', `/courses/${id}`).catch(() => mockApi.deleteCourse(id)),
+  addCourseUnit: (id, data) => http('POST', `/courses/${id}/units`, data).catch(() => mockApi.addCourseUnit(id, data)),
+  updateCourseUnit: (id, uid, data) => http('PUT', `/courses/${id}/units/${uid}`, data).catch(() => mockApi.updateCourseUnit(id, uid, data)),
+  deleteCourseUnit: (id, uid) => http('DELETE', `/courses/${id}/units/${uid}`).catch(() => mockApi.deleteCourseUnit(id, uid)),
+  reorderCourseUnits: (id, items) => http('PUT', `/courses/${id}/units/reorder`, items).catch(() => mockApi.reorderCourseUnits(id, items)),
+  getLesson: (unitId) => http('GET', `/courses/units/${unitId}/lesson`).catch(() => mockApi.getLesson(unitId)),
+  updateLesson: (unitId, data) => http('PUT', `/courses/units/${unitId}/lesson`, data).catch(() => mockApi.updateLesson(unitId, data)),
+  getUnitProblems: (unitId) => http('GET', `/courses/units/${unitId}/problems`).catch(() => mockApi.getUnitProblems(unitId)),
+  assignUnitProblem: (unitId, problemId) => http('POST', `/courses/units/${unitId}/problems`, { problemId }).catch(() => mockApi.assignUnitProblem(unitId, problemId)),
+  removeUnitProblem: (unitId, problemId) => http('DELETE', `/courses/units/${unitId}/problems/${problemId}`).catch(() => mockApi.removeUnitProblem(unitId, problemId)),
+  getCourseProgress: (courseId) => http('GET', `/courses/${courseId}/progress`).catch(() => mockApi.getCourseProgress(courseId)),
+  toggleUnitProgress: (unitId) => http('POST', `/courses/units/${unitId}/toggle-progress`).catch(() => mockApi.toggleUnitProgress(unitId)),
 }
 
 export const api = USE_MOCK ? mockApi : realApi

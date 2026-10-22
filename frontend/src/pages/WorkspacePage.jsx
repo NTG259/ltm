@@ -147,13 +147,41 @@ function MySubmissions({ problemId, userId, contestId, onPick, refreshKey }) {
         {
           title: 'ID',
           dataIndex: 'id',
-          render: (id) => <span className="mono">#{id}</span>,
+          width: 80,
+          render: (id) => (
+            <Link
+              to={`/submissions/${id}`}
+              target="_blank"
+              onClick={(e) => e.stopPropagation()}
+              className="mono"
+              style={{ fontWeight: 600 }}
+              title="Mở trang chi tiết bài nộp này"
+            >
+              #{id}
+            </Link>
+          ),
         },
         { title: 'Kết quả', render: (_, r) => <VerdictTag submission={r} /> },
-        { title: 'Điểm', dataIndex: 'score', render: (v) => v ?? '—' },
-        { title: 'Thời gian', dataIndex: 'timeMs', render: (v) => <span className="mono">{formatTime(v)}</span> },
-        { title: 'Bộ nhớ', dataIndex: 'memoryKb', render: (v) => <span className="mono">{formatMemory(v)}</span> },
+        { title: 'Điểm', dataIndex: 'score', width: 65, render: (v) => v ?? '—' },
+        { title: 'Thời gian', dataIndex: 'timeMs', width: 85, render: (v) => <span className="mono">{formatTime(v)}</span> },
+        { title: 'Bộ nhớ', dataIndex: 'memoryKb', width: 80, render: (v) => <span className="mono">{formatMemory(v)}</span> },
         { title: 'Nộp lúc', dataIndex: 'createdAt', render: (v) => formatRelative(v, now) },
+        {
+          title: '',
+          key: 'action',
+          width: 85,
+          align: 'right',
+          render: (_, r) => (
+            <Link
+              to={`/submissions/${r.id}`}
+              target="_blank"
+              onClick={(e) => e.stopPropagation()}
+              style={{ fontSize: 12, fontWeight: 500 }}
+            >
+              Xem bài ↗
+            </Link>
+          ),
+        },
       ]}
     />
   )
@@ -213,7 +241,7 @@ export function Workspace({ id, contest, label }) {
             <p style={{ color: '#ef4444', fontWeight: 600 }}>
               Hệ thống phát hiện bạn vừa rời khỏi màn hình làm bài thi!
             </p>
-            <ul style={{ paddingLeft: 20, margin: '8px 0', color: 'var(--text-secondary)' }}>
+            <ul style={{ paddingLeft: 20, margin: '8px 0', color: 'var(--text-2)' }}>
               <li>
                 Hành vi:{' '}
                 <b>{type === 'TAB_SWITCH' ? 'Chuyển tab / Thu nhỏ trình duyệt' : 'Mất tiêu điểm cửa sổ làm bài'}</b>
@@ -351,9 +379,9 @@ export function Workspace({ id, contest, label }) {
             <span className="title">
               <span className="mono muted">#{problem.id}</span> {problem.title}
             </span>
-            <Tag color={DIFF_COLOR[problem.difficulty]} style={{ margin: 0 }}>
+            <span className={`diff-pill diff-pill-${problem.difficulty}`} style={{ margin: 0 }}>
               {DIFFICULTIES[problem.difficulty].label}
-            </Tag>
+            </span>
           </>
         )}
         <span style={{ flex: 1 }} />
@@ -395,9 +423,16 @@ export function Workspace({ id, contest, label }) {
             <Splitter.Panel defaultSize="58%" min="20%">
               <div className="pane">
                 <div className="pane-head">
-                  <Typography.Text className="mono" style={{ fontSize: 12 }}>
-                    solution.cpp <span className="muted">· C++17</span>
-                  </Typography.Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 5, marginRight: 2 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#ef4444', opacity: 0.8 }} />
+                      <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#f59e0b', opacity: 0.8 }} />
+                      <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#10b981', opacity: 0.8 }} />
+                    </div>
+                    <Typography.Text className="mono" style={{ fontSize: 12.5, fontWeight: 600 }}>
+                      solution.cpp <span className="muted" style={{ fontWeight: 400 }}>· C++17</span>
+                    </Typography.Text>
+                  </div>
                   <Space size={4}>
                     <Typography.Text type="secondary" className="mono" style={{ fontSize: 12, marginInlineEnd: 4 }}>
                       Dòng {cursor.line}, Cột {cursor.col}
@@ -483,9 +518,22 @@ export function Workspace({ id, contest, label }) {
                           problem={problem}
                           extra={
                             active.status === 'FINISHED' && (
-                              <Link to={`/submissions/${active.id}`} style={{ fontSize: 12 }}>
-                                Xem chi tiết →
-                              </Link>
+                              <Space size={8} wrap>
+                                {active.sourceCode && (
+                                  <Button
+                                    size="small"
+                                    onClick={() => {
+                                      setCode(active.sourceCode)
+                                      message.success(`Đã nạp lại mã của bài nộp #${active.id} vào trình soạn thảo`)
+                                    }}
+                                  >
+                                    Nạp code này vào editor
+                                  </Button>
+                                )}
+                                <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
+                                  Xem toàn bộ bài nộp ↗
+                                </Link>
+                              </Space>
                             )
                           }
                         />

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button, Card, Input, Progress, Segmented, Select, Space, Table, Tag, Tooltip, Typography } from 'antd'
-import { CheckCircleFilled, ExclamationCircleFilled, SearchOutlined } from '@ant-design/icons'
+import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled, SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -44,9 +44,31 @@ export default function ProblemsPage() {
           <h1>Kho bài tập</h1>
           <p>Chọn đề bài, viết lời giải C++17 và nộp để được chấm tự động.</p>
         </div>
-        <Typography.Text type="secondary" className="mono">
-          Đã giải <b style={{ color: 'var(--text)' }}>{solved}</b> / {problems.data?.length ?? '…'} bài
-        </Typography.Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '6px 14px',
+              borderRadius: 999,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            }}
+          >
+            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Tiến độ:</span>
+            <b style={{ color: 'var(--text)', fontSize: 14, fontFamily: 'var(--mono)' }}>
+              {solved}/{problems.data?.length ?? 0}
+            </b>
+            <Progress
+              percent={problems.data?.length ? Math.round((solved / problems.data.length) * 100) : 0}
+              size={[64, 6]}
+              showInfo={false}
+              strokeColor="#10b981"
+            />
+          </div>
+        </div>
       </div>
 
       <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 14 } }}>
@@ -85,6 +107,11 @@ export default function ProblemsPage() {
           dataSource={rows}
           pagination={false}
           scroll={{ x: 760 }}
+          rowClassName={(p) => {
+            if (myStatus[p.id] === 'solved') return 'row-problem-solved'
+            if (myStatus[p.id] === 'tried') return 'row-problem-failed'
+            return ''
+          }}
           onRow={(p) => ({ onDoubleClick: () => navigate(`/problems/${p.id}`) })}
           columns={[
             {
@@ -93,12 +120,38 @@ export default function ProblemsPage() {
               align: 'center',
               render: (_, p) =>
                 myStatus[p.id] === 'solved' ? (
-                  <Tooltip title="Đã giải">
-                    <CheckCircleFilled style={{ color: '#10b981' }} />
+                  <Tooltip title="Đã giải thành công (AC)">
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        display: 'inline-grid',
+                        placeItems: 'center',
+                        boxShadow: '0 2px 6px rgba(22, 163, 74, 0.4)',
+                      }}
+                    >
+                      <CheckCircleFilled style={{ fontSize: 14 }} />
+                    </div>
                   </Tooltip>
                 ) : myStatus[p.id] === 'tried' ? (
-                  <Tooltip title="Đã thử, chưa AC">
-                    <ExclamationCircleFilled style={{ color: '#f59e0b' }} />
+                  <Tooltip title="Đã nộp nhưng chưa AC (bị WA / chưa đạt)">
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        background: '#dc2626',
+                        color: '#ffffff',
+                        display: 'inline-grid',
+                        placeItems: 'center',
+                        boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
+                      }}
+                    >
+                      <CloseCircleFilled style={{ fontSize: 14 }} />
+                    </div>
                   </Tooltip>
                 ) : null,
             },
@@ -107,7 +160,18 @@ export default function ProblemsPage() {
               title: 'Tên bài tập',
               render: (_, p) => (
                 <div>
-                  <Link to={`/problems/${p.id}`} style={{ fontWeight: 500 }}>
+                  <Link
+                    to={`/problems/${p.id}`}
+                    style={{
+                      fontWeight: 600,
+                      color:
+                        myStatus[p.id] === 'solved'
+                          ? '#15803d'
+                          : myStatus[p.id] === 'tried'
+                          ? '#b91c1c'
+                          : undefined,
+                    }}
+                  >
                     {p.title}
                   </Link>
                   <div style={{ marginTop: 4 }}>
@@ -146,8 +210,8 @@ export default function ProblemsPage() {
             {
               title: 'Độ khó',
               dataIndex: 'difficulty',
-              width: 110,
-              render: (d) => <Tag color={DIFF_COLOR[d]}>{DIFFICULTIES[d].label}</Tag>,
+              width: 120,
+              render: (d) => <span className={`diff-pill diff-pill-${d}`}>{DIFFICULTIES[d]?.label || d}</span>,
             },
             {
               title: '',
@@ -155,11 +219,18 @@ export default function ProblemsPage() {
               align: 'right',
               render: (_, p) => (
                 <Button
-                  type={myStatus[p.id] === 'solved' ? 'default' : 'primary'}
+                  type={myStatus[p.id] === 'solved' ? 'default' : myStatus[p.id] === 'tried' ? 'default' : 'primary'}
                   size="small"
+                  style={
+                    myStatus[p.id] === 'solved'
+                      ? { borderColor: '#16a34a', color: '#16a34a', fontWeight: 600 }
+                      : myStatus[p.id] === 'tried'
+                      ? { borderColor: '#dc2626', color: '#dc2626', fontWeight: 600 }
+                      : undefined
+                  }
                   onClick={() => navigate(`/problems/${p.id}`)}
                 >
-                  {myStatus[p.id] === 'solved' ? 'Xem lại' : myStatus[p.id] ? 'Làm tiếp' : 'Giải ngay'}
+                  {myStatus[p.id] === 'solved' ? '✓ Đã giải' : myStatus[p.id] ? 'Làm tiếp' : 'Giải ngay'}
                 </Button>
               ),
             },

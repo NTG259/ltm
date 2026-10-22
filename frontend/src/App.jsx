@@ -24,6 +24,12 @@ const AdminClassroomDetailPage = lazy(() => import('./pages/admin/AdminClassroom
 const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroomMonitorPage'))
 const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
 const MyClassroomsPage = lazy(() => import('./pages/MyClassroomsPage'))
+const CourseListPage = lazy(() => import('./pages/Courses/CourseListPage'))
+const CourseDetailPage = lazy(() => import('./pages/Courses/CourseDetailPage'))
+const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
+const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
+const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
+const PlaygroundPage = lazy(() => import('./pages/PlaygroundPage'))
 
 const THEME_KEY = 'cj.theme'
 
@@ -57,6 +63,11 @@ function AppRoutes() {
             </RequireAuth>
           }
         >
+          <Route path="/courses" element={<CourseListPage />} />
+          <Route path="/courses/:id" element={<CourseDetailPage />} />
+          <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
+          <Route path="/courses/:courseId/learn/:unitId" element={<CourseLearnPage />} />
+          <Route path="/playground" element={<PlaygroundPage />} />
           <Route path="/problems" element={<ProblemsPage />} />
           <Route path="/problems/:id" element={<WorkspacePage />} />
           <Route path="/submissions" element={<SubmissionsPage />} />
@@ -87,6 +98,22 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <AdminContestsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/courses"
+            element={
+              <RequireAuth admin>
+                <AdminCoursesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/courses/:id"
+            element={
+              <RequireAuth admin>
+                <AdminCourseEditPage />
               </RequireAuth>
             }
           />

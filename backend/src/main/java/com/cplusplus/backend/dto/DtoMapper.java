@@ -205,4 +205,78 @@ public final class DtoMapper {
         map.put("joinedAt", cs.getJoinedAt().toEpochMilli());
         return map;
     }
+
+    public static Map<String, Object> toCourseMap(com.cplusplus.backend.domain.course.Course c) {
+        if (c == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", c.getId());
+        map.put("title", c.getTitle());
+        map.put("description", c.getDescription());
+        map.put("published", c.isPublished());
+        map.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toEpochMilli() : null);
+        map.put("unitCount", c.getUnits() != null ? c.getUnits().size() : 0);
+        return map;
+    }
+
+    public static Map<String, Object> toCourseDetailMap(com.cplusplus.backend.domain.course.Course c) {
+        if (c == null) return null;
+        Map<String, Object> map = toCourseMap(c);
+        List<Map<String, Object>> units = new ArrayList<>();
+        if (c.getUnits() != null) {
+            for (com.cplusplus.backend.domain.course.CourseUnit u : c.getUnits()) {
+                units.add(toCourseUnitMap(u));
+            }
+        }
+        map.put("units", units);
+        return map;
+    }
+
+    public static Map<String, Object> toCourseUnitMap(com.cplusplus.backend.domain.course.CourseUnit u) {
+        if (u == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", u.getId());
+        map.put("courseId", u.getCourse() != null ? u.getCourse().getId() : null);
+        map.put("title", u.getTitle());
+        map.put("orderIndex", u.getOrderIndex());
+        map.put("createdAt", u.getCreatedAt() != null ? u.getCreatedAt().toEpochMilli() : null);
+        return map;
+    }
+
+    public static Map<String, Object> toCourseLessonMap(com.cplusplus.backend.domain.course.CourseLesson l) {
+        if (l == null) return null;
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", l.getId());
+        map.put("unitId", l.getUnit() != null ? l.getUnit().getId() : null);
+        map.put("theoryContent", l.getTheoryContent());
+        map.put("sampleCode", l.getSampleCode());
+        map.put("sampleInput", l.getSampleInput());
+        map.put("updatedAt", l.getUpdatedAt() != null ? l.getUpdatedAt().toEpochMilli() : null);
+        return map;
+    }
+
+    public static Map<String, Object> defaultLessonMap(com.cplusplus.backend.domain.course.CourseUnit u) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", null);
+        map.put("unitId", u.getId());
+        map.put("theoryContent", "### 1. Khái niệm cốt lõi\nChủ đề: **" + u.getTitle() + "**\n\nNội dung lý thuyết đang được giảng viên hoàn thiện...");
+        map.put("sampleCode", "#include <iostream>\nusing namespace std;\n\nint main() {\n    // Ví dụ minh họa cho: " + u.getTitle() + "\n    cout << \"Xin chào! Bạn đang học C++ tại CodeJudge.\" << endl;\n    return 0;\n}");
+        map.put("sampleInput", "");
+        map.put("updatedAt", System.currentTimeMillis());
+        return map;
+    }
+
+    public static Map<String, Object> toUnitProblemMap(com.cplusplus.backend.domain.course.CourseUnitProblem up, boolean solved) {
+        if (up == null || up.getProblem() == null) return null;
+        com.cplusplus.backend.domain.problem.Problem p = up.getProblem();
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", p.getId());
+        map.put("problemId", p.getId());
+        map.put("unitProblemId", up.getId());
+        map.put("unitId", up.getUnit() != null ? up.getUnit().getId() : null);
+        map.put("title", p.getTitle());
+        map.put("difficulty", p.getDifficulty() != null ? p.getDifficulty().code() : "easy");
+        map.put("orderIndex", up.getOrderIndex());
+        map.put("solved", solved);
+        return map;
+    }
 }

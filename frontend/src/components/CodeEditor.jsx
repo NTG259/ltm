@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import Editor from '@monaco-editor/react'
+import { useThemeMode } from '../theme'
 
 // Cờ đánh dấu đã đăng ký completion provider cho C++ một lần duy nhất
 let cppSnippetsRegistered = false
@@ -167,7 +168,18 @@ function registerCppSnippets(monaco) {
   })
 }
 
-export default function CodeEditor({ value = '', onChange, readOnly = false, markedLines = [], onSubmit, onCursor }) {
+export default function CodeEditor({
+  value = '',
+  onChange,
+  readOnly = false,
+  markedLines = [],
+  onSubmit,
+  onCursor,
+  height,
+  minHeight,
+}) {
+  const { mode } = useThemeMode()
+  const isDark = mode === 'dark'
   const editorRef = useRef(null)
   const monacoRef = useRef(null)
   const decorationsRef = useRef([])
@@ -218,12 +230,13 @@ export default function CodeEditor({ value = '', onChange, readOnly = false, mar
     decorationsRef.current = editor.deltaDecorations(decorationsRef.current, newDecorations)
   }, [markedLines])
 
+  const editorHeight = height || (readOnly ? '480px' : '100%')
   return (
-    <div style={{ height: '100%', width: '100%', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: editorHeight, minHeight: minHeight || (readOnly ? '400px' : undefined), width: '100%', position: 'relative', overflow: 'hidden' }}>
       <Editor
-        height="100%"
+        height={editorHeight}
         language="cpp"
-        theme="vs-dark"
+        theme={isDark ? 'vs-dark' : 'vs'}
         value={value}
         onChange={(val) => {
           if (typeof onChange === 'function') {
@@ -232,8 +245,20 @@ export default function CodeEditor({ value = '', onChange, readOnly = false, mar
         }}
         onMount={handleEditorDidMount}
         loading={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--muted)' }}>
-            Đang khởi tạo trình soạn thảo Monaco…
+          <div
+            style={{
+              padding: '16px',
+              height: '100%',
+              overflow: 'auto',
+              background: isDark ? '#0f172a' : '#ffffff',
+              color: isDark ? '#cbd5e1' : '#334155',
+              fontFamily: "'JetBrains Mono', Consolas, monospace",
+              fontSize: 13,
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            <div style={{ marginBottom: 8, color: 'var(--muted)', fontSize: 12 }}>Đang tải trình soạn thảo Monaco…</div>
+            {value}
           </div>
         }
         options={{
