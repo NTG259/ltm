@@ -1,0 +1,168 @@
+# This is an example .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+project_name: go-judge
+version: 2
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+    - go mod download
+    # you may remove this if you don't need go generate
+    - go generate ./cmd/...
+    - go test ./... -v
+builds:
+  - main: ./cmd/go-judge
+    binary: go-judge
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64
+      - riscv64
+      - loong64
+      - mips64le
+      - ppc64le
+      - s390x
+    goarm:
+      - "5"
+      - "7"
+    goarm64:
+      - "v8.0"
+    goamd64:
+      - v1
+      - v3
+    ignore:
+      - goos: windows
+        goarch: arm
+    tags:
+      - nomsgpack
+      - grpcnotrace
+  - main: ./cmd/go-judge-shell
+    binary: go-judge-shell
+    id: go-judge-shell
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64
+      - riscv64
+      - loong64
+      - mips64le
+      - ppc64le
+      - s390x
+    goarm:
+      - "5"
+      - "7"
+    goarm64:
+      - "v8.0"
+    goamd64:
+      - v1
+      - v3
+    ignore:
+      - goos: windows
+        goarch: arm
+    tags:
+      - nomsgpack
+      - grpcnotrace
+  # - main: ./cmd/go-judge-ffi
+  #   binary: go-judge-ffi
+  #   id: go-judge-ffi
+  #   env:
+  #     - CGO_ENABLED=1
+  #   buildmode: c-shared
+  #   goos:
+  #     - linux
+  #   goarch:
+  #     - amd64
+  #   goamd64:
+  #     - v2
+  - main: ./cmd/go-judge-init
+    binary: go-judge-init
+    id: go-judge-init
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64
+      - riscv64
+      - loong64
+      - mips64le
+      - ppc64le
+      - s390x
+    goarm:
+      - "5"
+      - "7"
+    goarm64:
+      - "v8.0"
+    goamd64:
+      - v2
+      - v3
+archives:
+  - files:
+      - mount.yaml
+    formats: [ 'binary', 'tar.gz' ]
+    name_template: >- 
+      {{ .Binary }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}macOS
+      {{- else }}{{ .Os }}{{ end }}_{{ .Arch }}
+      {{- with .Arm }}v{{ . }}{{ end }}
+      {{- with .Mips }}_{{ . }}{{ end }}
+      {{- if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{end}}
+nfpms:
+  - license: MIT
+    maintainer: "criyle"
+    formats:
+      - apk
+      - deb
+      - rpm
+# nix:
+#   - name: go-judge
+#     license: "mit"
+dockers_v2:
+  - images:
+      - criyle/go-judge
+    dockerfile: "Dockerfile.goreleaser"
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
+    extra_files:
+      - "mount.yaml"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+      - linux/arm/v7
+      #- linux/arm/v5 disable for now: https://github.com/orgs/goreleaser/discussions/6005
+      - linux/ppc64le
+      - linux/s390x
+      - linux/riscv64
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+release:
+  github:
+    owner: criyle
+    name: go-judge

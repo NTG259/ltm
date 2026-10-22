@@ -1,0 +1,38 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/judge
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# OS
+.DS_Store
+
+# Test Env
+env*.sh
+init.sql
+
+# wrk stress test
+/*.lua
+
+node_modules
+
+# not release yet
+package*.json
+
+example.js
+go-judge.h
+/go-judge*
+/tmp
+
+cmd/go-judge/version/version.txt
+
+dist/
+.vscode

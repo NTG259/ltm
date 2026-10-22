@@ -1,0 +1,204 @@
+// Command executorclient is used to test executor server's grpc call
+package main
+
+import (
+	"bytes"
+	"context"
+	"flag"
+	"io"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/criyle/go-judge/pb"
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+var (
+	addr    = flag.String("addr", ":7755", "Rest api server addr")
+	srvAddr = flag.String("srvaddr", "localhost:5051", "GRPC server addr")
+)
+
+type execProxy struct {
+	client pb.ExecutorClient
+}
+
+func grpcHTTPStatus(err error) int {
+	switch status.Code(err) {
+	case codes.InvalidArgument:
+		return http.StatusBadRequest
+	case codes.NotFound:
+		return http.StatusNotFound
+	case codes.Unauthenticated:
+		return http.StatusUnauthorized
+	case codes.PermissionDenied:
+		return http.StatusForbidden
+	case codes.ResourceExhausted:
+		return http.StatusTooManyRequests
+	case codes.Canceled:
+		return 499
+	case codes.DeadlineExceeded:
+		return http.StatusGatewayTimeout
+	case codes.Unavailable:
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func (p *execProxy) Exec(c *gin.Context) {
+	req := new(pb.Request)
+	b, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	if err := protojson.Unmarshal(b, req); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	log.Println(req)
+	rep, err := p.client.Exec(c, req)
+	if err != nil {
+		c.AbortWithError(grpcHTTPStatus(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+func (p *execProxy) FileList(c *gin.Context) {
+	rep, err := p.client.FileList(c, &emptypb.Empty{})
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+func (p *execProxy) FileGet(c *gin.Context) {
+	type fileURI struct {
+		FileID string `uri:"fid"`
+	}
+	var uri fileURI
+	if err := c.ShouldBindUri(&uri); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	fid := pb.FileID_builder{
+		FileID: uri.FileID,
+	}.Build()
+	rep, err := p.client.FileGet(c, fid)
+	if err != nil {
+		c.AbortWithError(grpcHTTPStatus(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+func (p *execProxy) FilePost(c *gin.Context) {
+	fh, err := c.FormFile("file")
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	fi, err := fh.Open()
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	defer fi.Close()
+	var buf bytes.Buffer
+	if fh.Size > 0 && fh.Size <= int64(^uint(0)>>1) {
+		buf.Grow(int(fh.Size))
+	}
+	if _, err := buf.ReadFrom(fi); err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	b := buf.Bytes()
+
+	req := pb.FileContent_builder{
+		Name:    fh.Filename,
+		Content: b,
+	}.Build()
+	rep, err := p.client.FileAdd(c, req)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+func (p *execProxy) FileDelete(c *gin.Context) {
+	type fileURI struct {
+		FileID string `uri:"fid"`
+	}
+	var uri fileURI
+	if err := c.ShouldBindUri(&uri); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	fid := pb.FileID_builder{
+		FileID: uri.FileID,
+	}.Build()
+	rep, err := p.client.FileDelete(c, fid)
+	if err != nil {
+		c.AbortWithError(grpcHTTPStatus(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+func main() {
+	flag.Parse()
+	token := os.Getenv("TOKEN")
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	if token != "" {
+		opts = append(opts, grpc.WithPerRPCCredentials(newTokenAuth(token)))
+	}
+	conn, err := grpc.NewClient(*srvAddr, opts...)
+	if err != nil {
+		log.Fatalln("client", err)
+	}
+	client := pb.NewExecutorClient(conn)
+
+	p := &execProxy{client: client}
+
+	r := gin.Default()
+	r.POST("/exec", p.Exec)
+	r.GET("/file", p.FileList)
+	r.GET("/file/:fid", p.FileGet)
+	r.POST("/file", p.FilePost)
+	r.DELETE("/file/:fid", p.FileDelete)
+
+	log.Println(r.Run(*addr))
+}
+
+type tokenAuth struct {
+	token string
+}
+
+func newTokenAuth(token string) credentials.PerRPCCredentials {
+	return &tokenAuth{token: token}
+}
+
+// Return value is mapped to request headers.
+func (t *tokenAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[string]string, error) {
+	return map[string]string{
+		"authorization": "Bearer " + t.token,
+	}, nil
+}
+
+func (*tokenAuth) RequireTransportSecurity() bool {
+	return false
+}

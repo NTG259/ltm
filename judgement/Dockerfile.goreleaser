@@ -1,0 +1,5 @@
+FROM debian:latest
+ARG TARGETPLATFORM
+WORKDIR /opt
+ENTRYPOINT [ "/opt/go-judge" ]
+COPY $TARGETPLATFORM/go-judge mount.yaml /opt/
