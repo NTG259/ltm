@@ -1,0 +1,576 @@
+// Command seccomp-convert converts the Moby seccomp profile into the
+// architecture-aware seccomp YAML format used by go-judge.
+package main
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/elastic/go-seccomp-bpf/arch"
+	"golang.org/x/sys/unix"
+)
+
+type profile struct {
+	DefaultAction   string  `json:"defaultAction"`
+	DefaultErrnoRet int     `json:"defaultErrnoRet"`
+	Syscalls        []group `json:"syscalls"`
+}
+
+type group struct {
+	Names  []string `json:"names"`
+	Action string   `json:"action"`
+	Args   []arg    `json:"args"`
+	// Moby uses these for runtime capability and architecture selection. The
+	// converter drops capability-dependent rules because go-judge drops
+	// capabilities before exec, and resolves architecture selectors while
+	// generating each architecture section.
+	Includes *selector `json:"includes"`
+	Excludes *selector `json:"excludes"`
+}
+
+type selector struct {
+	Caps   []string `json:"caps"`
+	Arches []string `json:"arches"`
+}
+
+type arg struct {
+	Index uint32 `json:"index"`
+	Value uint64 `json:"value"`
+	Op    string `json:"op"`
+}
+
+type targetArchitecture struct {
+	name       string
+	mobyArches map[string]bool
+}
+
+type generatedGroup struct {
+	key        string
+	names      []string
+	name       string
+	args       []arg
+	conditions []generatedCondition
+}
+
+type generatedCondition struct {
+	name string
+	args []arg
+}
+
+var targetArchitectures = []targetArchitecture{
+	{name: "x86_64", mobyArches: map[string]bool{"amd64": true}},
+	{name: "i386", mobyArches: map[string]bool{"x86": true}},
+	{name: "aarch64", mobyArches: map[string]bool{"arm64": true}},
+	{name: "arm", mobyArches: map[string]bool{"arm": true}},
+}
+
+// These syscall groups are intentionally stricter than the Moby baseline.
+// Every entry is absent from the current compiler/runtime observation, and the
+// groups are excluded because they add authority or kernel attack surface that
+// submitted programs do not need.
+var deniedSyscallGroups = []struct {
+	reason string
+	names  []string
+}{
+	{
+		// Direct process inspection or modification; these expose another
+		// process's memory, credentials, or execution state.
+		reason: "cross-process inspection and control",
+		names:  []string{"get_robust_list", "process_mrelease", "process_vm_readv", "process_vm_writev", "ptrace"},
+	},
+	{
+		// Alternate executable loading and anonymous executable-file staging
+		// broaden fileless payload and loader behavior.
+		reason: "fileless executable loading",
+		names:  []string{"execveat", "memfd_create", "memfd_secret"},
+	},
+	{
+		// Legacy x86 interfaces are not needed by the supported x86-64 corpus
+		// and have a disproportionate amount of compatibility surface.
+		reason: "legacy x86 execution state",
+		names:  []string{"get_thread_area", "modify_ldt", "set_thread_area"},
+	},
+	{
+		// Device-node creation can expose host devices if capabilities or
+		// mounts are ever configured less restrictively.
+		reason: "device-node creation",
+		names:  []string{"mknod", "mknodat"},
+	},
+	{
+		// Filesystem event monitoring can attach a process to activity outside
+		// the files it otherwise needs to access.
+		reason: "filesystem event attachment",
+		names:  []string{"fanotify_mark"},
+	},
+	{
+		// These can signal, identify, reprioritize, or otherwise affect other
+		// processes when the kernel's credential checks permit it. getpgid(0) is
+		// allowed separately below because Bash uses it during job-control setup.
+		reason: "cross-process signaling and scheduling",
+		names:  []string{"getpgid", "getsid", "rt_sigqueueinfo", "rt_tgsigqueueinfo", "sched_setattr", "sched_setparam", "tkill"},
+	},
+	{
+		// Legacy asynchronous I/O is unused and adds another kernel I/O path.
+		reason: "legacy asynchronous I/O",
+		names:  []string{"io_cancel", "io_destroy", "io_getevents", "io_pgetevents", "io_setup", "io_submit"},
+	},
+	{
+		// These provide alternate filesystem-handle and mount-topology
+		// interfaces; ordinary openat/newfstatat cover the observed corpus.
+		reason: "alternate filesystem and mount interfaces",
+		names:  []string{"listmount", "name_to_handle_at", "openat2", "statmount"},
+	},
+	{
+		// Kernel-mediated descriptor-to-descriptor transfer is unnecessary for
+		// the observed workloads and complicates copy/data-flow auditing.
+		reason: "kernel-mediated data transfer",
+		names:  []string{"copy_file_range", "sendfile", "splice", "tee", "vmsplice"},
+	},
+}
+
+var deniedSyscalls = func() map[string]bool {
+	denied := make(map[string]bool)
+	for _, group := range deniedSyscallGroups {
+		for _, name := range group.names {
+			denied[name] = true
+		}
+	}
+	// personality is kept separate because it changes the calling process's
+	// execution ABI and is already covered by the integration security probe.
+	denied["personality"] = true
+	return denied
+}()
+
+func main() {
+	in := flag.String("input", "seccomp/moby-default.json", "Moby profile")
+	out := flag.String("output", "seccomp/moby.yaml", "architecture-aware Elastic seccomp YAML profile")
+	flag.Parse()
+
+	f, err := os.Open(*in)
+	if err != nil {
+		fatal(err)
+	}
+	defer f.Close()
+
+	var p profile
+	if err := json.NewDecoder(f).Decode(&p); err != nil {
+		fatal(err)
+	}
+
+	o, err := os.Create(*out)
+	if err != nil {
+		fatal(err)
+	}
+	defer func() {
+		if err := o.Close(); err != nil {
+			fatal(err)
+		}
+	}()
+
+	policies := make(map[string][]generatedGroup, len(targetArchitectures))
+	var order []string
+	for _, target := range targetArchitectures {
+		info, err := arch.GetInfo(target.name)
+		if err != nil {
+			fatal(err)
+		}
+		groups := generatePolicy(p.Syscalls, target, info)
+		policies[target.name] = groups
+		for _, group := range groups {
+			if !contains(order, group.key) {
+				order = append(order, group.key)
+			}
+		}
+	}
+
+	base := make(map[string]generatedGroup)
+	for _, key := range order {
+		if group, ok := commonGroup(key, policies); ok {
+			base[key] = group
+		}
+	}
+
+	fmt.Fprintln(o, "default_action: errno")
+	fmt.Fprintln(o, "base:")
+	fmt.Fprintln(o, "  syscalls:")
+	writePolicyGroups(o, commonGroups(order, base), "    ")
+	fmt.Fprintln(o, "architectures:")
+	for _, target := range targetArchitectures {
+		fmt.Fprintf(o, "  %s:\n    syscalls:\n", target.name)
+		writePolicyGroups(o, additionalGroups(order, policies[target.name], base), "      ")
+	}
+}
+
+func generatePolicy(groups []group, target targetArchitecture, info *arch.Info) []generatedGroup {
+	var generated []generatedGroup
+	for groupIndex, g := range groups {
+		if !includeGroup(g, target) || g.Action != "SCMP_ACT_ALLOW" || len(g.Names) == 0 {
+			continue
+		}
+		if len(g.Args) == 0 {
+			names := validNamesForTarget(g.Names, target, info)
+			names = withoutName(names, "socketcall")
+			names = withoutName(names, "socket")
+			names = withoutName(names, "socketpair")
+			// Keep ordinary ioctl operations, while denying terminal input
+			// injection and Linux virtual-console requests proactively. Submitted
+			// workloads do not need either request.
+			names = withoutName(names, "ioctl")
+			if len(names) > 0 {
+				generated = append(generated, generatedGroup{
+					key:   fmt.Sprintf("group-%d", groupIndex),
+					names: names,
+				})
+			}
+			continue
+		}
+		for _, name := range validNamesForTarget(g.Names, target, info) {
+			// Socket family checks are emitted below from the observed-family
+			// allowlist rather than inheriting Moby's broader family ranges.
+			if name == "socket" || name == "socketpair" {
+				continue
+			}
+			// The container init and the CLONE_INTO_CGROUP path both require
+			// unrestricted clone. The init filter is installed only after
+			// container setup, so retain namespace-capable clone calls.
+			if name == "clone" && len(g.Args) > 0 {
+				continue
+			}
+			for _, a := range g.Args {
+				argCopy := a
+				generated = append(generated, generatedGroup{
+					key:  fmt.Sprintf("group-%d-%s-%d-%d-%s", groupIndex, name, a.Index, a.Value, a.Op),
+					name: name,
+					args: []arg{argCopy},
+				})
+			}
+		}
+	}
+	var socketFamilyConditions []generatedCondition
+	for _, family := range []struct {
+		name  string
+		value uint64
+	}{
+		{name: "AF_UNIX", value: unix.AF_UNIX},
+		{name: "AF_INET", value: unix.AF_INET},
+		{name: "AF_INET6", value: unix.AF_INET6},
+	} {
+		if _, ok := info.SyscallNames["socket"]; ok {
+			socketFamilyConditions = append(socketFamilyConditions, generatedCondition{
+				name: "socket",
+				args: []arg{{Index: 0, Value: family.value, Op: "SCMP_CMP_EQ"}},
+			})
+		}
+	}
+	if len(socketFamilyConditions) > 0 {
+		generated = append(generated, generatedGroup{
+			key:        "socket-families",
+			conditions: socketFamilyConditions,
+		})
+	}
+	if _, ok := info.SyscallNames["socketpair"]; ok {
+		generated = append(generated, generatedGroup{
+			key:  "socketpair-AF_UNIX",
+			name: "socketpair",
+			args: []arg{{Index: 0, Value: unix.AF_UNIX, Op: "SCMP_CMP_EQ"}},
+		})
+	}
+	if _, ok := info.SyscallNames["ioctl"]; ok {
+		generated = append(generated, generatedGroup{
+			key:  "restricted-ioctl",
+			name: "ioctl",
+			args: []arg{
+				{Index: 1, Value: unix.TIOCSTI, Op: "SCMP_CMP_NE"},   // TIOCSTI
+				{Index: 1, Value: unix.TIOCLINUX, Op: "SCMP_CMP_NE"}, // TIOCLINUX
+			},
+		})
+	}
+
+	// Seccomp cannot inspect the pointed-to argument array passed through
+	// socketcall, so it cannot safely validate socket/socketpair families.
+	// Deny those two legacy operations (SYS_SOCKET=1, SYS_SOCKETPAIR=8).
+	if _, ok := info.SyscallNames["socketcall"]; ok {
+		generated = append(generated, generatedGroup{key: "socketcall", name: "socketcall", args: []arg{
+			{Index: 0, Value: 1, Op: "SCMP_CMP_GT"},
+			{Index: 0, Value: 8, Op: "SCMP_CMP_NE"},
+		}})
+	}
+	if _, ok := info.SyscallNames["getpgid"]; ok {
+		generated = append(generated, generatedGroup{
+			key: "getpgid-self",
+			conditions: []generatedCondition{{
+				name: "getpgid",
+				args: []arg{{Index: 0, Value: 0, Op: "SCMP_CMP_EQ"}},
+			}},
+		})
+	}
+	for _, name := range []string{"clone", "clone3", "kill", "unshare"} {
+		if _, ok := info.SyscallNames[name]; ok {
+			generated = append(generated, generatedGroup{key: "init-" + name, names: []string{name}})
+		}
+	}
+	return generated
+}
+
+func commonGroup(key string, policies map[string][]generatedGroup) (generatedGroup, bool) {
+	var common generatedGroup
+	first := true
+	for _, target := range targetArchitectures {
+		group, ok := findGroup(policies[target.name], key)
+		if !ok {
+			return generatedGroup{}, false
+		}
+		if first {
+			common = group
+			first = false
+			continue
+		}
+		if len(common.args) > 0 || len(group.args) > 0 || len(common.conditions) > 0 || len(group.conditions) > 0 {
+			if !sameArgGroup(common, group) {
+				return generatedGroup{}, false
+			}
+			continue
+		}
+		common.names = intersect(common.names, group.names)
+	}
+	if len(common.args) == 0 && len(common.names) == 0 && len(common.conditions) == 0 {
+		return generatedGroup{}, false
+	}
+	return common, true
+}
+
+func commonGroups(order []string, base map[string]generatedGroup) []generatedGroup {
+	groups := make([]generatedGroup, 0, len(base))
+	for _, key := range order {
+		if group, ok := base[key]; ok {
+			groups = append(groups, group)
+		}
+	}
+	return groups
+}
+
+func additionalGroups(order []string, groups []generatedGroup, base map[string]generatedGroup) []generatedGroup {
+	byKey := make(map[string]generatedGroup, len(groups))
+	for _, group := range groups {
+		byKey[group.key] = group
+	}
+	additional := make([]generatedGroup, 0, len(groups))
+	for _, key := range order {
+		group, ok := byKey[key]
+		if !ok {
+			continue
+		}
+		common, isCommon := base[key]
+		if !isCommon || len(group.args) > 0 || len(group.conditions) > 0 {
+			if !isCommon || !sameArgGroup(group, common) {
+				additional = append(additional, group)
+			}
+			continue
+		}
+		group.names = difference(group.names, common.names)
+		if len(group.names) > 0 {
+			additional = append(additional, group)
+		}
+	}
+	return additional
+}
+
+func writePolicyGroups(w io.Writer, groups []generatedGroup, indent string) {
+	for _, group := range groups {
+		if group.key == "restricted-ioctl" {
+			fmt.Fprintf(w, "%s# TIOCSTI and TIOCLINUX are not used by go-judge or its workload corpus;\n", indent)
+			fmt.Fprintf(w, "%s# deny them proactively as defense in depth.\n", indent)
+		}
+		if len(group.conditions) > 0 {
+			writeConditions(w, group.conditions, indent)
+		} else if len(group.args) == 0 {
+			writeNames(w, group.names, indent)
+		} else {
+			writeArgs(w, group.name, group.args, indent)
+		}
+	}
+}
+
+func findGroup(groups []generatedGroup, key string) (generatedGroup, bool) {
+	for _, group := range groups {
+		if group.key == key {
+			return group, true
+		}
+	}
+	return generatedGroup{}, false
+}
+
+func sameArgGroup(a, b generatedGroup) bool {
+	if len(a.conditions) > 0 || len(b.conditions) > 0 {
+		if len(a.conditions) == 0 || len(a.conditions) != len(b.conditions) {
+			return false
+		}
+		for i := range a.conditions {
+			if a.conditions[i].name != b.conditions[i].name || len(a.conditions[i].args) != len(b.conditions[i].args) {
+				return false
+			}
+			for j := range a.conditions[i].args {
+				if a.conditions[i].args[j] != b.conditions[i].args[j] {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	if len(a.args) == 0 || len(a.args) != len(b.args) || a.name != b.name {
+		return false
+	}
+	for i := range a.args {
+		if a.args[i] != b.args[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func intersect(a, b []string) []string {
+	set := make(map[string]bool, len(b))
+	for _, name := range b {
+		set[name] = true
+	}
+	result := make([]string, 0, len(a))
+	for _, name := range a {
+		if set[name] {
+			result = append(result, name)
+		}
+	}
+	return result
+}
+
+func difference(a, b []string) []string {
+	set := make(map[string]bool, len(b))
+	for _, name := range b {
+		set[name] = true
+	}
+	result := make([]string, 0, len(a))
+	for _, name := range a {
+		if !set[name] {
+			result = append(result, name)
+		}
+	}
+	return result
+}
+
+func withoutName(names []string, unwanted string) []string {
+	result := make([]string, 0, len(names))
+	for _, name := range names {
+		if name != unwanted {
+			result = append(result, name)
+		}
+	}
+	return result
+}
+
+func contains(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
+}
+
+func includeGroup(g group, target targetArchitecture) bool {
+	if g.Includes != nil && len(g.Includes.Caps) > 0 {
+		return false
+	}
+	if g.Excludes != nil && len(g.Excludes.Caps) > 0 && len(g.Args) == 0 {
+		return false
+	}
+	if g.Includes != nil && len(g.Includes.Arches) > 0 {
+		matched := false
+		for _, name := range g.Includes.Arches {
+			if target.mobyArches[name] {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return false
+		}
+	}
+	if g.Excludes != nil {
+		for _, name := range g.Excludes.Arches {
+			if target.mobyArches[name] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func validNames(names []string, info *arch.Info) []string {
+	valid := make([]string, 0, len(names))
+	for _, name := range names {
+		if _, ok := info.SyscallNames[name]; ok && !deniedSyscalls[name] {
+			valid = append(valid, name)
+		}
+	}
+	return valid
+}
+
+// Issue #202: Moby and libseccomp use the generic syscall name newfstatat for aarch64's
+// syscall 79. The architecture table used by go-seccomp-bpf calls that syscall
+// fstatat, so emit the name understood by the runtime for that architecture.
+func validNamesForTarget(names []string, target targetArchitecture, info *arch.Info) []string {
+	if target.name != "aarch64" {
+		return validNames(names, info)
+	}
+	translated := make([]string, 0, len(names))
+	for _, name := range names {
+		if name == "newfstatat" {
+			name = "fstatat"
+		}
+		translated = append(translated, name)
+	}
+	return validNames(translated, info)
+}
+
+func writeNames(w io.Writer, names []string, indent string) {
+	fmt.Fprintf(w, "%s- names:\n", indent)
+	for _, name := range names {
+		fmt.Fprintf(w, "%s    - %s\n", indent, name)
+	}
+	fmt.Fprintf(w, "%s  action: allow\n", indent)
+}
+
+func writeArgs(w io.Writer, name string, args []arg, indent string) {
+	writeConditions(w, []generatedCondition{{name: name, args: args}}, indent)
+}
+
+func writeConditions(w io.Writer, conditions []generatedCondition, indent string) {
+	op := map[string]string{
+		"SCMP_CMP_EQ":        "Equal",
+		"SCMP_CMP_NE":        "NotEqual",
+		"SCMP_CMP_LT":        "LessThan",
+		"SCMP_CMP_LE":        "LessOrEqual",
+		"SCMP_CMP_GT":        "GreaterThan",
+		"SCMP_CMP_GE":        "GreaterOrEqual",
+		"SCMP_CMP_MASKED_EQ": "BitsSet",
+	}
+	fmt.Fprintf(w, "%s- names_with_args:\n", indent)
+	for _, condition := range conditions {
+		fmt.Fprintf(w, "%s    - name: %s\n%s      arguments:\n", indent, condition.name, indent)
+		for _, a := range condition.args {
+			operation, ok := op[a.Op]
+			if !ok {
+				fatal(fmt.Errorf("unsupported Moby comparison: %s", a.Op))
+			}
+			fmt.Fprintf(w, "%s        - position: %d\n%s          operation: %s\n%s          value: %d\n", indent, a.Index, indent, operation, indent, a.Value)
+		}
+	}
+	fmt.Fprintf(w, "%s  action: allow\n", indent)
+}
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
+}

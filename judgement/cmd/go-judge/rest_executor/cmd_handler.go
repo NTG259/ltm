@@ -1,0 +1,90 @@
+package restexecutor
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+
+	"github.com/criyle/go-judge/cmd/go-judge/model"
+	"github.com/criyle/go-judge/worker"
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+type cmdHandle struct {
+	worker    worker.Worker
+	srcPrefix []string
+	logger    *zap.Logger
+}
+
+// NewCmdHandle creates a new command handle
+func NewCmdHandle(worker worker.Worker, srcPrefix []string, logger *zap.Logger) Register {
+	return &cmdHandle{
+		worker:    worker,
+		srcPrefix: srcPrefix,
+		logger:    logger,
+	}
+}
+
+func (c *cmdHandle) Register(r *gin.Engine) {
+	// Run handle
+	r.POST("/run", c.handleRun)
+}
+
+func (c *cmdHandle) handleRun(ctx *gin.Context) {
+	var req model.Request
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.Error(err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if len(req.Cmd) == 0 {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, "no cmd provided")
+		return
+	}
+	r, err := model.ConvertRequest(&req, c.srcPrefix)
+	if err != nil {
+		ctx.Error(err)
+		statusCode := http.StatusBadRequest
+		if errors.Is(err, worker.ErrFileNotFound) {
+			statusCode = http.StatusNotFound
+		}
+		ctx.AbortWithStatusJSON(statusCode, err.Error())
+		return
+	}
+	if ce := c.logger.Check(zap.DebugLevel, "request"); ce != nil {
+		ce.Write(zap.String("body", fmt.Sprintf("%+v", r)))
+	}
+	rtCh, _ := c.worker.Submit(ctx.Request.Context(), r)
+	rt := <-rtCh
+	if ce := c.logger.Check(zap.DebugLevel, "response"); ce != nil {
+		ce.Write(zap.String("body", fmt.Sprintf("%+v", rt)))
+	}
+	if rt.Error != nil {
+		ctx.Error(rt.Error)
+		statusCode := http.StatusInternalServerError
+		if errors.Is(rt.Error, worker.ErrFileNotFound) {
+			statusCode = http.StatusNotFound
+		}
+		ctx.AbortWithStatusJSON(statusCode, rt.Error.Error())
+		return
+	}
+
+	// encode json directly to avoid allocation
+	ctx.Status(http.StatusOK)
+	ctx.Header("Content-Type", "application/json; charset=utf-8")
+
+	res, err := model.ConvertResponse(rt, true)
+	if err != nil {
+		ctx.Error(err)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer res.Close()
+
+	if err := json.NewEncoder(ctx.Writer).Encode(res.Results); err != nil {
+		ctx.Error(err)
+	}
+}

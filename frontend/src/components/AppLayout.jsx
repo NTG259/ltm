@@ -220,7 +220,7 @@ export default function AppLayout() {
       </Layout.Content>
       {!location.pathname.match(/^\/(problems\/\d+|contests\/\d+\/problems\/|courses\/\d+\/learn)/) && (
         <Layout.Footer style={{ textAlign: 'center', padding: '14px 20px', fontSize: 12, color: 'var(--text-2)' }}>
-          CodeJudge – Hệ thống chấm bài C++ phân tán · Master HTTP :8000 · WebSocket :8001 · Worker TCP :9000
+          CodeJudge – Hệ thống chấm bài C++ phân tán · Master HTTP :8082 · WebSocket :8001 · Worker TCP :9000
           {USE_MOCK && ' · Chế độ mock'}
         </Layout.Footer>
       )}

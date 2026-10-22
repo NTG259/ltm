@@ -32,7 +32,7 @@ spring:
 
 # Master Server: HTTP REST :8000 (WebSocket :8001 và TCP Worker :9000 sẽ do các server riêng mở).
 server:
-  port: ${SERVER_PORT:8000}
+  port: ${SERVER_PORT:8082}
 
 # Chỉ mở /actuator/health (dùng cho healthcheck của Docker).
 management:
