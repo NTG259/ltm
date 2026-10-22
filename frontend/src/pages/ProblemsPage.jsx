@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Input, Progress, Segmented, Select, Space, Table, Tag, Tooltip, Typography } from 'antd'
-import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled, SearchOutlined } from '@ant-design/icons'
+import { Button, Card, Input, Progress, Segmented, Select, Space, Table, Tag, Tooltip } from 'antd'
+import { CheckCircleFilled, CloseCircleFilled, SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch } from '../lib/hooks'
 import { DIFFICULTIES } from '../lib/verdicts'
 import { percent } from '../lib/format'
-
-const DIFF_COLOR = { easy: 'green', medium: 'gold', hard: 'red' }
 
 export default function ProblemsPage() {
   const { user } = useAuth()

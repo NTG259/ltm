@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge, Button, Card, Space, Statistic, Table, Tag, Tooltip, Typography } from 'antd'
 import { ArrowLeftOutlined, ReloadOutlined, TrophyOutlined } from '@ant-design/icons'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../api'
-import { useSocket } from '../../lib/hooks'
+import { useFetch, useSocket } from '../../lib/hooks'
 
 const VERDICT_COLOR = {
   AC: 'success',
@@ -18,9 +18,6 @@ const VERDICT_COLOR = {
 function ProblemCell({ cell }) {
   if (!cell || cell.verdict === null) return <span style={{ color: 'var(--text-2)' }}>—</span>
   if (cell.verdict === 'AC') {
-    const mins = cell.acAt
-      ? Math.round((new Date(cell.acAt) - 0) / 60000 - new Date(cell.acAt).getTimezoneOffset())
-      : null
     return (
       <Tooltip title={cell.acAt ? new Date(cell.acAt).toLocaleTimeString('vi-VN') : ''}>
         <Tag color="success">✓ {cell.attempts}</Tag>
@@ -36,53 +33,40 @@ function ProblemCell({ cell }) {
 
 export default function AdminContestMonitorPage() {
   const { cid, kid } = useParams()
-  const [rows, setRows] = useState(null)
-  const [labels, setLabels] = useState([])
-  const [loading, setLoading] = useState(true)
-  const studentIdsRef = useRef(new Set())
   const [lastRefresh, setLastRefresh] = useState(null)
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const data = await api.getContestMonitor(cid, kid)
-      setRows(data)
-      studentIdsRef.current = new Set(data.map((r) => r.userId))
-      if (data.length > 0 && data[0].problems?.length > 0) {
-        setLabels(data[0].problems.map((p) => p.label))
-      }
-      setLastRefresh(new Date())
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [cid, kid])
+  const { data: rawRows, loading, reload } = useFetch(async () => {
+    const res = await api.getContestMonitor(cid, kid)
+    setLastRefresh(new Date())
+    return res
+  }, [cid, kid])
+  const [presenceOverrides, setPresenceOverrides] = useState({})
 
   // Polling 10s fallback
   useEffect(() => {
-    const t = setInterval(load, 10000)
+    const t = setInterval(reload, 10000)
     return () => clearInterval(t)
-  }, [cid, kid])
+  }, [reload])
 
   // Realtime: khi có bài được chấm, reload nếu thuộc lớp này
   useSocket((msg) => {
     if (msg.type === 'SUBMISSION_UPDATE') {
       const userId = msg.submission?.userId ?? msg.submission?.user?.id
-      if (userId && studentIdsRef.current.has(userId)) {
-        load()
+      if (userId && rawRows?.some((r) => r.userId === userId)) {
+        reload()
       }
     }
-    if (msg.type === 'PRESENCE_UPDATE' && studentIdsRef.current.has(msg.userId)) {
-      setRows((prev) =>
-        prev
-          ? prev.map((r) =>
-              r.userId === msg.userId ? { ...r, online: msg.status === 'ONLINE' } : r
-            )
-          : prev
-      )
+    if (msg.type === 'PRESENCE_UPDATE') {
+      setPresenceOverrides((prev) => ({
+        ...prev,
+        [msg.userId]: msg.status === 'ONLINE',
+      }))
     }
   })
+
+  const rows = (rawRows || []).map((r) =>
+    r.userId in presenceOverrides ? { ...r, online: presenceOverrides[r.userId] } : r
+  )
+  const labels = rawRows?.[0]?.problems?.map((p) => p.label) || []
 
   const data = rows ?? []
   const acLeader = data.length ? Math.max(...data.map((r) => r.acCount)) : 0
@@ -168,7 +152,7 @@ export default function AdminContestMonitorPage() {
           <TrophyOutlined style={{ marginRight: 8 }} />
           Giám sát kỳ thi
         </Typography.Title>
-        <Button icon={<ReloadOutlined />} onClick={load} loading={loading} size="small">
+        <Button icon={<ReloadOutlined />} onClick={reload} loading={loading} size="small">
           Làm mới
         </Button>
         {lastRefresh && (
@@ -195,7 +179,7 @@ export default function AdminContestMonitorPage() {
           rowKey="userId"
           columns={columns}
           dataSource={data}
-          loading={loading && !rows}
+          loading={loading && !rawRows}
           pagination={{ pageSize: 30 }}
           size="small"
           scroll={{ x: 'max-content' }}

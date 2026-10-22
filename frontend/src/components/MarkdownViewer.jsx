@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button, message, Space, Typography } from 'antd'
+import { Alert, Button, Typography } from 'antd'
 import { CheckOutlined, CopyOutlined } from '@ant-design/icons'
 
 function CodeBlock({ language, code }) {

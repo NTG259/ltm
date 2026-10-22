@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Badge, Button, Card, Space, Statistic, Table, Typography } from 'antd'
 import { ArrowLeftOutlined, WifiOutlined } from '@ant-design/icons'
 import { Link, useParams } from 'react-router-dom'
@@ -8,25 +8,20 @@ import { useFetch, useSocket } from '../../lib/hooks'
 export default function AdminClassroomMonitorPage() {
   const { id } = useParams()
   const { data: initial, loading } = useFetch(() => api.getClassroomPresence(id), [id])
-  const [rows, setRows] = useState(null)
-
-  // Khởi tạo rows từ snapshot
-  useEffect(() => {
-    if (initial) setRows(initial)
-  }, [initial])
+  const [realtimeOverrides, setRealtimeOverrides] = useState({})
 
   // Lắng nghe PRESENCE_UPDATE realtime
   useSocket((msg) => {
     if (msg.type !== 'PRESENCE_UPDATE') return
-    setRows((prev) => {
-      if (!prev) return prev
-      return prev.map((r) =>
-        r.userId === msg.userId ? { ...r, online: msg.status === 'ONLINE' } : r
-      )
-    })
+    setRealtimeOverrides((prev) => ({
+      ...prev,
+      [msg.userId]: msg.status === 'ONLINE',
+    }))
   })
 
-  const data = rows ?? initial ?? []
+  const data = (initial || []).map((r) =>
+    r.userId in realtimeOverrides ? { ...r, online: realtimeOverrides[r.userId] } : r
+  )
   const onlineCount = data.filter((r) => r.online).length
 
   const columns = [
@@ -85,7 +80,7 @@ export default function AdminClassroomMonitorPage() {
           rowKey="userId"
           columns={columns}
           dataSource={data}
-          loading={loading && !rows}
+          loading={loading && !initial}
           pagination={{ pageSize: 20 }}
           rowClassName={(r) => (r.online ? 'row-online' : '')}
         />

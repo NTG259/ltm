@@ -1,4 +1,4 @@
-import { Avatar, Badge, Button, Dropdown, Layout, Menu, Space, Tag, Tooltip, Typography } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Tooltip, Typography } from 'antd'
 import {
   BookOutlined,
   CodeOutlined,

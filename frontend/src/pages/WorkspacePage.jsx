@@ -42,7 +42,6 @@ import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
 import ContestClock from '../components/ContestClock'
 
-const DIFF_COLOR = { easy: 'green', medium: 'gold', hard: 'red' }
 const draftKey = (pid, uid) => `cj.draft.${uid}.${pid}`
 
 function readDraft(pid, uid) {

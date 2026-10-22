@@ -163,7 +163,7 @@ export default function CourseLearnPage() {
   // Sidebar trạng thái thu gọn
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const { data: mySubmissions } = useFetch(
     () => (user?.id ? api.listSubmissions({ userId: user.id }) : Promise.resolve([])),
     [user?.id]
@@ -385,6 +385,21 @@ export default function CourseLearnPage() {
       <Result
         status="404"
         title="Không tìm thấy khóa học"
+        extra={
+          <Button type="primary" onClick={() => navigate('/courses')}>
+            Về danh sách khóa học
+          </Button>
+        }
+      />
+    )
+  }
+
+  if (!course.published && !isAdmin) {
+    return (
+      <Result
+        status="403"
+        title="Khóa học đang ở bản nháp"
+        subTitle="Nội dung khóa học này hiện đang được biên soạn và chưa được công khai cho sinh viên."
         extra={
           <Button type="primary" onClick={() => navigate('/courses')}>
             Về danh sách khóa học

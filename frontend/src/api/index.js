@@ -190,6 +190,31 @@ if (savedSession?.user) {
   engine.registerStudent(savedSession.user)
 }
 
+const DEFAULT_COURSES = [
+  { id: 1, title: 'Lập trình C++ Cơ bản (C++ Fundamentals)', description: 'Lộ trình nhập môn toàn diện: cú pháp, biến, điều kiện, vòng lặp, hàm và mảng.', published: true, unitCount: 7, createdAt: Date.now() - 86400000 * 5 },
+  { id: 2, title: 'Cấu trúc Dữ liệu & Giải thuật C++ (DSA)', description: 'Thư viện STL nâng cao (Vector, Map, Set), ngăn xếp, hàng đợi, đệ quy và quy hoạch động.', published: true, unitCount: 6, createdAt: Date.now() - 86400000 * 3 },
+  { id: 3, title: 'Lập trình Hướng đối tượng C++ (OOP)', description: 'Nắm vững 4 tính chất OOP: Đóng gói, Kế thừa, Đa hình và Trừu tượng hóa.', published: true, unitCount: 5, createdAt: Date.now() - 86400000 * 1 },
+  { id: 4, title: 'Kỹ thuật Lập trình C++ Nâng cao (Bản nháp)', description: 'Quản lý con trỏ thông minh (Smart Pointers), Move Semantics và Concurrency đa luồng.', published: false, unitCount: 2, createdAt: Date.now() },
+]
+
+function getStoredCourses() {
+  try {
+    const raw = localStorage.getItem('cj.courses')
+    if (raw) return JSON.parse(raw)
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_COURSES
+}
+
+function setStoredCourses(list) {
+  try {
+    localStorage.setItem('cj.courses', JSON.stringify(list))
+  } catch {
+    /* ignore */
+  }
+}
+
 const mockApi = {
   async login(payload) {
     if (payload.role === 'admin') {
@@ -270,14 +295,14 @@ const mockApi = {
   killWorker: (id) => delay(engine.killWorker(id), 50),
   reviveWorker: (id) => delay(engine.reviveWorker(id), 50),
   // ---- Khóa học (Curriculum mock) ----
-  listCourses: () => delay([
-    { id: 1, title: 'Lập trình C++ Cơ bản (C++ Fundamentals)', description: 'Lộ trình nhập môn toàn diện: cú pháp, biến, điều kiện, vòng lặp, hàm và mảng.', published: true, unitCount: 7, createdAt: Date.now() - 86400000 * 5 },
-    { id: 2, title: 'Cấu trúc Dữ liệu & Giải thuật C++ (DSA)', description: 'Thư viện STL nâng cao (Vector, Map, Set), ngăn xếp, hàng đợi, đệ quy và quy hoạch động.', published: true, unitCount: 6, createdAt: Date.now() - 86400000 * 3 },
-    { id: 3, title: 'Lập trình Hướng đối tượng C++ (OOP)', description: 'Nắm vững 4 tính chất OOP: Đóng gói, Kế thừa, Đa hình và Trừu tượng hóa.', published: true, unitCount: 5, createdAt: Date.now() - 86400000 * 1 },
-    { id: 4, title: 'Kỹ thuật Lập trình C++ Nâng cao (Bản nháp)', description: 'Quản lý con trỏ thông minh (Smart Pointers), Move Semantics và Concurrency đa luồng.', published: false, unitCount: 2, createdAt: Date.now() }
-  ]),
+  listCourses: () => {
+    const list = getStoredCourses()
+    return delay(list)
+  },
   getCourse: (id) => {
     const numId = Number(id)
+    const list = getStoredCourses()
+    const found = list.find((x) => x.id === numId)
     const unitsMap = {
       1: [
         { id: 101, courseId: 1, title: 'Chủ đề 1: Cấu trúc chương trình C++ và Nhập xuất (cin / cout)', orderIndex: 1, createdAt: Date.now() },
@@ -308,25 +333,45 @@ const mockApi = {
         { id: 402, courseId: 4, title: 'Chủ đề 2: Smart Pointers (unique_ptr, shared_ptr, weak_ptr)', orderIndex: 2, createdAt: Date.now() }
       ]
     }
-    const courseTitles = {
-      1: { title: 'Lập trình C++ Cơ bản (C++ Fundamentals)', description: 'Lộ trình nhập môn toàn diện: cú pháp, biến, điều kiện, vòng lặp, hàm và mảng.', published: true },
-      2: { title: 'Cấu trúc Dữ liệu & Giải thuật C++ (DSA)', description: 'Thư viện STL nâng cao (Vector, Map, Set), ngăn xếp, hàng đợi, đệ quy và quy hoạch động.', published: true },
-      3: { title: 'Lập trình Hướng đối tượng C++ (OOP)', description: 'Nắm vững 4 tính chất OOP: Đóng gói, Kế thừa, Đa hình và Trừu tượng hóa.', published: true },
-      4: { title: 'Kỹ thuật Lập trình C++ Nâng cao (Bản nháp)', description: 'Quản lý con trỏ thông minh (Smart Pointers), Move Semantics và Concurrency đa luồng.', published: false }
-    }
-    const c = courseTitles[numId] || courseTitles[1]
     return delay({
       id: numId,
-      title: c.title,
-      description: c.description,
-      published: c.published,
-      createdAt: Date.now() - 86400000 * 3,
+      title: found?.title || `Khóa học #${numId}`,
+      description: found?.description || '',
+      published: found ? Boolean(found.published) : false,
+      createdAt: found?.createdAt || Date.now() - 86400000 * 3,
       units: unitsMap[numId] || []
     })
   },
-  createCourse: (data) => delay({ id: Date.now(), ...data, published: data.published || false, createdAt: Date.now(), unitCount: 0 }),
-  updateCourse: (id, data) => delay({ id: Number(id), ...data, createdAt: Date.now() }),
-  deleteCourse: () => delay(true),
+  createCourse: (data) => {
+    const list = getStoredCourses()
+    const item = {
+      id: Date.now(),
+      ...data,
+      published: data.published || false,
+      createdAt: Date.now(),
+      unitCount: 0,
+    }
+    list.unshift(item)
+    setStoredCourses(list)
+    return delay(item)
+  },
+  updateCourse: (id, data) => {
+    const numId = Number(id)
+    const list = getStoredCourses()
+    const idx = list.findIndex((x) => x.id === numId)
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...data }
+      setStoredCourses(list)
+      return delay(list[idx])
+    }
+    return delay({ id: numId, ...data })
+  },
+  deleteCourse: (id) => {
+    const numId = Number(id)
+    const list = getStoredCourses().filter((x) => x.id !== numId)
+    setStoredCourses(list)
+    return delay(true)
+  },
   addCourseUnit: (id, data) => delay({ id: Date.now(), courseId: Number(id), ...data, createdAt: Date.now() }),
   updateCourseUnit: (id, uid, data) => delay({ id: Number(uid), courseId: Number(id), ...data, createdAt: Date.now() }),
   deleteCourseUnit: () => delay(true),
@@ -334,7 +379,7 @@ const mockApi = {
   getLesson: (unitId) => {
     const raw = localStorage.getItem(`cj.lesson.${unitId}`)
     if (raw) {
-      try { return delay(JSON.parse(raw)) } catch {}
+      try { return delay(JSON.parse(raw)) } catch { /* ignore */ }
     }
     return delay({
       id: Number(unitId),
@@ -356,13 +401,15 @@ const mockApi = {
     }
     try {
       localStorage.setItem(`cj.lesson.${unitId}`, JSON.stringify(updated))
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return delay(updated)
   },
   getUnitProblems: (unitId) => {
     const raw = localStorage.getItem(`cj.unit_problems.${unitId}`)
     if (raw) {
-      try { return delay(JSON.parse(raw)) } catch {}
+      try { return delay(JSON.parse(raw)) } catch { /* ignore */ }
     }
     const def = [
       { id: 1, unitId: Number(unitId), problemId: 1, title: 'A + B Problem', difficulty: 'easy', orderIndex: 1, solved: false }
@@ -385,7 +432,7 @@ const mockApi = {
       solved: false,
     }
     list.push(item)
-    try { localStorage.setItem(`cj.unit_problems.${unitId}`, JSON.stringify(list)) } catch {}
+    try { localStorage.setItem(`cj.unit_problems.${unitId}`, JSON.stringify(list)) } catch { /* ignore */ }
     return delay(item)
   },
   removeUnitProblem: (unitId, problemId) => {
@@ -394,7 +441,9 @@ const mockApi = {
       try {
         const list = JSON.parse(raw).filter((x) => x.problemId !== Number(problemId))
         localStorage.setItem(`cj.unit_problems.${unitId}`, JSON.stringify(list))
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }
     return delay(true)
   },
@@ -403,7 +452,9 @@ const mockApi = {
     try {
       const raw = localStorage.getItem('cj.user_completed_units')
       if (raw) completedList = JSON.parse(raw)
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return delay({
       courseId: Number(courseId),
       completedUnitIds: completedList.map(Number),
@@ -417,7 +468,9 @@ const mockApi = {
     try {
       const raw = localStorage.getItem('cj.user_completed_units')
       if (raw) completedList = JSON.parse(raw)
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     const id = Number(unitId)
     const exists = completedList.includes(id)
     if (exists) {
@@ -427,7 +480,9 @@ const mockApi = {
     }
     try {
       localStorage.setItem('cj.user_completed_units', JSON.stringify(completedList))
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return delay({ unitId: id, completed: !exists })
   },
 }

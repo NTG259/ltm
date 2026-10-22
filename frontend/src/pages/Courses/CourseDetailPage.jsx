@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
+import { useAuth } from '../../auth/context'
 import { useFetch } from '../../lib/hooks'
 import { useThemeMode } from '../../theme'
 
@@ -28,6 +29,7 @@ export default function CourseDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { message } = App.useApp()
+  const { isAdmin } = useAuth()
   const { mode } = useThemeMode()
   const isDark = mode === 'dark'
   const { data: course, loading } = useFetch(() => api.getCourse(id), [id])
@@ -93,7 +95,7 @@ export default function CourseDetailPage() {
           <h1 style={{ margin: 0 }}>{course?.title || 'Khóa học C++'}</h1>
         </Space>
 
-        {units.length > 0 && (
+        {units.length > 0 && (isAdmin || course?.published) && (
           <Button
             type="primary"
             icon={<RocketOutlined />}
@@ -114,6 +116,25 @@ export default function CourseDetailPage() {
           description="Khóa học này có thể đã bị xóa hoặc không tồn tại."
           showIcon
         />
+      ) : !course.published && !isAdmin ? (
+        <Card style={{ textAlign: 'center', padding: '60px 20px', borderRadius: 16 }}>
+          <Empty
+            description={
+              <div>
+                <Typography.Title level={4} style={{ marginBottom: 8 }}>
+                  Khóa học đang ở trạng thái bản nháp
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  Nội dung khóa học này hiện đang được biên soạn và chưa được công khai cho sinh viên.
+                </Typography.Text>
+              </div>
+            }
+          >
+            <Button type="primary" onClick={() => navigate('/courses')} style={{ marginTop: 16 }}>
+              Quay lại danh sách khóa học
+            </Button>
+          </Empty>
+        </Card>
       ) : (
         <>
           {/* Hero Banner thích ứng theo theme: sáng sủa, đồng điệu ở Light theme và obsidian sắc nét ở Dark theme */}
@@ -135,22 +156,28 @@ export default function CourseDetailPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
               <div style={{ flex: 1, minWidth: 280 }}>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    marginBottom: 10,
-                    fontWeight: 700,
-                    fontSize: 11,
-                    letterSpacing: '0.05em',
-                    padding: '3px 10px',
-                    borderRadius: 6,
-                    background: isDark ? 'rgba(99, 102, 241, 0.15)' : '#eef2ff',
-                    color: isDark ? '#a5b4fc' : '#4338ca',
-                    border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #c7d2fe',
-                  }}
-                >
-                  LỘ TRÌNH ĐÀO TẠO
-                </span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      fontWeight: 700,
+                      fontSize: 11,
+                      letterSpacing: '0.05em',
+                      padding: '3px 10px',
+                      borderRadius: 6,
+                      background: isDark ? 'rgba(99, 102, 241, 0.15)' : '#eef2ff',
+                      color: isDark ? '#a5b4fc' : '#4338ca',
+                      border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #c7d2fe',
+                    }}
+                  >
+                    LỘ TRÌNH ĐÀO TẠO
+                  </span>
+                  {!course.published && (
+                    <Tag color="warning" style={{ margin: 0, fontWeight: 600 }}>
+                      Bản nháp (Xem trước Admin)
+                    </Tag>
+                  )}
+                </div>
                 <Typography.Title
                   level={2}
                   style={{

@@ -1,27 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   App,
   Button,
-  Card,
-  Col,
-  Dropdown,
   Input,
-  Row,
   Select,
   Space,
   Splitter,
   Tag,
-  Tooltip,
   Typography,
 } from 'antd'
 import {
   CaretRightOutlined,
-  CodeOutlined,
   CopyOutlined,
   LoadingOutlined,
   PlayCircleOutlined,
-  RedoOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons'
 import { useLocation } from 'react-router-dom'
 import { api } from '../api'
@@ -152,14 +144,14 @@ export default function PlaygroundPage() {
   const [result, setResult] = useState(null)
 
   // Cập nhật code nếu điều hướng từ bài học sang
-  useEffect(() => {
-    if (location.state?.code) {
-      setCode(location.state.code)
-      if (location.state.input != null) setInput(location.state.input)
-      setSelectedPreset(undefined)
-      setResult(null)
-    }
-  }, [location.state])
+  const [prevLocationCode, setPrevLocationCode] = useState(location.state?.code)
+  if (location.state?.code && location.state.code !== prevLocationCode) {
+    setPrevLocationCode(location.state.code)
+    setCode(location.state.code)
+    if (location.state.input != null) setInput(location.state.input)
+    setSelectedPreset(undefined)
+    setResult(null)
+  }
 
   const selectPreset = (presetKey) => {
     const found = PRESETS.find((p) => p.key === presetKey)
