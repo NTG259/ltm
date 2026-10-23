@@ -11,8 +11,11 @@ import com.cplusplus.backend.domain.worker.SystemLog;
 import com.cplusplus.backend.domain.worker.WorkerStatus;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.master.protocol.MasterProtocol;
+import com.cplusplus.backend.master.queue.RedisStreamQueueService;
 import com.cplusplus.backend.master.tcp.WorkerSession;
 import com.cplusplus.backend.master.ws.MasterWebSocketServer;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.RecordId;
 import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.repository.JudgeWorkerRepository;
 import com.cplusplus.backend.repository.ProblemRepository;
@@ -35,6 +38,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Instant;
 import java.util.*;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -52,6 +56,7 @@ public class JudgeMasterService {
     private final ObjectMapper objectMapper;
     private final SecurityService securityService;
     private final CourseProgressService courseProgressService;
+    private final RedisStreamQueueService redisQueue;
 
     @Value("${master.tcp.port:9000}")
     private int tcpPort;
@@ -65,7 +70,6 @@ public class JudgeMasterService {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     private final Map<String, WorkerSession> activeWorkers = new ConcurrentHashMap<>();
-    private final Queue<Long> submissionQueue = new ConcurrentLinkedQueue<>();
     private final Map<Long, CompletableFuture<Map<String, Object>>> pendingRunTests = new ConcurrentHashMap<>();
     private final AtomicLong nextRunTestId = new AtomicLong(-1000);
     private volatile boolean running = true;
@@ -79,7 +83,8 @@ public class JudgeMasterService {
             TransactionTemplate transactionTemplate,
             ObjectMapper objectMapper,
             SecurityService securityService,
-            CourseProgressService courseProgressService) {
+            CourseProgressService courseProgressService,
+            RedisStreamQueueService redisQueue) {
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.judgeWorkerRepository = judgeWorkerRepository;
@@ -89,6 +94,7 @@ public class JudgeMasterService {
         this.objectMapper = objectMapper;
         this.securityService = securityService;
         this.courseProgressService = courseProgressService;
+        this.redisQueue = redisQueue;
     }
 
     @PostConstruct
@@ -112,12 +118,23 @@ public class JudgeMasterService {
         // 3. Khởi động TCP Server :9000
         executor.submit(this::listenTcpWorkers);
 
-        // 4. Khôi phục hàng đợi từ Database
-        transactionTemplate.executeWithoutResult(status -> {
+        // 4. Khôi phục hàng đợi — XAUTOCLAIM stale PEL + DB orphan scan
+        int staleClaimed = redisQueue.claimStale();
+        if (staleClaimed > 0) {
+            log.info("XAUTOCLAIM: reclaim {} stale PEL entries", staleClaimed);
+        }
+        transactionTemplate.executeWithoutResult(txStatus -> {
             List<Long> pendingIds = submissionRepository.findPendingIdsInQueueOrder();
             if (!pendingIds.isEmpty()) {
-                submissionQueue.addAll(pendingIds);
-                log.info("Đã khôi phục {} bài nộp chờ chấm vào hàng đợi", pendingIds.size());
+                log.info("DB orphan scan: {} bài IN_QUEUE/COMPILING/TESTING chưa có trong Redis", pendingIds.size());
+                for (Long sid : pendingIds) {
+                    submissionRepository.findDetailed(sid).ifPresent(sub -> {
+                        UUID token = UUID.randomUUID();
+                        sub.setAttemptToken(token);
+                        submissionRepository.save(sub);
+                        redisQueue.enqueue(sub, redisQueue.priorityOf(sub));
+                    });
+                }
             }
         });
 
@@ -304,6 +321,19 @@ public class JudgeMasterService {
         transactionTemplate.executeWithoutResult(status -> {
             submissionRepository.findDetailed(sid).ifPresent(sub -> {
                 Instant now = Instant.now();
+
+                // Kiểm tra attempt_token — từ chối stale result sau Failover
+                String receivedToken = (String) payload.get("attemptToken");
+                UUID storedToken = sub.getAttemptToken();
+                if (storedToken != null && !storedToken.toString().equals(receivedToken)) {
+                    log.warn("Bỏ qua stale result cho bài #{}: token không khớp (expected={}, got={})",
+                            sid, storedToken, receivedToken);
+                    addLog(LogLevel.WARNING,
+                            "Stale result bị từ chối: bài #" + sid + " từ worker " + session.getId()
+                            + " (token mismatch)", null, sub);
+                    return;
+                }
+
                 String verdictStr = String.valueOf(payload.getOrDefault("verdict", "RTE"));
                 Verdict verdict;
                 try {
@@ -356,6 +386,13 @@ public class JudgeMasterService {
 
                 sub.finish(outcome, now);
                 submissionRepository.save(sub);
+
+                // XACK SAU KHI ghi DB thành công — at-least-once delivery
+                if (session.getPendingStream() != null && session.getPendingMessageId() != null) {
+                    redisQueue.ack(session.getPendingStream(), session.getPendingMessageId());
+                    session.setPendingStream(null);
+                    session.setPendingMessageId(null);
+                }
 
                 if (session.getId() != null) {
                     judgeWorkerRepository.findById(session.getId()).ifPresent(w -> {
@@ -414,12 +451,18 @@ public class JudgeMasterService {
                     }
                 } else {
                     submissionRepository.findDetailed(runningSubId).ifPresent(sub -> {
+                        // XACK PEL entry cũ trước khi re-enqueue
+                        if (session.getPendingStream() != null && session.getPendingMessageId() != null) {
+                            redisQueue.ack(session.getPendingStream(), session.getPendingMessageId());
+                            session.setPendingStream(null);
+                            session.setPendingMessageId(null);
+                        }
                         boolean canRequeue = sub.requeue(SubmissionEventType.REQUEUED,
                                 "Mất kết nối tới " + workerId + " khi đang chấm", now);
                         submissionRepository.save(sub);
                         if (canRequeue) {
-                            submissionQueue.add(runningSubId);
-                            log.info("Bài #{} đã được đưa trở lại hàng đợi (Failover)", runningSubId);
+                            redisQueue.enqueue(sub, redisQueue.priorityOf(sub));
+                            log.info("Bài #{} đã được đưa trở lại hàng đợi Redis (Failover)", runningSubId);
                         } else {
                             log.warn("Bài #{} đã vượt quá số lần thử tối đa, đánh dấu FAILED", runningSubId);
                         }
@@ -435,42 +478,65 @@ public class JudgeMasterService {
 
     // -------------------------------------------------- Dispatcher
     public synchronized void dispatchNext() {
-        if (submissionQueue.isEmpty()) return;
-
-        // Tìm worker đang rảnh
-        WorkerSession idleWorker = null;
-        for (WorkerSession ws : activeWorkers.values()) {
-            if (!ws.isBusy() && !ws.isClosed()) {
-                idleWorker = ws;
-                break;
-            }
-        }
+        // Tìm worker ít bận nhất theo latencyMs (least-busy dispatch)
+        WorkerSession idleWorker = activeWorkers.values().stream()
+                .filter(ws -> !ws.isBusy() && !ws.isClosed())
+                .min(Comparator.comparingLong(WorkerSession::getLatencyMs))
+                .orElse(null);
 
         if (idleWorker == null) {
-            log.debug("Chưa có worker rảnh để giao việc (Hàng đợi: {})", submissionQueue.size());
+            log.debug("Chưa có worker rảnh để giao việc");
             return;
         }
 
-        Long sid = submissionQueue.poll();
-        if (sid == null) return;
+        // Đọc message từ Redis Streams (ưu tiên contest > practice > custom)
+        MapRecord<String, Object, Object> record = redisQueue.readNext(idleWorker.getId());
+        if (record == null) {
+            log.debug("Hàng đợi Redis trống");
+            return;
+        }
+
+        Map<Object, Object> fields = record.getValue();
+        Long sid = getLong(fields.get("submissionId"));
+        if (sid == null) {
+            redisQueue.ack(record.getStream(), record.getId());
+            return;
+        }
 
         final WorkerSession chosenWorker = idleWorker;
+        final RecordId messageId = record.getId();
+        final String streamName = record.getStream();
 
         boolean assigned = Boolean.TRUE.equals(transactionTemplate.execute(status -> {
             Optional<Submission> opt = submissionRepository.findDetailed(sid);
-            if (opt.isEmpty()) return false;
+            if (opt.isEmpty()) {
+                redisQueue.ack(streamName, messageId); // orphan message
+                return false;
+            }
             Submission sub = opt.get();
-            if (sub.getStatus() != SubmissionStatus.IN_QUEUE) return false;
+            if (sub.getStatus() != SubmissionStatus.IN_QUEUE) {
+                redisQueue.ack(streamName, messageId); // stale
+                return false;
+            }
 
             Optional<JudgeWorker> workerOpt = judgeWorkerRepository.findById(chosenWorker.getId());
             if (workerOpt.isEmpty()) return false;
             JudgeWorker workerEntity = workerOpt.get();
 
             Instant now = Instant.now();
+
+            // Sinh attempt_token mới — chặn stale result sau Failover (V11)
+            UUID token = UUID.randomUUID();
+            sub.setAttemptToken(token);
+
             sub.assignTo(workerEntity, now);
             workerEntity.markBusy();
             judgeWorkerRepository.save(workerEntity);
             submissionRepository.save(sub);
+
+            // Ghi nhớ stream/messageId để XACK sau khi finish() thành công
+            chosenWorker.setPendingStream(streamName);
+            chosenWorker.setPendingMessageId(messageId);
 
             // Lấy toàn bộ đề và bộ test
             Problem problem = problemRepository.findWithTestCases(sub.getProblem().getId())
@@ -496,6 +562,7 @@ public class JudgeMasterService {
             taskPayload.put("checker", "lines");
             taskPayload.put("stopOnFirstFailure", false);
             taskPayload.put("attempt", (int) sub.getAttempts());
+            taskPayload.put("attemptToken", token.toString());
             taskPayload.put("tests", testsList);
 
             try {
@@ -503,8 +570,8 @@ public class JudgeMasterService {
                 chosenWorker.setBusy(true);
                 chosenWorker.setCurrentTask(sid);
                 log.info("Đã giao bài #{} cho Worker [{}]", sid, chosenWorker.getId());
-
                 broadcastSubmissionUpdate(sub);
+                // KHÔNG XACK ở đây — XACK chỉ sau khi ghi DB thành công trong onWorkerTaskResult
                 return true;
             } catch (IOException e) {
                 log.error("Lỗi khi gửi OP_TASK_ASSIGN cho worker {}: {}", chosenWorker.getId(), e.getMessage());
@@ -513,16 +580,12 @@ public class JudgeMasterService {
             }
         }));
 
-        if (!assigned) {
-            // Đưa lại vào hàng đợi nếu lỗi
-            submissionQueue.add(sid);
-        } else {
+        if (assigned) {
             broadcastWorkerUpdate();
-            // Thử giao tiếp nếu còn việc và còn worker
-            if (!submissionQueue.isEmpty()) {
-                executor.submit(this::dispatchNext);
-            }
+            // Tiếp tục dispatch nếu còn worker rảnh và còn bài
+            executor.submit(this::dispatchNext);
         }
+        // Nếu không assigned: message ở lại PEL, XAUTOCLAIM xử lý khi restart
     }
 
     // -------------------------------------------------- Public API methods
@@ -545,7 +608,7 @@ public class JudgeMasterService {
         });
 
         if (sub != null) {
-            submissionQueue.add(sub.getId());
+            redisQueue.enqueue(sub, redisQueue.priorityOf(sub));
             broadcastSubmissionUpdate(sub);
             broadcastWorkerUpdate();
             dispatchNext();
@@ -653,7 +716,11 @@ public class JudgeMasterService {
     }
 
     public List<Long> getQueue() {
-        return new ArrayList<>(submissionQueue);
+        return List.of(
+                redisQueue.depth(RedisStreamQueueService.STREAM_CONTEST),
+                redisQueue.depth(RedisStreamQueueService.STREAM_PRACTICE),
+                redisQueue.depth(RedisStreamQueueService.STREAM_CUSTOM)
+        );
     }
 
     public List<Map<String, Object>> getWorkerSummaries() {

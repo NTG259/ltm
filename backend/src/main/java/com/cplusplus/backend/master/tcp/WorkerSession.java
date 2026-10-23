@@ -1,6 +1,7 @@
 package com.cplusplus.backend.master.tcp;
 
 import com.cplusplus.backend.master.protocol.MasterProtocol;
+import org.springframework.data.redis.connection.stream.RecordId;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -27,6 +28,10 @@ public class WorkerSession {
     private volatile long lastHeartbeat = System.currentTimeMillis();
     private volatile long latencyMs = 0;
     private volatile boolean closed = false;
+
+    /** Redis Stream message ID cần XACK sau khi finish() thành công. */
+    private volatile RecordId pendingMessageId = null;
+    private volatile String pendingStream = null;
 
     public WorkerSession(Socket socket) throws IOException {
         this.socket = socket;
@@ -94,4 +99,10 @@ public class WorkerSession {
 
     public long getLatencyMs() { return latencyMs; }
     public void setLatencyMs(long latencyMs) { this.latencyMs = latencyMs; }
+
+    public RecordId getPendingMessageId() { return pendingMessageId; }
+    public void setPendingMessageId(RecordId pendingMessageId) { this.pendingMessageId = pendingMessageId; }
+
+    public String getPendingStream() { return pendingStream; }
+    public void setPendingStream(String pendingStream) { this.pendingStream = pendingStream; }
 }

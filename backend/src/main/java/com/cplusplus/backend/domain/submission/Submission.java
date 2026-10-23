@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -124,6 +125,10 @@ public class Submission {
     @Column(nullable = false)
     private short attempts;
 
+    /** Token chống stale result: Master gán UUID mới mỗi lần dispatch, Worker echo lại. */
+    @Column(name = "attempt_token")
+    private UUID attemptToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -220,7 +225,7 @@ public class Submission {
      */
     public void finish(Outcome outcome, Map<Short, TestCase> testCasesByIndex, Instant now) {
         if (!status.isPending()) {
-            throw new IllegalStateException("Bài #" + id + " đã ở trạng thái " + status);
+            return; // idempotent: gọi lần 2 là no-op (stale result đã bị lọc trước)
         }
         status = SubmissionStatus.FINISHED;
         verdict = outcome.verdict();
@@ -368,6 +373,14 @@ public class Submission {
 
     public short getAttempts() {
         return attempts;
+    }
+
+    public UUID getAttemptToken() {
+        return attemptToken;
+    }
+
+    public void setAttemptToken(UUID attemptToken) {
+        this.attemptToken = attemptToken;
     }
 
     public Instant getCreatedAt() {

@@ -6,44 +6,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Backend (Master – Spring Boot)
 ```powershell
-cd backend; .\mvnw spring-boot:run          # run
+cd backend; .\mvnw spring-boot:run          # run (port :8082 locally, see note below)
 cd backend; .\mvnw test                     # all tests
 cd backend; .\mvnw test -Dtest=ClassName    # single test class
 cd backend; .\mvnw compile                  # compile only
 ```
-Ports: REST `:8000`, WebSocket `:8001`, TCP Worker `:9000`.
+
+**Port note:** `server.port` defaults to `8082` locally. In Docker Compose it is overridden to `8000` via `SERVER_PORT=8000`. Always start Redis before the backend — it will refuse to start without it.
+
+```powershell
+# Start Redis (Docker required)
+docker compose up -d redis
+# Then backend
+cd backend; .\mvnw spring-boot:run
+```
 
 ### Frontend (React + Vite)
 ```powershell
-cd frontend; npm install     # first time only (or pnpm install — pnpm-lock.yaml exists)
+cd frontend; npm install     # first time only (pnpm-lock.yaml exists — pnpm also works)
 cd frontend; npm run dev     # dev server at http://localhost:5173
 cd frontend; npm run build   # production build
 cd frontend; npm run lint    # ESLint
 ```
 
-By default the frontend runs in **mock mode** (no backend needed). Set `VITE_USE_MOCK=false` in `frontend/.env.local` to point at the real backend (`API_BASE=/api`, WebSocket `ws://localhost:8001`).
+By default the frontend runs in **mock mode** (no backend needed). Set `VITE_USE_MOCK=false` in `frontend/.env.local` to point at the real backend (`API_BASE=/api`, WebSocket `ws://localhost:8001`). When pointing at the local backend, use port `8082`, not `8000`.
 
-### Judge Worker (Python)
+### Docker Compose (full stack)
 ```powershell
-# 3 workers in parallel (PowerShell)
-1..3 | ForEach-Object { $id = "worker-$_"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\judgement'; python -X utf8 -m judgement worker --id $id --master-host 127.0.0.1 --master-port 9000" }
+# Windows: port 5433 and 8080 are often reserved; override them
+$env:DB_PORT="5434"; $env:WEB_PORT="8088"; docker compose up -d --build
+```
+Services: `db` (PostgreSQL :5434↔5432), `redis` (:6379), `backend` (:8000/:8001), `frontend` (:8088→:80), `go-judge` (:5050, internal).
 
-# Single worker
-cd judgement; python -X utf8 -m judgement worker --id worker-1 --master-host 127.0.0.1 --master-port 9000
+The `go-judge` healthcheck uses `wget` which is absent from the Alpine image — the service shows `unhealthy` in `docker ps` but is actually functional. Verify with:
+```powershell
+docker exec codejudge-backend-1 curl -s http://go-judge:5050/version
+```
 
-# Judge a file locally (no Master needed)
-cd judgement; python -m judgement judge samples/ac.cpp --problem samples/aplusb.json
-
-# Static security scan only
-cd judgement; python -m judgement scan samples/sec.cpp
-
-# Run judgement tests
-cd judgement; python -m pytest tests/
+### k6 Load Tests
+```powershell
+# Requires a running backend and at least 1 judge worker
+k6 run -e K6_TOKEN=<bearer> tests/k6/scenario_a_throughput.js
+k6 run -e K6_TOKEN=<bearer> tests/k6/scenario_b_wait_time.js
+k6 run -e K6_TOKEN=<bearer> -e PAUSE_SECONDS=30 tests/k6/scenario_c_durability.js
+k6 run -e K6_TOKEN=<bearer> tests/k6/worker_utilization.js   # monitor alongside Scenario A
 ```
 
 ## Architecture
 
-The system is a distributed C++ online judge with three separately-running components:
+Distributed C++ online judge: Browser → Master (Spring Boot) → Judge Worker × N.
 
 ```
 Browser (SPA)
@@ -51,42 +62,79 @@ Browser (SPA)
   └─ WebSocket :8001 → Master
 
 Master (Spring Boot, backend/)
-  └─ TCP :9000 → Judge Worker × N (judgement/)
-  └─ JDBC → PostgreSQL (Neon cloud, preconfigured)
+  └─ TCP :9000 → Judge Worker × N
+  └─ Redis Streams (3 priority queues)
+  └─ JDBC → PostgreSQL
 ```
 
-**Backend (`backend/`)** — Spring Boot 4 / Java 21. No Spring Security; auth is a custom `AuthInterceptor` that validates a Bearer token (SHA-256 stored in `sessions` table). The WebSocket server at `:8001` is a hand-rolled RFC 6455 implementation (`MasterWebSocketServer`), not Spring's. The TCP server at `:9000` (`WorkerSession`) speaks a binary framing protocol: 6-byte header (`magic=0xAA | opcode | uint32 payload-length`) + JSON payload. `JudgeMasterService` owns the in-memory FIFO queue, Least-Busy dispatch, heartbeat monitoring, and failover logic. Database migrations are Flyway scripts in `backend/src/main/resources/db/migration/`. All entity→DTO conversions go through `DtoMapper`.
+**Backend (`backend/`)** — Spring Boot 4 / Java 21. No Spring Security; auth is a custom `AuthInterceptor` that validates a Bearer token (SHA-256 stored in `sessions` table). The WebSocket server at `:8001` is a hand-rolled RFC 6455 implementation (`MasterWebSocketServer`). The TCP server at `:9000` uses `WorkerSession` with a binary framing protocol: 6-byte header (`magic=0xAA | opcode | uint32 payload-length`) + JSON payload. All entity→DTO conversions go through `DtoMapper`. Database migrations are Flyway scripts in `backend/src/main/resources/db/migration/` (currently V1–V11).
 
-**Judgement (`judgement/`)** — Pure-stdlib Python package. A `Worker` connects outward to Master, receives `TASK_ASSIGN` frames, calls `Judge.judge()` which runs: static scan (`scanner.py`) → `g++ -std=c++17 -O2 -static` → per-test `sandbox.py` (uses `launcher.c` via `fork`+`setrlimit`+`execvp`, measuring CPU/RSS with `wait4`) → `checker.py` (lines/tokens/exact). Results are sent as `TASK_RESULT` frames. On Windows, `launcher.c` is skipped; only wall-clock time is enforced (no memory measurement).
+**`judgement/` directory** — This is the [go-judge](https://github.com/criyle/go-judge) Go source code used as the execution backend reference. There is no Python judge worker in this repository. TCP judge workers must be implemented separately and connect to Master on port 9000. The backend does **not** call go-judge directly; it expects TCP workers to use it.
 
-**Frontend (`frontend/`)** — React 19 + Vite + Ant Design 6 + Monaco Editor. Source files are `.jsx`/`.js` (not TypeScript). No Redux; state lives in components and context. All API calls go through `frontend/src/api/index.js`, which exports either `mockApi` (in-browser simulation via `mock/engine.js` and `mock/data.js`) or `realApi` (actual HTTP/WS calls), selected by `VITE_USE_MOCK`. Two roles: contestant (problem list, IDE, submissions, contests, leaderboard) and admin (worker monitor, problem bank, contest management, all submissions, classrooms).
+**Frontend (`frontend/`)** — React 19 + Vite + Ant Design 6 + Monaco Editor. Source files are `.jsx`/`.js` (not TypeScript). No Redux; state in components and context. All API calls go through `frontend/src/api/index.js`, which exports either `mockApi` (via `mock/engine.js` and `mock/data.js`) or `realApi`, selected by `VITE_USE_MOCK`. Two roles: contestant and admin.
 
-**Classroom / LMS feature** — Added in V7 migration. `Classroom` has many `ClassroomStudent`s and many `ClassroomContest`s (junction tables). `ClassroomController` handles CRUD and bulk CSV import (`ClassroomCsvImporter`). `MonitorController` (under `/api/classrooms`) provides teacher-facing live progress views: per-student presence and per-contest submission status within a classroom.
+### Queue and Dispatch (V11+)
 
-**Plagiarism detection** — `PlagiarismService` groups each contest's best AC submissions by problem, then runs `WinnowingEngine` (Winnowing fingerprinting algorithm) via `CppCodeTokenizer` on each pair. Results stored in `plagiarism_reports` / `plagiarism_matches` tables. Triggered via `POST /contests/{id}/plagiarism/run` (admin only).
+`JudgeMasterService` no longer uses `ConcurrentLinkedQueue`. The queue is **Redis Streams** with 3 priority levels, managed by `RedisStreamQueueService` (`backend/.../master/queue/`):
 
-**Proctoring** — `ContestProctoring.jsx` + `useProctoring.js` on the frontend detect tab-switching and focus loss during contests, reporting violations via `POST /contests/{id}/proctor/violation`. Stored in `contest_violations`. Admin monitors live via `AdminContestMonitorPage`.
+| Stream | Priority | When |
+|--------|----------|------|
+| `judge:contest` | Highest | Submission has a contestId |
+| `judge:practice` | Normal | All other submissions |
+| `judge:custom` | Lowest | Custom test runs |
 
-**Worker judging pipeline** — when a submission arrives, `JudgeMasterService.submit()` saves it to DB with status `IN_QUEUE`, pushes its id onto the in-memory `ConcurrentLinkedQueue<Long>`, then calls `dispatchNext()`. `dispatchNext()` is `synchronized`; it picks the first non-busy `WorkerSession` from `ConcurrentHashMap<String, WorkerSession> activeWorkers` (first-found, not true least-busy), removes the id from the queue, flips the worker to `busy=true`, and sends `OP_TASK_ASSIGN` with full source + test cases embedded in the JSON payload (up to 10 MB limit). The worker receives `OP_TASK_ASSIGN`, spawns a daemon thread (`judge-<sid>`), and returns to reading the socket immediately so PING/PONG continues during judging.
+**Submit flow:** `submit()` → `redisQueue.enqueue(sub, priority)` → Redis `XADD`. **Dispatch:** `dispatchNext()` selects the worker with the lowest `latencyMs` (not first-idle), calls `redisQueue.readNext(workerId)` (`XREADGROUP`), sets `worker.pendingStream`/`worker.pendingMessageId`, then sends `OP_TASK_ASSIGN`. **XACK is called only after `submissionRepository.save(sub)` succeeds** in `onWorkerTaskResult()` — at-least-once delivery. On disconnect, the pending PEL entry is XACK'd and the submission re-enqueued.
 
-Inside the worker thread: `Judge.judge()` runs in order — `scanner.py` (static ban-list scan → SEC) → `g++ -std=c++17 -O2` in a temp dir → per-test `sandbox.run()` (POSIX: `launcher.c` via `fork`+`setrlimit`+`execvp`+`wait4`; Windows: `subprocess` with wall-clock only) → `checker.py` (line/token/exact). After each phase the worker sends `OP_TASK_STATUS` (`COMPILING` / `TESTING`). When all tests finish, it sends a single `OP_TASK_RESULT` with verdict, score, per-test breakdown, and stdout/stderr previews (capped at 4 KB / 2 KB). A negative `submissionId` (< 0) signals a "run custom test" request — the result is routed to a `CompletableFuture` in `pendingRunTests` rather than saved to DB. `dispatchNext()` is called again after every result or disconnect to drain the queue.
+**Recovery on restart:** `claimStale()` (XCLAIM entries idle > 1050 s) + DB orphan scan re-enqueues all `IN_QUEUE`/`COMPILING`/`TESTING` submissions.
 
-**Failover** — `checkHeartbeats()` fires every 5 s; any worker silent for >15 s has its socket closed and `onWorkerDisconnected()` called. That method calls `sub.requeue()` (increments `attempt`; after 3 attempts → `FAILED`) and pushes the id to the front-ish of the queue via `submissionQueue.add()`. On Master restart, `findPendingIdsInQueueOrder()` reloads all `IN_QUEUE`/`COMPILING`/`TESTING` submissions.
+### attempt_token (V11)
 
-**Protocol frame** (`MasterProtocol.java` / `protocol.py`): 6-byte header `[0xAA][opcode][uint32 big-endian length]` + UTF-8 JSON body, max 10 MB.
+Each dispatch in `dispatchNext()` generates a fresh `UUID attemptToken`, saves it to the `submissions.attempt_token` column, and embeds it in `OP_TASK_ASSIGN`. `onWorkerTaskResult()` rejects any result whose token doesn't match (stale result after failover). The token is `null` until first dispatch.
 
-**Protocol opcodes**:
-- `0x01` HEARTBEAT — Master sends `{"type":"PING","ts":<epoch_ms>}`; Worker replies `{"type":"PONG","ts":…,"busy":…,"currentTask":…,"completed":…}`
-- `0x02` WORKER_REGISTER — Worker→Master on connect; Master replies with `{"accepted":true}`
-- `0x03` TASK_ASSIGN — Master→Worker; contains `submissionId`, `sourceCode`, `timeLimitMs`, `memoryLimitMb`, `language`, `checker`, `stopOnFirstFailure`, `tests:[{index,input,output}]`
+### Failover
+
+`checkHeartbeats()` fires every 5 s. Any worker silent for >15 s is closed; `onWorkerDisconnected()` XACK's the old PEL entry, calls `sub.requeue()` (increments `attempt`; after 3 → `FAILED`), then re-enqueues via `redisQueue.enqueue()`. `finish()` on `Submission` is a no-op if the submission is already in a terminal state (idempotent).
+
+### Protocol opcodes
+- `0x01` HEARTBEAT — Master sends `{"type":"PING","ts":<ms>}`; Worker replies `{"type":"PONG","ts":…,"busy":…}`
+- `0x02` WORKER_REGISTER — Worker→Master; Master replies `{"accepted":true}`
+- `0x03` TASK_ASSIGN — Master→Worker; includes `submissionId`, `sourceCode`, `timeLimitMs`, `memoryLimitMb`, `language`, `checker`, `stopOnFirstFailure`, `attemptToken`, `tests:[{index,input,output}]`
 - `0x04` TASK_STATUS — Worker→Master; `{"status":"COMPILING"|"TESTING"}`
-- `0x05` TASK_RESULT — Worker→Master; `{"verdict","score","timeMs","memoryKb","passed","total","tests":[…],"compileLog","securityMessage"}`
+- `0x05` TASK_RESULT — Worker→Master; `{"verdict","score","timeMs","memoryKb","passed","total","tests":[…],"compileLog","securityMessage","attemptToken"}`
 
-**Database schema** — PostgreSQL (Neon cloud). Connection string is already in `backend/src/main/resources/application.yaml`; no local DB setup needed. Key tables: `users`, `sessions`, `problems`, `test_cases`, `contests`, `contest_problems`, `contest_participants`, `submissions`, `submission_test_results`, `submission_events`, `workers`, `system_logs`, `classrooms`, `classroom_students`, `classroom_contests`, `plagiarism_reports`, `plagiarism_matches`, `contest_violations`.
+### Classroom / LMS (V7+)
 
-**Verdicts**: `AC`, `WA`, `TLE`, `MLE`, `RTE`, `CE`, `SEC`. `SEC` is detected by static scan before compilation (banned identifiers: `windows.h`, `system`, `fork`, `exec*`, etc.). `CE`/`SEC` do not incur ICPC penalty.
+`Classroom` → many `ClassroomStudent`s and `ClassroomContest`s. `ClassroomController` handles CRUD and bulk CSV import (`ClassroomCsvImporter`). `MonitorController` (under `/api/classrooms`) provides teacher-facing live progress views.
 
-**Failover**: when a worker's socket closes or PONG is missed for >15 s, the in-flight submission is re-enqueued at the front with `attempt+1`; after 3 failures the submission moves to `FAILED`. On Master restart the queue is rebuilt from DB rows with status `IN_QUEUE`/`COMPILING`/`TESTING`.
+### Plagiarism detection
+
+`PlagiarismService` groups AC submissions by problem in a contest, runs `WinnowingEngine` (Winnowing fingerprinting) via `CppCodeTokenizer` on each pair. Triggered via `POST /contests/{id}/plagiarism/run` (admin only). Stored in `plagiarism_reports` / `plagiarism_matches`.
+
+### Proctoring
+
+`ContestProctoring.jsx` + `useProctoring.js` detect tab-switching/focus loss, report violations via `POST /contests/{id}/proctor/violation` → `contest_violations`. Admin monitors live via `AdminContestMonitorPage`.
+
+## Auth
+
+Login request format (note: uses `role`, not `username`):
+```json
+// Admin
+{"role": "admin", "password": "admin123"}
+
+// Student
+{"role": "student", "studentId": "B20DCCN001", "fullName": "Nguyen Van A"}
+```
+Tokens are Bearer tokens; pass as `Authorization: Bearer <token>`.
+
+Admin overview endpoint is `/api/admin/overview` (not `/api/admin/workers` or `/api/admin/queue`).
+
+## Database
+
+PostgreSQL (Neon cloud). Connection string already in `backend/src/main/resources/application.yaml` — no local DB setup needed for development. Flyway manages schema; current version: **V11** (adds `submissions.attempt_token UUID`).
+
+Key tables: `users`, `sessions`, `problems`, `test_cases`, `contests`, `contest_problems`, `contest_participants`, `submissions`, `submission_test_results`, `submission_events`, `workers`, `system_logs`, `classrooms`, `classroom_students`, `classroom_contests`, `plagiarism_reports`, `plagiarism_matches`, `contest_violations`.
+
+**Verdicts**: `AC`, `WA`, `TLE`, `MLE`, `RTE`, `CE`, `SEC`. `CE`/`SEC` do not incur ICPC penalty. Score = `round(100 × tests_passed / tests_total)`.
 
 ## Demo credentials
 - Admin: password `admin123`

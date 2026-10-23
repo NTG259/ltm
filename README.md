@@ -13,6 +13,87 @@ Tài liệu chi tiết của từng thành phần:
 
 ---
 
+## Khởi động nhanh (Docker Compose)
+
+> Yêu cầu: **Docker Desktop** với WSL2 backend (Windows/macOS) hoặc Docker Engine (Linux).
+> go-judge cần cgroup + namespace nên **phải chạy trên Linux kernel** (WSL2 đáp ứng yêu cầu này trên Windows).
+
+### 1. Clone và khởi động
+
+```powershell
+git clone <repo-url>
+cd ltm
+
+# Khởi động toàn bộ stack (db + redis + backend + frontend + go-judge)
+docker compose up -d --build
+```
+
+Trên **Windows**, port 5433 và 8080 thường bị Hyper-V reserved. Dùng biến môi trường để đổi:
+
+```powershell
+$env:DB_PORT="5434"; $env:WEB_PORT="8088"; docker compose up -d --build
+```
+
+### 2. Kiểm tra trạng thái
+
+```powershell
+docker compose ps
+# Chờ backend healthy (~30–40 giây sau khi Flyway chạy xong migration)
+```
+
+> **Lưu ý:** service `go-judge` hiện `unhealthy` trong `docker ps` vì healthcheck dùng `wget` không có sẵn trên Alpine — service thực tế hoạt động bình thường. Kiểm tra bằng:
+> ```powershell
+> docker exec codejudge-backend-1 curl -s http://go-judge:5050/version
+> ```
+
+### 3. Truy cập
+
+| Dịch vụ | URL | Ghi chú |
+|---------|-----|---------|
+| Web (mặc định) | http://localhost:8080 | `WEB_PORT=8088` → http://localhost:8088 |
+| Backend REST | http://localhost:8000/api | |
+| Backend WebSocket | ws://localhost:8001 | |
+| Redis | localhost:6379 | |
+| PostgreSQL | localhost:5433 | `DB_PORT=5434` → 5434 |
+
+### 4. Tài khoản demo
+
+| Vai trò | Thông tin đăng nhập |
+|---------|-------------------|
+| Admin | Mật khẩu: `admin123` |
+| Thí sinh | MSSV: `B20DCCN001` · Họ tên: `Nguyễn Văn A` |
+
+### 5. Nạp dữ liệu demo (tùy chọn)
+
+```powershell
+# Nạp sẵn 10 đề bài, 3 kỳ thi, dữ liệu mẫu (xóa sạch dữ liệu cũ!)
+docker compose --profile demo up seed
+```
+
+### 6. Cấu hình
+
+Biến môi trường trong `compose.yaml` (không cần `.env` cho môi trường dev):
+
+| Biến | Mặc định | Ý nghĩa |
+|------|----------|---------|
+| `DB_PORT` | `5433` | Port PostgreSQL trên host |
+| `WEB_PORT` | `8080` | Port frontend trên host |
+| `DB_NAME` | `codejudge` | Tên database |
+| `DB_USERNAME` | `codejudge` | User PostgreSQL |
+| `DB_PASSWORD` | `codejudge` | Mật khẩu PostgreSQL |
+| `GO_JUDGE_TOKEN` | _(rỗng)_ | Token xác thực go-judge (bỏ trống = không cần) |
+| `GO_JUDGE_PARALLELISM` | `4` | Số luồng chấm song song trong go-judge |
+| `VITE_USE_MOCK` | `false` | `true` để frontend chạy mock (không cần backend) |
+
+### 7. Tắt và xóa dữ liệu
+
+```powershell
+docker compose down          # tắt, giữ volume (dữ liệu DB + Redis)
+docker compose down -v       # tắt và xóa sạch volume
+```
+
+---
+
 ## 1. Phạm vi
 
 **Trong phạm vi**
