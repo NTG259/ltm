@@ -129,6 +129,12 @@ public class JudgeMasterService {
                 log.info("DB orphan scan: {} bài IN_QUEUE/COMPILING/TESTING chưa có trong Redis", pendingIds.size());
                 for (Long sid : pendingIds) {
                     submissionRepository.findDetailed(sid).ifPresent(sub -> {
+                        Instant now = Instant.now();
+                        // Reset COMPILING/TESTING → IN_QUEUE trước khi re-enqueue
+                        if (sub.getStatus() != SubmissionStatus.IN_QUEUE) {
+                            sub.requeue(SubmissionEventType.REQUEUED,
+                                    "Orphan scan khi khởi động lại Master", now);
+                        }
                         UUID token = UUID.randomUUID();
                         sub.setAttemptToken(token);
                         submissionRepository.save(sub);
@@ -582,10 +588,10 @@ public class JudgeMasterService {
 
         if (assigned) {
             broadcastWorkerUpdate();
-            // Tiếp tục dispatch nếu còn worker rảnh và còn bài
-            executor.submit(this::dispatchNext);
         }
-        // Nếu không assigned: message ở lại PEL, XAUTOCLAIM xử lý khi restart
+        // Tiếp tục dispatch: khi assigned (bài mới giao) hoặc khi message bị skip (stale/orphan đã XACK),
+        // cần đọc message tiếp theo trong queue.
+        executor.submit(this::dispatchNext);
     }
 
     // -------------------------------------------------- Public API methods
