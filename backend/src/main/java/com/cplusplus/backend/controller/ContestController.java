@@ -209,6 +209,8 @@ public class ContestController {
                     ));
         }
 
+        Set<Long> onlineIds = judgeMasterService.getOnlineUserIds();
+
         List<Map<String, Object>> participantList = new ArrayList<>();
         for (ContestParticipant p : participants) {
             if (!isAdmin && !p.getUser().getId().equals(currentUser.getId())) {
@@ -218,6 +220,7 @@ public class ContestController {
             map.put("userId", p.getUser().getId());
             map.put("username", p.getUser().getUsername());
             map.put("fullName", p.getUser().getFullName());
+            map.put("online", onlineIds != null && onlineIds.contains(p.getUser().getId()));
             map.put("tabSwitchCount", p.getTabSwitchCount());
             map.put("lastViolationAt", p.getLastViolationAt() != null ? p.getLastViolationAt().toEpochMilli() : null);
             map.put("registeredAt", p.getRegisteredAt().toEpochMilli());
@@ -238,10 +241,13 @@ public class ContestController {
                 }).toList()
                 : List.of();
 
+        long onlineCount = participantList.stream().filter(p -> Boolean.TRUE.equals(p.get("online"))).count();
+
         return ResponseEntity.ok(Map.of(
                 "contestId", id,
                 "participants", participantList,
-                "recentViolations", recentViolationList
+                "recentViolations", recentViolationList,
+                "onlineCount", onlineCount
         ));
     }
 

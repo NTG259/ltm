@@ -30,6 +30,7 @@ import {
   SafetyCertificateOutlined,
   SearchOutlined,
   WarningOutlined,
+  WifiOutlined,
 } from '@ant-design/icons'
 import { api } from '../api'
 import { useFetch, useNow, useSocket } from '../lib/hooks'
@@ -40,16 +41,33 @@ export default function ContestProctoring({ contestId }) {
   const now = useNow(5000)
   const { data, loading, reload, setData } = useFetch(() => api.getProctorStatus(contestId), [contestId])
   const [search, setSearch] = useState('')
-  const [filterMode, setFilterMode] = useState('all') // 'all' | 'violating' | 'high_risk'
+  const [filterMode, setFilterMode] = useState('all') // 'all' | 'online' | 'violating' | 'high_risk'
   const [selectedUser, setSelectedUser] = useState(null) // user xem timeline modal
+  const [realtimePresence, setRealtimePresence] = useState({})
 
-  const participants = useMemo(() => data?.participants || [], [data?.participants])
+  // Gộp trạng thái online realtime từ WebSocket vào danh sách thí sinh
+  const participants = useMemo(() => {
+    return (data?.participants || []).map((p) => {
+      const isOnline = p.userId in realtimePresence ? realtimePresence[p.userId] : Boolean(p.online)
+      return { ...p, online: isOnline }
+    })
+  }, [data?.participants, realtimePresence])
+
   const recentViolations = useMemo(() => data?.recentViolations || [], [data?.recentViolations])
 
-  // Lắng nghe sự kiện PROCTOR_ALERT từ WebSocket
+  // Lắng nghe sự kiện PROCTOR_ALERT và PRESENCE_UPDATE từ WebSocket
   useSocket(
     useCallback(
       (msg) => {
+        // Cập nhật trạng thái Online / Offline realtime
+        if (msg.type === 'PRESENCE_UPDATE') {
+          setRealtimePresence((prev) => ({
+            ...prev,
+            [msg.userId]: msg.status === 'ONLINE',
+          }))
+          return
+        }
+
         if (msg.type !== 'PROCTOR_ALERT' || Number(msg.contestId) !== Number(contestId)) {
           return
         }
@@ -120,11 +138,12 @@ export default function ContestProctoring({ contestId }) {
   // Thống kê nhanh
   const stats = useMemo(() => {
     const total = participants.length
+    const online = participants.filter((p) => p.online).length
     const clean = participants.filter((p) => !p.tabSwitchCount || p.tabSwitchCount === 0).length
     const warning = participants.filter((p) => p.tabSwitchCount >= 1 && p.tabSwitchCount < 3).length
     const highRisk = participants.filter((p) => p.tabSwitchCount >= 3).length
     const totalSwitches = participants.reduce((sum, p) => sum + (p.tabSwitchCount || 0), 0)
-    return { total, clean, warning, highRisk, totalSwitches }
+    return { total, online, clean, warning, highRisk, totalSwitches }
   }, [participants])
 
   // Lọc danh sách thí sinh
@@ -132,6 +151,7 @@ export default function ContestProctoring({ contestId }) {
     const q = search.trim().toLowerCase()
     return participants
       .filter((p) => {
+        if (filterMode === 'online' && !p.online) return false
         if (filterMode === 'violating' && (!p.tabSwitchCount || p.tabSwitchCount === 0)) return false
         if (filterMode === 'high_risk' && (p.tabSwitchCount || 0) < 3) return false
         if (!q) return true
@@ -163,6 +183,22 @@ export default function ContestProctoring({ contestId }) {
       title: 'Họ và tên thí sinh',
       dataIndex: 'fullName',
       render: (v) => <span style={{ fontWeight: 500 }}>{v || '—'}</span>,
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'online',
+      width: 120,
+      filters: [
+        { text: 'Đang online', value: true },
+        { text: 'Offline', value: false },
+      ],
+      onFilter: (v, r) => Boolean(r.online) === v,
+      render: (online) =>
+        online ? (
+          <Badge status="success" text={<Typography.Text type="success" style={{ fontWeight: 600 }}>Online</Typography.Text>} />
+        ) : (
+          <Badge status="default" text={<Typography.Text type="secondary">Offline</Typography.Text>} />
+        ),
     },
     {
       title: 'Đánh giá rủi ro',
@@ -267,40 +303,50 @@ export default function ContestProctoring({ contestId }) {
       )}
 
       {/* Thẻ thống kê tổng quan */}
-      <Row gutter={[16, 16]}>
-        <Col xs={12} sm={6}>
+      <Row gutter={[12, 12]}>
+        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
           <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
             <Statistic
-              title="Tổng thí sinh trong phòng"
+              title="Tổng thí sinh"
               value={stats.total}
               prefix={<SafetyCertificateOutlined style={{ color: 'var(--primary)' }} />}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
           <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
             <Statistic
-              title="Thí sinh làm bài nghiêm túc"
+              title="Đang Online"
+              value={stats.online}
+              valueStyle={{ color: '#10b981' }}
+              prefix={<WifiOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
+          <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
+            <Statistic
+              title="Làm bài nghiêm túc"
               value={stats.clean}
               valueStyle={{ color: '#10b981' }}
               prefix={<CheckCircleOutlined />}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
           <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
             <Statistic
-              title="Cảnh báo rời tab (1-2 lần)"
+              title="Cảnh báo rời tab"
               value={stats.warning}
               valueStyle={{ color: '#f59e0b' }}
               prefix={<WarningOutlined />}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
           <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
             <Statistic
-              title="Nguy cơ cao gian lận (≥3 lần)"
+              title="Nguy cơ cao (≥3 lần)"
               value={stats.highRisk}
               valueStyle={{ color: '#ef4444' }}
               prefix={<AlertOutlined />}
@@ -343,6 +389,7 @@ export default function ContestProctoring({ contestId }) {
                 size="middle"
               >
                 <Radio.Button value="all">Tất cả ({stats.total})</Radio.Button>
+                <Radio.Button value="online">Đang Online ({stats.online})</Radio.Button>
                 <Radio.Button value="violating">Có rời tab ({stats.warning + stats.highRisk})</Radio.Button>
                 <Radio.Button value="high_risk">Nguy cơ cao ({stats.highRisk})</Radio.Button>
               </Radio.Group>

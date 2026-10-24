@@ -69,6 +69,7 @@ services:
     ports:
       - "18000:8000"   # HTTP REST
       - "18001:8001"   # WebSocket
+      - "8001:8001"    # WebSocket (khop voi Web UI)
     networks: [default, judge]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
