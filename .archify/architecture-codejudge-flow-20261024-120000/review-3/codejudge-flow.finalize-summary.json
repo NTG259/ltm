@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+    "sha256": "b3b32bd00415d75c91f0fabbb69da903b2e061191502a3890d2fe39de8d9cb61",
+    "bytes": 8232
+  },
+  "artifact": {
+    "path": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html",
+    "sha256": "9fe36a89b244c95625a7ecb71c5d44bc413a335863edef3f4ea02e03a9306ade",
+    "bytes": 828593
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\review-3\\codejudge-flow.finalize.json",
+    "summaryReceipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\review-3\\codejudge-flow.finalize-summary.json",
+    "browserCheckReceipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\review-3\\codejudge-flow.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-24T01:43:13.904Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3525,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "c6",
+            "from": "worker",
+            "to": "judge_master",
+            "label": "OP_TASK_RESULT TCP",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "bends": 3,
+          "stretch": 1.305
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "worker → judge_master needs 3 bends: move node worker or judge_master so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

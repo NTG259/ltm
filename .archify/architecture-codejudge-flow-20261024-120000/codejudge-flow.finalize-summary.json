@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+    "sha256": "59687b648b2b6418414c63ec4ae830dc16a773838fb9d6df09d2b87eebe83b51",
+    "bytes": 6684
+  },
+  "artifact": {
+    "path": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html"
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "artifact/orthogonal-arrows",
+      "severity": "error",
+      "message": "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+      "subject": {
+        "check": "orthogonal_arrows"
+      },
+      "evidence": {
+        "details": [
+          "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+          "path 5 segment 3: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>"
+        ]
+      },
+      "supportedFixes": [
+        "use renderer-supported orthogonal routing controls"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.finalize.json",
+    "summaryReceipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.finalize-summary.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-24T01:43:13.904Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1080,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+    "constraint": "Preserve unaffected semantics and geometry; apply each diagnostic's supportedFixes, or the fix its message names, and do not replace the whole candidate.",
+    "then": "finalize-once"
+  }
+}

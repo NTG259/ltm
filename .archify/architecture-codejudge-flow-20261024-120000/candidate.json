@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Luồng xử lý bài nộp — CodeJudge",
+    "subtitle": "Submit → Redis Streams → Worker · Failover · Heartbeat · At-least-once",
+    "output": ".archify/architecture-codejudge-flow-20261024-120000/codejudge-flow.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/NTG259/ltm",
+      "provider": "github",
+      "revision": "b0e67714552d4db4bce20af5e3d2fa71a211df26"
+    }
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Browser SPA",
+      "sublabel": "React 19 · Vite · Ant Design",
+      "pos": [40, 160],
+      "size": [130, 60]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "AuthInterceptor",
+      "sublabel": "Bearer SHA-256 · sessions table",
+      "pos": [340, 50],
+      "size": [150, 60],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/security/AuthInterceptor.java",
+          "label": "AuthInterceptor.java"
+        }
+      ]
+    },
+    {
+      "id": "rest_api",
+      "type": "backend",
+      "label": "REST Controllers",
+      "sublabel": "HTTP :8000 · SubmissionController",
+      "pos": [340, 160],
+      "size": [150, 60],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/controller/SubmissionController.java",
+          "label": "SubmissionController.java"
+        }
+      ]
+    },
+    {
+      "id": "judge_master",
+      "type": "backend",
+      "label": "JudgeMasterService",
+      "sublabel": "dispatch · heartbeat · failover · TCP :9000",
+      "pos": [570, 160],
+      "size": [170, 70],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/master/service/JudgeMasterService.java",
+          "label": "JudgeMasterService.java"
+        }
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "messagebus",
+      "label": "Redis Streams",
+      "sublabel": "judge:contest · practice · custom",
+      "pos": [880, 160],
+      "size": [160, 70],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/master/queue/RedisStreamQueueService.java",
+          "label": "RedisStreamQueueService.java"
+        }
+      ]
+    },
+    {
+      "id": "ws_server",
+      "type": "backend",
+      "label": "WebSocket Server",
+      "sublabel": "RFC 6455 · :8001 · realtime push",
+      "pos": [40, 330],
+      "size": [150, 60],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/master/ws/MasterWebSocketServer.java",
+          "label": "MasterWebSocketServer.java"
+        }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "Neon Cloud · JDBC · Flyway V11",
+      "pos": [570, 330],
+      "size": [160, 60],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/repository/SubmissionRepository.java",
+          "label": "SubmissionRepository.java"
+        }
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Judge Worker × N",
+      "sublabel": "go-judge · sandbox · g++ · TCP",
+      "pos": [880, 330],
+      "size": [160, 70],
+      "sources": [
+        {
+          "path": "backend/src/main/java/com/cplusplus/backend/master/tcp/WorkerSession.java",
+          "label": "WorkerSession.java"
+        }
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c1",
+      "from": "browser",
+      "to": "rest_api",
+      "label": "HTTP :8000 POST /submissions",
+      "variant": "emphasis"
+    },
+    {
+      "id": "c2",
+      "from": "auth",
+      "to": "rest_api",
+      "label": "xác thực Bearer token",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "c3",
+      "from": "rest_api",
+      "to": "judge_master",
+      "label": "submit()"
+    },
+    {
+      "id": "c4",
+      "from": "judge_master",
+      "to": "redis",
+      "label": "XADD / XREADGROUP"
+    },
+    {
+      "id": "c5",
+      "from": "judge_master",
+      "to": "worker",
+      "label": "OP_TASK_ASSIGN TCP",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [[655, 275], [960, 275]]
+    },
+    {
+      "id": "c6",
+      "from": "worker",
+      "to": "judge_master",
+      "label": "OP_TASK_RESULT TCP",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [[1110, 365], [1110, 140], [655, 140]]
+    },
+    {
+      "id": "c7",
+      "from": "judge_master",
+      "to": "postgres",
+      "label": "JDBC save · XACK"
+    },
+    {
+      "id": "c8",
+      "from": "browser",
+      "to": "ws_server",
+      "label": "WebSocket :8001"
+    },
+    {
+      "id": "c9",
+      "from": "judge_master",
+      "to": "ws_server",
+      "label": "broadcast kết quả",
+      "variant": "dashed",
+      "via": [[520, 195], [520, 360], [220, 360]]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Luồng Submit (Happy Path)",
+      "items": [
+        "① Xác thực — Browser gửi POST /submissions kèm Bearer token; AuthInterceptor hash SHA-256 rồi tra bảng sessions trong PostgreSQL, trả 401 nếu không khớp.",
+        "② Lưu & xếp hàng — SubmissionController gọi submit(); bài được lưu vào DB với status IN_QUEUE, sau đó XADD vào đúng Redis stream theo contestId (contest > practice > custom).",
+        "③ Dispatch — dispatchNext() chọn WorkerSession có latencyMs thấp nhất trong activeWorkers, đọc 1 message bằng XREADGROUP rồi gửi OP_TASK_ASSIGN qua TCP với attemptToken mới sinh.",
+        "④ Chấm bài — Worker nhận task, gửi OP_TASK_STATUS COMPILING rồi TESTING để cập nhật UI real-time, cuối cùng gửi OP_TASK_RESULT kèm attemptToken và danh sách kết quả từng test.",
+        "⑤ Hoàn tất — Master kiểm tra attemptToken, gọi finish(outcome) cập nhật verdict/score, lưu DB, rồi mới XACK (at-least-once). Broadcast SUBMISSION_UPDATE qua WebSocket :8001."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Xử lý lỗi & Rẽ nhánh",
+      "items": [
+        "Token mismatch — Nếu attemptToken trong OP_TASK_RESULT không khớp storedToken, kết quả bị bỏ qua hoàn toàn; tránh nhận kết quả cũ sau khi failover đã re-dispatch cho worker khác.",
+        "Worker ngắt kết nối — onWorkerDisconnected() XACK PEL entry cũ để giải phóng stream, gọi sub.requeue() tăng attempts, rồi XADD lại vào Redis để worker khác nhận; attempt_token mới được sinh khi dispatch tiếp.",
+        "Vượt giới hạn retry — Nếu sub.attempts >= 3, requeue() trả false; bài được đánh dấu FAILED và không được đưa lại vào queue, tránh lặp vô hạn.",
+        "Heartbeat timeout — checkHeartbeats() chạy mỗi 5 s; worker không phản hồi quá 15 s bị đóng session và kích hoạt toàn bộ quy trình failover như khi ngắt kết nối thông thường.",
+        "Khởi động lại Master — Khi restart: (1) XAUTOCLAIM reclaim các PEL entry idle > 1050 s; (2) DB orphan scan tìm bài IN_QUEUE/COMPILING/TESTING chưa có trong Redis rồi re-enqueue tất cả."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Redis Streams — 3 mức ưu tiên",
+      "items": [
+        "judge:contest — Bài nộp có contestId; được đọc trước tiên trong mọi lần dispatch để đảm bảo thí sinh trong kỳ thi không phải chờ sau bài luyện tập.",
+        "judge:practice — Bài luyện tập thông thường không gắn contest; chiếm phần lớn traffic hàng ngày.",
+        "judge:custom — Custom test run do thí sinh tự chạy thử; ưu tiên thấp nhất, có thể bị trì hoãn khi hệ thống tải cao.",
+        "Consumer group master-dispatch — Mỗi WorkerSession là một consumer; XREADGROUP đảm bảo mỗi message chỉ được giao cho đúng một worker. XACK chỉ gọi sau khi ghi DB thành công để đảm bảo at-least-once delivery."
+      ]
+    }
+  ]
+}

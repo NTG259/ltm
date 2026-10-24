@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "9e10a5ed-db9a-42e3-ae62-8fa2c9bea2c5",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+  "output": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html",
+  "specification": {
+    "sha256": "b3b32bd00415d75c91f0fabbb69da903b2e061191502a3890d2fe39de8d9cb61",
+    "bytes": 8232
+  },
+  "artifact": {
+    "sha256": "9fe36a89b244c95625a7ecb71c5d44bc413a335863edef3f4ea02e03a9306ade",
+    "bytes": 828593
+  }
+}

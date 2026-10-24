@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-10-24T01:47:22.671Z",
+  "specification": {
+    "path": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+    "sha256": "59687b648b2b6418414c63ec4ae830dc16a773838fb9d6df09d2b87eebe83b51",
+    "bytes": 6684
+  },
+  "artifact": {
+    "path": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html"
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "C:\\Users\\ADMIN\\.agents\\skills\\archify\\bin\\archify.mjs",
+        "deliver",
+        "architecture",
+        "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+        "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html",
+        "--quality",
+        "showcase",
+        "--repo-root",
+        "D:\\home\\Document\\ltm",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "1d70b3e5-74a4-4df8-a3cb-025e2ae42a7a",
+        "stage": "check",
+        "type": "architecture",
+        "input": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\candidate.json",
+        "output": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html",
+        "error": "Final artifact check failed; the previous artifact was preserved.",
+        "diagnostics": [
+          {
+            "code": "artifact/orthogonal-arrows",
+            "severity": "error",
+            "message": "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+            "subject": {
+              "check": "orthogonal_arrows"
+            },
+            "evidence": {
+              "details": [
+                "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+                "path 5 segment 3: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>"
+              ]
+            },
+            "supportedFixes": [
+              "use renderer-supported orthogonal routing controls"
+            ]
+          }
+        ],
+        "provenance": "absent",
+        "checker": {
+          "ok": false,
+          "file": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.html",
+          "artifact": {
+            "sha256": "1c21cfbffa28f97bce353d06148db2fa2cd6c407f08e306b7c9cba5fe5afc986",
+            "bytes": 827271
+          },
+          "checks": [
+            {
+              "name": "single_svg",
+              "ok": true,
+              "details": [
+                "found 1 <svg> block(s)"
+              ]
+            },
+            {
+              "name": "finite_svg",
+              "ok": true,
+              "details": []
+            },
+            {
+              "name": "orthogonal_arrows",
+              "ok": false,
+              "details": [
+                "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+                "path 5 segment 3: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>"
+              ]
+            },
+            {
+              "name": "label_route_clearance",
+              "ok": true,
+              "details": []
+            },
+            {
+              "name": "relationship_crossings",
+              "ok": true,
+              "details": []
+            },
+            {
+              "name": "relationship_corridors",
+              "ok": true,
+              "details": []
+            },
+            {
+              "name": "container_border_runs",
+              "ok": true,
+              "details": []
+            },
+            {
+              "name": "route_rhythm",
+              "ok": true,
+              "details": []
+            },
+            {
+              "name": "legend_clearance",
+              "ok": true,
+              "details": []
+            }
+          ],
+          "composition": {
+            "schemaVersion": 1,
+            "profile": "showcase",
+            "status": "pass",
+            "summary": {
+              "errors": 0,
+              "warnings": 0
+            },
+            "metrics": {
+              "properCrossings": 0,
+              "resolvedCrossovers": 0,
+              "ambiguousCorridors": 0,
+              "arrowheadCollisions": 0,
+              "containerBorderRuns": 0,
+              "labelRouteClearanceIssues": 0,
+              "labelCanvasOverflowIssues": 0,
+              "minLabelRouteClearance": 11,
+              "desktopReadabilityIssues": 0,
+              "viewportHeightIssues": 0,
+              "minProjectedNodeTextPx": 6.2,
+              "maxBends": 4,
+              "routesOverSuggestedBends": 2,
+              "maxStretch": 1.903,
+              "routesOverSuggestedStretch": 1,
+              "minSegmentPx": 16,
+              "minInteriorSegmentPx": 16,
+              "shortSegmentCount": 0,
+              "shortEndpointSegmentCount": 0,
+              "shortInteriorSegmentCount": 0,
+              "microSegmentCount": 0
+            },
+            "suggestedLimits": {
+              "bendsPerRelationship": 2,
+              "stretch": 1.35,
+              "segmentPx": 16,
+              "microSegmentPx": 8
+            },
+            "routeReview": {
+              "crossings": [],
+              "detours": [
+                {
+                  "relationship": {
+                    "id": "c5",
+                    "from": "judge_master",
+                    "to": "worker",
+                    "label": "OP_TASK_ASSIGN TCP",
+                    "collectionIndex": 4,
+                    "artifactIndex": 5
+                  },
+                  "bends": 2,
+                  "stretch": 1.903
+                },
+                {
+                  "relationship": {
+                    "id": "c6",
+                    "from": "worker",
+                    "to": "judge_master",
+                    "label": "OP_TASK_RESULT TCP",
+                    "collectionIndex": 5,
+                    "artifactIndex": 6
+                  },
+                  "bends": 3,
+                  "stretch": 1.305
+                },
+                {
+                  "relationship": {
+                    "id": "c8",
+                    "from": "browser",
+                    "to": "ws_server",
+                    "label": "WebSocket :8001",
+                    "collectionIndex": 7,
+                    "artifactIndex": 8
+                  },
+                  "bends": 4,
+                  "stretch": 1.267
+                }
+              ]
+            },
+            "leadingSpace": {
+              "measured": true,
+              "emptyTopPx": 50,
+              "emptyTopRatio": 0.107,
+              "occupiedTop": 50,
+              "viewBoxTop": 0,
+              "canvasHeight": 468,
+              "typicalNodeHeight": 60,
+              "reviewSuggested": false
+            },
+            "desktopReadability": {
+              "budgetBasis": "recognized-declared-wide",
+              "readerContract": "declared-wide-v1",
+              "availableDiagramWidth": 1199,
+              "actualBudgetPx": 1199,
+              "actualReaderWidth": 1229,
+              "desiredReaderWidth": 1229,
+              "viewportCap": 1376,
+              "limit": "source-size",
+              "requestedTargetPx": 7.5,
+              "requestedTargetMet": false,
+              "hardFloorPx": 6,
+              "hardFloorMet": true,
+              "minimumOwner": {
+                "kind": "node",
+                "id": "judge_master"
+              },
+              "minimumSourceTextPx": 6.2,
+              "minimumProjectedTextPx": 6.2,
+              "semanticTextCount": 25
+            },
+            "issues": []
+          }
+        },
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "diagnostics": [
+    {
+      "code": "artifact/orthogonal-arrows",
+      "severity": "error",
+      "message": "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+      "subject": {
+        "check": "orthogonal_arrows"
+      },
+      "evidence": {
+        "details": [
+          "path 5 segment 1: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>",
+          "path 5 segment 3: expected an orthogonal segment or an explicitly authored direct straight route; <path data-edge-from=\"judge_master\" data-edge-to=\"worker\" data-edge-label=\"OP_TASK_ASSIGN TCP\" data-edge-key=\"4\" data-edge-id=\"c5\" data-composition-points=\"740,195;680,275;960,275;880,365\" d=\"M 740 195 L 684.8 268.6 Q 680 275 688 275 L 952 275 Q 960 275 954.6850892893607 280.97927454946927 L 880 365\" class=\"a-emphasis\" data-animate=\"edge\" style=\"--step:4\" stroke-width=\"1.8\" marker-end=\"url(#arrowhead-emphasis)\"/>"
+        ]
+      },
+      "supportedFixes": [
+        "use renderer-supported orthogonal routing controls"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.finalize.json",
+    "summaryReceipt": "D:\\home\\Document\\ltm\\.archify\\architecture-codejudge-flow-20261024-120000\\codejudge-flow.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-10-24T01:47:23.751Z",
+  "durationMs": 1080,
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-10-24T01:43:13.904Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  }
+}
