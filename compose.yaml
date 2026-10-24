@@ -4,8 +4,8 @@
 #   docker compose up -d --build      # db + backend + frontend + go-judge
 #   docker compose --profile demo up -d seed   # nạp dữ liệu demo (admin/admin123, 10 đề, 3 kỳ thi)
 #
-#   Web:       http://localhost:8080
-#   Master:    HTTP :8000, WebSocket :8001
+#   Web:       http://localhost:18080
+#   Master:    HTTP :18000, WebSocket :18001
 #   go-judge:  REST :5050  (nội bộ, backend gọi http://go-judge:5050)
 #   Chỉ DB:    docker compose up -d db
 #
@@ -25,7 +25,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-codejudge}
       TZ: Asia/Ho_Chi_Minh
     ports:
-      - "127.0.0.1:${DB_PORT:-5433}:5432"   # 5433: tránh đụng PostgreSQL cài sẵn trên máy
+      - "127.0.0.1:${DB_PORT:-15432}:5432"   # 15432: tránh Hyper-V/Windows reserved range
     volumes:
       - db-data:/var/lib/postgresql   # postgres:18 lưu dữ liệu dưới /var/lib/postgresql/18/docker
     networks: [default]
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:16379:6379"
     volumes:
       - redis-data:/data
     networks: [default]
@@ -67,8 +67,8 @@ services:
       GO_JUDGE_URL: http://go-judge:5050
       TZ: Asia/Ho_Chi_Minh
     ports:
-      - "8000:8000"   # HTTP REST
-      - "8001:8001"   # WebSocket
+      - "18000:8000"   # HTTP REST
+      - "18001:8001"   # WebSocket
     networks: [default, judge]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
@@ -86,11 +86,12 @@ services:
     depends_on:
       - backend
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "${WEB_PORT:-18080}:80"
     networks: [default]
 
   go-judge:
-    image: criyle/go-judge
+    build: ./go-judge-custom
+    image: codejudge/go-judge
     restart: unless-stopped
     privileged: true          # bắt buộc: cần cgroup + namespace để sandbox
     shm_size: 256m
@@ -106,6 +107,20 @@ services:
       interval: 10s
       start_period: 15s
       retries: 5
+
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      MASTER_HOST: backend
+      MASTER_PORT: 9000
+      GO_JUDGE_URL: http://go-judge:5050
+      WORKER_ID: ""   # để trống → dùng hostname container (tự động unique khi scale)
+      TZ: Asia/Ho_Chi_Minh
+    networks: [default, judge]
 
   # Nạp dữ liệu demo sau khi Flyway (trong backend) đã tạo bảng. Xóa sạch dữ liệu cũ!
   seed:

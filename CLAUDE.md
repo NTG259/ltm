@@ -29,14 +29,15 @@ cd frontend; npm run build   # production build
 cd frontend; npm run lint    # ESLint
 ```
 
-By default the frontend runs in **mock mode** (no backend needed). Set `VITE_USE_MOCK=false` in `frontend/.env.local` to point at the real backend (`API_BASE=/api`, WebSocket `ws://localhost:8001`). When pointing at the local backend, use port `8082`, not `8000`.
+By default the frontend runs in **mock mode** (no backend needed). Set `VITE_USE_MOCK=false` in `frontend/.env.local` to point at the real backend (`API_BASE=/api`, WebSocket `ws://localhost:18001`). When pointing at the local backend (dev, not Docker), use port `8082`, not `18000`.
 
 ### Docker Compose (full stack)
 ```powershell
-# Windows: port 5433 and 8080 are often reserved; override them
-$env:DB_PORT="5434"; $env:WEB_PORT="8088"; docker compose up -d --build
+docker compose up -d --build
+# Nếu vẫn conflict port, override thêm:
+$env:DB_PORT="25432"; $env:WEB_PORT="28080"; docker compose up -d --build
 ```
-Services: `db` (PostgreSQL :5434↔5432), `redis` (:6379), `backend` (:8000/:8001), `frontend` (:8088→:80), `go-judge` (:5050, internal).
+Services: `db` (PostgreSQL :15432↔5432), `redis` (:16379), `backend` (:18000/:18001), `frontend` (:18080→:80), `go-judge` (:5050, internal).
 
 The `go-judge` healthcheck uses `wget` which is absent from the Alpine image — the service shows `unhealthy` in `docker ps` but is actually functional. Verify with:
 ```powershell
