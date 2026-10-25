@@ -24,7 +24,7 @@ public class SecurityService {
     private static final Pattern STUDENT_CODE_PATTERN = Pattern.compile("^[A-Z][0-9]{2}[A-Z]{4}[0-9]{3}$");
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom secureRandom = new SecureRandom();
 
     public SecurityService(UserRepository userRepository, UserSessionRepository userSessionRepository) {
@@ -35,29 +35,31 @@ public class SecurityService {
     public record AuthResult(String token, User user) {}
 
     @Transactional
-    public AuthResult loginStudent(String studentCode, String fullName) {
+    public AuthResult loginStudent(String studentCode, String password) {
         if (studentCode == null || !STUDENT_CODE_PATTERN.matcher(studentCode.toUpperCase().trim()).matches()) {
             throw new IllegalArgumentException("MSSV không đúng định dạng (ví dụ: B20DCCN001)");
         }
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập mật khẩu");
+        }
         String normalizedCode = studentCode.toUpperCase().trim();
-        String name = (fullName != null && !fullName.isBlank()) ? fullName.trim() : normalizedCode;
-
-        User user = userRepository.findByUsernameIgnoreCase(normalizedCode)
-                .orElseGet(() -> {
-                    User newUser = User.student(normalizedCode, name);
-                    return userRepository.save(newUser);
-                });
-
-        // Cập nhật tên nếu có thay đổi
-        if (fullName != null && !fullName.isBlank() && !fullName.trim().equals(user.getFullName())) {
-            user.setFullName(fullName.trim());
-            userRepository.save(user);
+        User user = userRepository.findByUsernameIgnoreCase(normalizedCode).orElse(null);
+        if (user == null || user.isAdmin() || user.getPasswordHash() == null ||
+                !passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new IllegalArgumentException("MSSV hoặc mật khẩu không chính xác");
         }
 
         user.setLastLoginAt(Instant.now());
         String token = generateToken();
         createSession(token, user);
         return new AuthResult(token, user);
+    }
+
+    public String hashPassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 8 ký tự");
+        }
+        return passwordEncoder.encode(password);
     }
 
     @Transactional

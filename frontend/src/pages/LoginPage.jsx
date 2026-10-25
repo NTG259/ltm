@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { App, Button, Card, Form, Input, Segmented, Tooltip, Typography, Tag } from 'antd'
+import { App, Button, Card, Form, Input, Segmented, Tooltip, Typography } from 'antd'
 import {
   CodeOutlined,
   IdcardOutlined,
@@ -16,8 +16,6 @@ import {
   InfoCircleOutlined,
   RocketOutlined,
   ClusterOutlined,
-  ApiOutlined,
-  SyncOutlined,
   CheckOutlined,
 } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -63,7 +61,7 @@ export default function LoginPage() {
     setRole('student')
     form.setFieldsValue({
       studentId: 'B20DCCN001',
-      fullName: 'Nguyễn Văn A',
+      password: 'TestPass2026!',
     })
     setCopiedDemo('student')
     setTimeout(() => setCopiedDemo(null), 2000)
@@ -359,13 +357,13 @@ export default function LoginPage() {
                     />
                   </Form.Item>
                   <Form.Item
-                    name="fullName"
-                    label={<span className="field-label">Họ và tên thí sinh</span>}
-                    rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập họ tên' }]}
+                    name="password"
+                    label={<span className="field-label">Mật khẩu</span>}
+                    rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
                   >
-                    <Input
-                      prefix={<UserOutlined className="input-icon" />}
-                      placeholder="VD: Nguyễn Văn A"
+                    <Input.Password
+                      prefix={<LockOutlined className="input-icon" />}
+                      placeholder="Nhập mật khẩu do giảng viên cấp"
                       className="login-input"
                     />
                   </Form.Item>
@@ -393,7 +391,7 @@ export default function LoginPage() {
                 className="login-submit-btn"
                 icon={<ArrowRightOutlined />}
               >
-                {role === 'student' ? 'Bắt đầu làm bài' : 'Vào trang quản trị'}
+                {role === 'student' ? 'Đăng nhập' : 'Vào trang quản trị'}
               </Button>
             </Form>
 

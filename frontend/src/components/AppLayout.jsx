@@ -1,18 +1,12 @@
 import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Tooltip, Typography } from 'antd'
 import {
   BookOutlined,
-  CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   LogoutOutlined,
-  MoonOutlined,
-  OrderedListOutlined,
   ProfileOutlined,
-  ReadOutlined,
-  SunOutlined,
   FlagOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
   TrophyOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -48,14 +42,14 @@ export default function AppLayout() {
           { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
         ]
       : [
-          { key: '/courses', icon: <ReadOutlined />, label: <Link to="/courses">Khóa học</Link> },
-          { key: '/playground', icon: <ThunderboltOutlined />, label: <Link to="/playground">Trình chạy C++</Link> },
-          { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
-          { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
-          { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp của tôi</Link> },
-          { key: '/my-classrooms', icon: <TeamOutlined />, label: <Link to="/my-classrooms">Lớp của tôi</Link> },
+          { key: '/courses', label: <Link to="/courses">Khóa học</Link> },
+          { key: '/playground', label: <Link to="/playground">Chạy thử</Link> },
+          { key: '/problems', label: <Link to="/problems">Bài tập</Link> },
+          { key: '/contests', label: <Link to="/contests">Kỳ thi</Link> },
+          { key: '/submissions', label: <Link to="/submissions">Bài nộp</Link> },
+          { key: '/my-classrooms', label: <Link to="/my-classrooms">Lớp học</Link> },
         ]),
-    { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> },
+    ...(isAdmin ? [{ key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> }] : [{ key: '/leaderboard', label: <Link to="/leaderboard">Xếp hạng</Link> }]),
   ]
   const selected =
     items
@@ -81,8 +75,8 @@ export default function AppLayout() {
             : '')
 
   return (
-    <Layout style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
-      <CyberBackground mode={mode} />
+    <Layout className={isAdmin ? 'admin-layout' : 'student-layout'} style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
+      {isAdmin && <CyberBackground mode={mode} />}
       <Layout.Header
         className="app-header"
         style={{
@@ -98,9 +92,6 @@ export default function AppLayout() {
         }}
       >
         <Link to={isAdmin ? '/admin' : '/problems'} className="brand">
-          <span className="brand-logo">
-            <CodeOutlined />
-          </span>
           <span>
             Code<b>Judge</b>
           </span>
@@ -112,7 +103,7 @@ export default function AppLayout() {
         </Link>
         <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
         <Space size={8} align="center" style={{ lineHeight: 1 }}>
-          <Tooltip title={socket.tip}>
+          {isAdmin && <Tooltip title={socket.tip}>
             <div className="header-status-pill">
               <span
                 style={{
@@ -133,22 +124,16 @@ export default function AppLayout() {
               />
               <span>{socket.text}</span>
             </div>
-          </Tooltip>
+          </Tooltip>}
 
-          <Tooltip title={mode === 'dark' ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối'}>
+          <Tooltip title={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}>
             <Button
               type="text"
-              shape="circle"
               className="header-theme-btn"
-              icon={
-                mode === 'dark' ? (
-                  <SunOutlined style={{ color: '#f59e0b', fontSize: 16 }} />
-                ) : (
-                  <MoonOutlined style={{ color: '#4f46e5', fontSize: 16 }} />
-                )
-              }
               onClick={toggle}
-            />
+            >
+              {mode === 'dark' ? 'Giao diện sáng' : 'Giao diện tối'}
+            </Button>
           </Tooltip>
 
           <Dropdown
@@ -218,7 +203,7 @@ export default function AppLayout() {
       <Layout.Content style={{ background: 'transparent', position: 'relative', zIndex: 1 }}>
         <Outlet />
       </Layout.Content>
-      {!location.pathname.match(/^\/(problems\/\d+|contests\/\d+\/problems\/|courses\/\d+\/learn)/) && (
+      {isAdmin && !location.pathname.match(/^\/(problems\/\d+|contests\/\d+\/problems\/|courses\/\d+\/learn)/) && (
         <Layout.Footer style={{ textAlign: 'center', padding: '14px 20px', fontSize: 12, color: 'var(--text-2)' }}>
           CodeJudge – Hệ thống chấm bài C++ phân tán · Master HTTP :8082 · WebSocket :8001 · Worker TCP :9000
           {USE_MOCK && ' · Chế độ mock'}

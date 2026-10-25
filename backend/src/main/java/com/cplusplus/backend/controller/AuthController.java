@@ -31,7 +31,7 @@ public class AuthController {
                     )
             ));
         } else {
-            SecurityService.AuthResult res = securityService.loginStudent(req.studentId(), req.fullName());
+            SecurityService.AuthResult res = securityService.loginStudent(req.studentId(), req.password());
             return ResponseEntity.ok(Map.of(
                     "token", res.token(),
                     "user", Map.of(

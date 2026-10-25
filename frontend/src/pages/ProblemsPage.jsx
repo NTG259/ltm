@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button, Card, Input, Progress, Segmented, Select, Space, Table, Tag, Tooltip } from 'antd'
-import { CheckCircleFilled, CloseCircleFilled, SearchOutlined } from '@ant-design/icons'
+import { SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -40,7 +40,7 @@ export default function ProblemsPage() {
       <div className="page-head">
         <div>
           <h1>Kho bài tập</h1>
-          <p>Chọn đề bài, viết lời giải C++17 và nộp để được chấm tự động.</p>
+          <p>Chọn bài, viết lời giải và nộp bài.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
@@ -55,7 +55,7 @@ export default function ProblemsPage() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             }}
           >
-            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Tiến độ:</span>
+            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Đã giải</span>
             <b style={{ color: 'var(--text)', fontSize: 14, fontFamily: 'var(--mono)' }}>
               {solved}/{problems.data?.length ?? 0}
             </b>
@@ -112,50 +112,9 @@ export default function ProblemsPage() {
           }}
           onRow={(p) => ({ onDoubleClick: () => navigate(`/problems/${p.id}`) })}
           columns={[
-            {
-              title: '',
-              width: 48,
-              align: 'center',
-              render: (_, p) =>
-                myStatus[p.id] === 'solved' ? (
-                  <Tooltip title="Đã giải thành công (AC)">
-                    <div
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        background: '#16a34a',
-                        color: '#ffffff',
-                        display: 'inline-grid',
-                        placeItems: 'center',
-                        boxShadow: '0 2px 6px rgba(22, 163, 74, 0.4)',
-                      }}
-                    >
-                      <CheckCircleFilled style={{ fontSize: 14 }} />
-                    </div>
-                  </Tooltip>
-                ) : myStatus[p.id] === 'tried' ? (
-                  <Tooltip title="Đã nộp nhưng chưa AC (bị WA / chưa đạt)">
-                    <div
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        background: '#dc2626',
-                        color: '#ffffff',
-                        display: 'inline-grid',
-                        placeItems: 'center',
-                        boxShadow: '0 2px 6px rgba(220, 38, 38, 0.4)',
-                      }}
-                    >
-                      <CloseCircleFilled style={{ fontSize: 14 }} />
-                    </div>
-                  </Tooltip>
-                ) : null,
-            },
             { title: 'Mã', dataIndex: 'id', width: 70, render: (id) => <span className="mono muted">#{id}</span> },
             {
-              title: 'Tên bài tập',
+              title: 'Bài tập',
               render: (_, p) => (
                 <div>
                   <Link
@@ -228,7 +187,7 @@ export default function ProblemsPage() {
                   }
                   onClick={() => navigate(`/problems/${p.id}`)}
                 >
-                  {myStatus[p.id] === 'solved' ? '✓ Đã giải' : myStatus[p.id] ? 'Làm tiếp' : 'Giải ngay'}
+                  {myStatus[p.id] === 'solved' ? 'Đã giải' : myStatus[p.id] ? 'Làm tiếp' : 'Làm bài'}
                 </Button>
               ),
             },

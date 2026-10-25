@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react'
 import { App, Button, Card, Col, Empty, Row, Segmented, Space, Spin, Tag, Typography } from 'antd'
-import { CalendarOutlined, CheckOutlined, FieldTimeOutlined, TeamOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -36,7 +35,7 @@ function ContestCard({ contest: c, status, onRegister, registering }) {
       <Space wrap size={6}>
         <Tag color={CONTEST_STATUS[status].color}>{CONTEST_STATUS[status].label}</Tag>
         {c.registered && (
-          <Tag icon={<CheckOutlined />} color="success" variant="filled">
+          <Tag color="success" variant="filled">
             Đã đăng ký
           </Tag>
         )}
@@ -46,13 +45,13 @@ function ContestCard({ contest: c, status, onRegister, registering }) {
       </Typography.Title>
       <div className="contest-meta">
         <span>
-          <CalendarOutlined /> {formatDateTime(c.startAt)}
+          Bắt đầu: {formatDateTime(c.startAt)}
         </span>
         <span>
-          <FieldTimeOutlined /> {formatDuration(c.durationMin)}
+          Thời gian: {formatDuration(c.durationMin)}
         </span>
         <span>
-          <TeamOutlined /> {c.participantCount} thí sinh
+          {c.participantCount} thí sinh
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -103,7 +102,7 @@ export default function ContestsPage() {
       <div className="page-head">
         <div>
           <h1>Kỳ thi</h1>
-          <p>Đăng ký và tham gia các kỳ thi lập trình do giảng viên tổ chức.</p>
+          <p>Đăng ký và tham gia kỳ thi.</p>
         </div>
         <Segmented
           value={filter}

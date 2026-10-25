@@ -8,6 +8,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:
 const TOKEN_KEY = 'cj.token'
 const USER_KEY = 'cj.user'
 const ADMIN_PASSWORD = 'admin123'
+const mockAccounts = new Map()
 
 function storageGet(key) {
   try {
@@ -24,6 +25,15 @@ function storageSet(key, value) {
   } catch {
     /* bỏ qua khi trình duyệt chặn storage */
   }
+}
+
+function getMockAccounts() {
+  return Object.fromEntries(mockAccounts)
+}
+
+function setMockAccounts(accounts) {
+  mockAccounts.clear()
+  Object.entries(accounts).forEach(([studentId, password]) => mockAccounts.set(studentId, password))
 }
 
 export function getStoredSession() {
@@ -222,10 +232,13 @@ const mockApi = {
       return delay({ token: 'mock-admin-token', user: { id: 'admin', name: 'Quản trị viên', role: 'admin' } })
     }
     if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(payload.studentId)) throw new Error('MSSV không hợp lệ (ví dụ: B20DCCN001)')
-    const user = { id: payload.studentId.toUpperCase(), name: payload.fullName.trim(), role: 'student' }
+    const studentId = payload.studentId.toUpperCase()
+    const accounts = getMockAccounts()
+    if (!payload.password || accounts[studentId] !== payload.password) throw new Error('MSSV hoặc mật khẩu không chính xác')
+    const user = { id: studentId, name: studentId, role: 'student' }
     engine.registerStudent(user)
     return delay({
-      token: `mock-${payload.studentId}`,
+      token: `mock-${studentId}`,
       user,
     })
   },
@@ -288,7 +301,35 @@ const mockApi = {
     fullName: data.fullName || data.studentId || data.username,
     joinedAt: Date.now()
   }),
-  importClassroomStudents: () => delay({ imported: 0, alreadyEnrolled: 0, created: 0, skippedInOtherClass: 0, skippedInvalid: 0 }),
+  importClassroomStudents: async (_id, file) => {
+    const text = await file.text()
+    const [header, ...rows] = text.replace(/^\uFEFF/, '').split(/\r?\n/)
+    const columns = header.toLowerCase().split(',').map((v) => v.trim())
+    const studentIdIndex = columns.findIndex((v) => ['mssv', 'studentid', 'masinhvien'].includes(v))
+    const passwordIndex = columns.findIndex((v) => ['password', 'matkhau'].includes(v))
+    if (studentIdIndex < 0 || passwordIndex < 0) throw new Error('CSV phải có hai cột: mssv,password')
+    const accounts = getMockAccounts()
+    let imported = 0
+    let created = 0
+    let skippedInvalid = 0
+    let skippedExisting = 0
+    rows.filter(Boolean).forEach((row) => {
+      const values = row.split(',')
+      const studentId = values[studentIdIndex]?.trim().toUpperCase()
+      const password = values[passwordIndex] || ''
+      if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/.test(studentId || '') || password.length < 8) {
+        skippedInvalid += 1
+      } else if (accounts[studentId]) {
+        skippedExisting += 1
+      } else {
+        accounts[studentId] = password
+        imported += 1
+        created += 1
+      }
+    })
+    setMockAccounts(accounts)
+    return delay({ imported, created, alreadyEnrolled: 0, skippedInOtherClass: 0, skippedInvalid, skippedExisting })
+  },
   removeClassroomStudent: () => delay(null),
   listClassroomContests: () => delay([]),
   assignClassroomContest: (_id, contestId) => delay({ contestId, title: '(mock)' }),

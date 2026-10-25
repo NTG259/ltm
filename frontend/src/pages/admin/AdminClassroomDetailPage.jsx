@@ -307,7 +307,7 @@ export default function AdminClassroomDetailPage() {
                       showUploadList={false}
                     >
                       <Button icon={<UploadOutlined />} loading={importing}>
-                        Import CSV (MSSV, HọTên)
+                        Import CSV (MSSV, mật khẩu)
                       </Button>
                     </Upload>
                   </Space>
@@ -315,6 +315,13 @@ export default function AdminClassroomDetailPage() {
                     Tổng số: <b>{(students || []).length}</b> sinh viên
                   </Typography.Text>
                 </div>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Định dạng file: mssv,password"
+                  description="Mật khẩu được mã hóa khi import và không thể xem lại. MSSV đã có mật khẩu sẽ không bị ghi đè."
+                  style={{ marginBottom: 16 }}
+                />
 
                 <Table
                   rowKey="userId"

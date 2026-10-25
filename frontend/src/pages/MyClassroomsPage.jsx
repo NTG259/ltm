@@ -1,5 +1,4 @@
 import { Card, Empty, Table, Tag, Typography } from 'antd'
-import { TeamOutlined } from '@ant-design/icons'
 import { api } from '../api'
 import { useFetch } from '../lib/hooks'
 
@@ -10,12 +9,9 @@ export default function MyClassroomsPage() {
     return (
       <div style={{ maxWidth: 600, margin: '80px auto', textAlign: 'center' }}>
         <Empty
-          image={<TeamOutlined style={{ fontSize: 48, color: 'var(--text-2)' }} />}
-          imageStyle={{ height: 60 }}
           description={
             <Typography.Text type="secondary">
-              Bạn chưa được xếp vào lớp học nào.
-              <br />Vui lòng liên hệ giảng viên để được thêm vào lớp.
+              Bạn chưa có lớp học. Liên hệ giảng viên để được thêm vào lớp.
             </Typography.Text>
           }
         />

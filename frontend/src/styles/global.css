@@ -507,6 +507,21 @@ html, body {
   transform: rotate(18deg) scale(1.05);
 }
 
+/* Student views favor content and clear labels over decorative treatments. */
+.student-layout { background: var(--bg) !important; }
+.student-layout .app-header { box-shadow: none !important; }
+.student-layout .app-header::after { display: none; }
+.student-layout .brand b { background: none; -webkit-text-fill-color: currentColor; }
+.student-layout .header-menu .ant-menu-item { margin: 0 1px !important; }
+.student-layout .header-theme-btn {
+  width: auto !important;
+  padding: 0 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+}
+.student-layout .header-theme-btn:hover { transform: none; }
+.student-layout .header-user-pill { box-shadow: none !important; }
+
 .header-user-pill {
   display: inline-flex;
   align-items: center;
