@@ -107,6 +107,7 @@ public class RedisStreamQueueService {
      * @param consumerId ID của consumer (thường là workerId)
      * @return null nếu tất cả stream đều rỗng
      */
+    @SuppressWarnings("unchecked")
     public MapRecord<String, Object, Object> readNext(String consumerId) {
         for (String stream : PRIORITY_ORDER) {
             List<MapRecord<String, Object, Object>> records = redis.opsForStream().read(

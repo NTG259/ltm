@@ -42,7 +42,7 @@ export function buildTheme(mode) {
           colorPrimaryHover: '#4338ca',
           colorBgLayout: 'transparent',
           colorBgContainer: 'rgba(255, 255, 255, 0.85)',
-          colorBgElevated: 'rgba(255, 255, 255, 0.95)',
+          colorBgElevated: '#ffffff',
           colorBorderSecondary: 'rgba(226, 232, 240, 0.7)',
           colorBorder: 'rgba(203, 213, 225, 0.8)',
           colorText: '#0f172a',
@@ -78,10 +78,12 @@ export function buildTheme(mode) {
         borderRadiusLG: 10,
       },
       Menu: {
-        horizontalItemSelectedColor: dark ? '#818cf8' : '#4f46e5',
+        itemColor: dark ? '#cbd5e1' : '#1e293b',
+        itemHoverColor: dark ? '#a5b4fc' : '#4338ca',
+        horizontalItemSelectedColor: dark ? '#c7d2fe' : '#3730a3',
         itemBorderRadius: 8,
-        itemHoverBg: dark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(79, 70, 229, 0.08)',
-        itemSelectedBg: dark ? 'rgba(99, 102, 241, 0.18)' : 'rgba(79, 70, 229, 0.1)',
+        itemHoverBg: dark ? 'rgba(99, 102, 241, 0.14)' : 'rgba(79, 70, 229, 0.08)',
+        itemSelectedBg: dark ? 'rgba(99, 102, 241, 0.22)' : '#ede9fe',
         itemBg: 'transparent',
         fontSize: 14,
       },
@@ -102,6 +104,12 @@ export function buildTheme(mode) {
       },
       Tag: {
         borderRadiusSM: 6,
+      },
+      Drawer: {
+        colorBgElevated: dark ? '#0c1120' : '#ffffff',
+      },
+      Modal: {
+        colorBgElevated: dark ? '#0c1120' : '#ffffff',
       },
     },
   }

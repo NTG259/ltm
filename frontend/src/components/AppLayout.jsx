@@ -1,12 +1,16 @@
-import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Tooltip, Typography } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   BookOutlined,
+  CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   LogoutOutlined,
+  OrderedListOutlined,
   ProfileOutlined,
+  ReadOutlined,
   FlagOutlined,
   TeamOutlined,
+  ThunderboltOutlined,
   TrophyOutlined,
   UserOutlined,
   SunOutlined,
@@ -37,21 +41,21 @@ export default function AppLayout() {
     ...(isAdmin
       ? [
           { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát</Link> },
-          { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp sinh viên</Link> },
+          { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
           { key: '/admin/courses', icon: <BookOutlined />, label: <Link to="/admin/courses">Khóa học</Link> },
           { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
         ]
       : [
-          { key: '/courses', label: <Link to="/courses">Khóa học</Link> },
-          { key: '/playground', label: <Link to="/playground">Chạy thử</Link> },
-          { key: '/problems', label: <Link to="/problems">Bài tập</Link> },
-          { key: '/contests', label: <Link to="/contests">Kỳ thi</Link> },
-          { key: '/submissions', label: <Link to="/submissions">Bài nộp</Link> },
-          { key: '/my-classrooms', label: <Link to="/my-classrooms">Lớp học</Link> },
+          { key: '/courses', icon: <ReadOutlined />, label: <Link to="/courses">Khóa học</Link> },
+          { key: '/playground', icon: <ThunderboltOutlined />, label: <Link to="/playground">Chạy thử</Link> },
+          { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
+          { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
+          { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp</Link> },
+          { key: '/my-classrooms', icon: <TeamOutlined />, label: <Link to="/my-classrooms">Lớp học</Link> },
         ]),
-    ...(isAdmin ? [{ key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> }] : [{ key: '/leaderboard', label: <Link to="/leaderboard">Xếp hạng</Link> }]),
+    { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> },
   ]
   const selected =
     items
@@ -78,7 +82,7 @@ export default function AppLayout() {
 
   return (
     <Layout className={isAdmin ? 'admin-layout' : 'student-layout'} style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
-      {isAdmin && <CyberBackground mode={mode} />}
+      <CyberBackground mode={mode} />
       <Layout.Header
         className="app-header"
         style={{
@@ -94,14 +98,12 @@ export default function AppLayout() {
         }}
       >
         <Link to={isAdmin ? '/admin' : '/problems'} className="brand">
+          <span className="brand-logo">
+            <CodeOutlined />
+          </span>
           <span>
             Code<b>Judge</b>
           </span>
-          {isAdmin && (
-            <Tag color="purple" style={{ marginInlineStart: 4, borderRadius: 999, fontWeight: 600 }}>
-              Admin
-            </Tag>
-          )}
         </Link>
         <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
         <Space size={8} align="center" style={{ lineHeight: 1 }}>

@@ -264,7 +264,7 @@ export default function ContestPlagiarism({ contestId }) {
               onClick={handleRunCheck}
               loading={running}
             >
-              {running ? 'Đang phân tích...' : '🔍 Quét đạo văn ngay'}
+              {running ? 'Đang quét...' : 'Quét đạo văn'}
             </Button>
           </Space>
         }
@@ -297,7 +297,7 @@ export default function ContestPlagiarism({ contestId }) {
               <div>
                 <div>Chưa có bài nộp nào bị phát hiện sao chép hoặc chưa thực hiện quét.</div>
                 <div style={{ marginTop: 8 }}>
-                  Bấm nút <b>"🔍 Quét đạo văn ngay"</b> phía trên để chạy thuật toán phân tích.
+                  Bấm nút <b>"Quét đạo văn"</b> phía trên để chạy thuật toán phân tích.
                 </div>
               </div>
             }

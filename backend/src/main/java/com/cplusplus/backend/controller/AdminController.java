@@ -17,7 +17,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import com.cplusplus.backend.service.TestCaseZipImporter;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,18 +36,21 @@ public class AdminController {
     private final ProblemRepository problemRepository;
     private final ContestRepository contestRepository;
     private final SystemLogRepository systemLogRepository;
+    private final TestCaseZipImporter testCaseZipImporter;
 
     public AdminController(
             JudgeMasterService judgeMasterService,
             SubmissionRepository submissionRepository,
             ProblemRepository problemRepository,
             ContestRepository contestRepository,
-            SystemLogRepository systemLogRepository) {
+            SystemLogRepository systemLogRepository,
+            TestCaseZipImporter testCaseZipImporter) {
         this.judgeMasterService = judgeMasterService;
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.contestRepository = contestRepository;
         this.systemLogRepository = systemLogRepository;
+        this.testCaseZipImporter = testCaseZipImporter;
     }
 
     public record TestCaseRequest(String input, String output, Boolean sample) {}
@@ -157,6 +163,50 @@ public class AdminController {
         p.softDelete(Instant.now());
         problemRepository.save(p);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping(value = "/problems/{id}/testcases/zip", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Transactional
+    public ResponseEntity<?> uploadTestCasesZip(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "keepSamples", defaultValue = "true") boolean keepSamples,
+            HttpServletRequest req) {
+        requireAdmin(req);
+
+        Problem problem = problemRepository.findWithTestCases(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
+
+        TestCaseZipImporter.ImportResult result = testCaseZipImporter.importToProblem(problem, file, keepSamples);
+        problem = problemRepository.save(problem);
+
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "Đã nhập thành công " + result.importedCount() + " test case từ file ZIP");
+        resp.put("importedCount", result.importedCount());
+        resp.put("totalTestCount", problem.getTestCases().size());
+        resp.put("testKeys", result.testKeys());
+        resp.put("unpairedInputs", result.unpairedInputs());
+        resp.put("unpairedOutputs", result.unpairedOutputs());
+        resp.put("problem", DtoMapper.toProblemMap(problem, true));
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping(value = "/problems/parse-zip", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> parseTestCasesZip(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest req) {
+        requireAdmin(req);
+
+        TestCaseZipImporter.ParseResult result = testCaseZipImporter.parse(file);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "Giải nén thành công " + result.tests().size() + " test case từ file ZIP");
+        resp.put("count", result.tests().size());
+        resp.put("tests", result.tests());
+        resp.put("unpairedInputs", result.unpairedInputs());
+        resp.put("unpairedOutputs", result.unpairedOutputs());
+        return ResponseEntity.ok(resp);
     }
 
     private void applyProblemData(Problem problem, ProblemSaveRequest req) {
