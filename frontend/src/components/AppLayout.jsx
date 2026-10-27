@@ -9,6 +9,8 @@ import {
   TeamOutlined,
   TrophyOutlined,
   UserOutlined,
+  SunOutlined,
+  MoonOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
@@ -131,9 +133,9 @@ export default function AppLayout() {
               type="text"
               className="header-theme-btn"
               onClick={toggle}
-            >
-              {mode === 'dark' ? 'Giao diện sáng' : 'Giao diện tối'}
-            </Button>
+              icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+              aria-label={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+            />
           </Tooltip>
 
           <Dropdown

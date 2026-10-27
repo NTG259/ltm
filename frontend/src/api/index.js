@@ -227,14 +227,16 @@ function setStoredCourses(list) {
 
 const mockApi = {
   async login(payload) {
-    if (payload.role === 'admin') {
+    const username = payload.username?.trim()
+    if (!username || !payload.password) throw new Error('Vui lòng nhập tài khoản và mật khẩu')
+    if (username.toLowerCase() === 'admin') {
       if (payload.password !== ADMIN_PASSWORD) throw new Error('Sai mật khẩu quản trị')
       return delay({ token: 'mock-admin-token', user: { id: 'admin', name: 'Quản trị viên', role: 'admin' } })
     }
-    if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(payload.studentId)) throw new Error('MSSV không hợp lệ (ví dụ: B20DCCN001)')
-    const studentId = payload.studentId.toUpperCase()
+    if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(username)) throw new Error('Tài khoản hoặc mật khẩu không chính xác')
+    const studentId = username.toUpperCase()
     const accounts = getMockAccounts()
-    if (!payload.password || accounts[studentId] !== payload.password) throw new Error('MSSV hoặc mật khẩu không chính xác')
+    if (accounts[studentId] !== payload.password) throw new Error('Tài khoản hoặc mật khẩu không chính xác')
     const user = { id: studentId, name: studentId, role: 'student' }
     engine.registerStudent(user)
     return delay({

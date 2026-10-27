@@ -35,6 +35,24 @@ public class SecurityService {
     public record AuthResult(String token, User user) {}
 
     @Transactional
+    public AuthResult login(String username, String password) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Vui lòng nhập tài khoản và mật khẩu");
+        }
+
+        User user = userRepository.findByUsernameIgnoreCase(username.trim()).orElse(null);
+        if (user == null || user.getPasswordHash() == null ||
+                !passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Tài khoản hoặc mật khẩu không chính xác");
+        }
+
+        user.setLastLoginAt(Instant.now());
+        String token = generateToken();
+        createSession(token, user);
+        return new AuthResult(token, user);
+    }
+
+    @Transactional
     public AuthResult loginStudent(String studentCode, String password) {
         if (studentCode == null || !STUDENT_CODE_PATTERN.matcher(studentCode.toUpperCase().trim()).matches()) {
             throw new IllegalArgumentException("MSSV không đúng định dạng (ví dụ: B20DCCN001)");

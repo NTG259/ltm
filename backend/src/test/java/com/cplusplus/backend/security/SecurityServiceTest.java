@@ -1,5 +1,6 @@
 package com.cplusplus.backend.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,23 @@ class SecurityServiceTest {
 
     @Mock UserRepository users;
     @Mock UserSessionRepository sessions;
+
+    @Test
+    void loginDeterminesRoleFromStoredAccount() {
+        User admin = User.admin(
+                "admin",
+                "Quản trị viên",
+                new BCryptPasswordEncoder().encode("admin123")
+        );
+        when(users.findByUsernameIgnoreCase("AdMiN")).thenReturn(Optional.of(admin));
+        SecurityService service = new SecurityService(users, sessions);
+
+        SecurityService.AuthResult result = service.login("  AdMiN  ", "admin123");
+
+        assertThat(result.user()).isSameAs(admin);
+        assertThat(result.user().isAdmin()).isTrue();
+        assertThat(result.token()).isNotBlank();
+    }
 
     @Test
     void rejectsStudentLoginWhenPasswordDoesNotMatch() {

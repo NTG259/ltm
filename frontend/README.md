@@ -46,7 +46,7 @@ Mọi request (trừ login) gửi header `Authorization: Bearer <token>`. Lỗi 
 
 | Method | Path | Body / Query | Trả về |
 | --- | --- | --- | --- |
-| POST | `/api/auth/login` | `{role:"student", studentId, fullName}` hoặc `{role:"admin", password}` | `{token, user:{id,name,role}}` |
+| POST | `/api/auth/login` | `{username, password}`; backend tự xác định vai trò từ tài khoản | `{token, user:{id,name,role}}` |
 | GET | `/api/problems` | – | `Problem[]` (không kèm `tests`, có `testCount`, `totalSubmissions`, `acceptedSubmissions`) |
 | GET | `/api/problems/:id` | – | `Problem` (admin nhận thêm `tests`) |
 | POST | `/api/submissions` | `{problemId, language:"cpp17", sourceCode, contestId?}` | `Submission` (status `IN_QUEUE`) |
