@@ -21,6 +21,7 @@ import {
 import { DeleteOutlined, EditOutlined, MinusCircleOutlined, PlusOutlined, ProfileOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import { useFetch } from '../../lib/hooks'
 import { DIFFICULTIES } from '../../lib/verdicts'
 import { percent } from '../../lib/format'
@@ -246,20 +247,20 @@ export default function AdminProblemsPage() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Ngân hàng đề bài</h1>
-          <p>Thêm, sửa, xoá đề bài và bộ test case dùng để chấm.</p>
-        </div>
-        <Space>
-          <Link to="/admin/submissions">
-            <Button icon={<ProfileOutlined />}>Xem bài nộp sinh viên</Button>
-          </Link>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
-            Thêm đề bài
-          </Button>
-        </Space>
-      </div>
+      <AdminPageHeader
+        title="Ngân hàng đề bài"
+        description="Thêm, sửa, xoá đề bài và bộ test case dùng để chấm."
+        actions={
+          <Space wrap>
+            <Link to="/admin/submissions">
+              <Button icon={<ProfileOutlined />}>Xem bài nộp sinh viên</Button>
+            </Link>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
+              Thêm đề bài
+            </Button>
+          </Space>
+        }
+      />
       <Card styles={{ body: { padding: 0 } }}>
         <Table
           rowKey="id"

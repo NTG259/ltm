@@ -20,6 +20,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import { api } from '../../api'
 import { useAuth } from '../../auth/context'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import { useFetch, useNow, useSocket } from '../../lib/hooks'
 import { formatDateTime, formatDuration } from '../../lib/format'
 import { CONTEST_STATUS, liveStatus } from '../../lib/contest'
@@ -141,15 +142,15 @@ export default function AdminContestsPage() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Quản lý kỳ thi</h1>
-          <p>Tạo kỳ thi từ ngân hàng đề, đặt lịch và theo dõi bảng xếp hạng trực tiếp.</p>
-        </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>
-          Tạo kỳ thi
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Quản lý kỳ thi"
+        description="Tạo kỳ thi từ ngân hàng đề, đặt lịch và theo dõi bảng xếp hạng trực tiếp."
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>
+            Tạo kỳ thi
+          </Button>
+        }
+      />
       <Card styles={{ body: { padding: 0 } }}>
         <Table
           rowKey="id"

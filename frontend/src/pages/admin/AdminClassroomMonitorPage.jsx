@@ -52,8 +52,8 @@ export default function AdminClassroomMonitorPage() {
   ]
 
   return (
-    <div style={{ maxWidth: 800, margin: '32px auto', padding: '0 16px' }}>
-      <Space style={{ marginBottom: 16 }}>
+    <div className="page admin-page--narrow">
+      <Space wrap style={{ marginBottom: 16 }}>
         <Link to={`/admin/classrooms/${id}`}>
           <Button icon={<ArrowLeftOutlined />}>Chi tiết lớp</Button>
         </Link>
@@ -64,7 +64,7 @@ export default function AdminClassroomMonitorPage() {
       </Space>
 
       <Card style={{ marginBottom: 16 }}>
-        <Space size={48}>
+        <Space size={[48, 16]} wrap>
           <Statistic title="Đang online" value={onlineCount} valueStyle={{ color: '#22c55e' }} />
           <Statistic title="Tổng sinh viên" value={data.length} />
           <Statistic

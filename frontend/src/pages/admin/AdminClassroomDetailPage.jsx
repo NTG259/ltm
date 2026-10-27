@@ -262,8 +262,8 @@ export default function AdminClassroomDetailPage() {
   ]
 
   return (
-    <div style={{ maxWidth: 960, margin: '32px auto', padding: '0 16px' }}>
-      <Space style={{ marginBottom: 16 }}>
+    <div className="page admin-page--medium">
+      <Space wrap style={{ marginBottom: 16 }}>
         <Link to="/admin/classrooms">
           <Button icon={<ArrowLeftOutlined />}>Danh sách lớp</Button>
         </Link>

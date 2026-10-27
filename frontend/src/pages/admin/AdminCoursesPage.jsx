@@ -3,6 +3,7 @@ import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Switch, Table
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import { useFetch } from '../../lib/hooks'
 
 export default function AdminCoursesPage() {
@@ -150,20 +151,17 @@ export default function AdminCoursesPage() {
   ]
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '16px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <Typography.Title level={3} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <BookOutlined style={{ color: '#2563eb' }} /> Quản lý Khóa học & Lộ trình
-          </Typography.Title>
-          <Typography.Text type="secondary">
-            Xây dựng lộ trình học C++, sắp xếp các chủ đề lý thuyết và bài tập
-          </Typography.Text>
-        </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size="large">
-          Tạo khóa học mới
-        </Button>
-      </div>
+    <div className="page admin-page--wide">
+      <AdminPageHeader
+        title="Quản lý Khóa học & Lộ trình"
+        description="Xây dựng lộ trình học C++, sắp xếp các chủ đề lý thuyết và bài tập"
+        icon={<BookOutlined />}
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size="large">
+            Tạo khóa học mới
+          </Button>
+        }
+      />
 
       <Card styles={{ body: { padding: 0 } }}>
         <Table

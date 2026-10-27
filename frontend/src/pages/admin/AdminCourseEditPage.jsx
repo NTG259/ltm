@@ -280,7 +280,7 @@ export default function AdminCourseEditPage() {
   ]
 
   return (
-    <div style={{ maxWidth: 1050, margin: '0 auto', padding: '16px 20px' }}>
+    <div className="page admin-page--editor">
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
@@ -291,7 +291,7 @@ export default function AdminCourseEditPage() {
       />
 
       <Card style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <Space style={{ marginBottom: 8 }}>
               <Typography.Title level={3} style={{ margin: 0 }}>

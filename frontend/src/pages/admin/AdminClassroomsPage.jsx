@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Typography } from 'antd'
+import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Table } from 'antd'
 import { DeleteOutlined, EditOutlined, TeamOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
+import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import { useFetch } from '../../lib/hooks'
 
 export default function AdminClassroomsPage() {
@@ -80,11 +81,15 @@ export default function AdminClassroomsPage() {
   ]
 
   return (
-    <div style={{ maxWidth: 900, margin: '32px auto', padding: '0 16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>Quản lý lớp học</Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Tạo lớp</Button>
-      </div>
+    <div className="page admin-page--compact">
+      <AdminPageHeader
+        title="Quản lý lớp học"
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Tạo lớp
+          </Button>
+        }
+      />
       <Card>
         <Table
           rowKey="id"

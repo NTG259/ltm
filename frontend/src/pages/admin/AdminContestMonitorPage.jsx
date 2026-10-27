@@ -143,8 +143,8 @@ export default function AdminContestMonitorPage() {
   const columns = [...baseColumns, ...problemColumns]
 
   return (
-    <div style={{ maxWidth: 1200, margin: '32px auto', padding: '0 16px' }}>
-      <Space style={{ marginBottom: 16 }}>
+    <div className="page admin-page--monitor">
+      <Space wrap style={{ marginBottom: 16 }}>
         <Link to={`/admin/classrooms/${cid}`}>
           <Button icon={<ArrowLeftOutlined />}>Chi tiết lớp</Button>
         </Link>
@@ -163,7 +163,7 @@ export default function AdminContestMonitorPage() {
       </Space>
 
       <Card style={{ marginBottom: 16 }}>
-        <Space size={48}>
+        <Space size={[48, 16]} wrap>
           <Statistic title="Sinh viên" value={data.length} />
           <Statistic
             title="Đang online"
