@@ -45,7 +45,8 @@ import CodeEditor from '../../components/CodeEditor'
 import VerdictTag from '../../components/VerdictTag'
 import { formatMemory, formatTime } from '../../lib/format'
 
-const SAMPLE_LESSONS = {
+// eslint-disable-next-line no-unused-vars
+const _SAMPLE_LESSONS_REMOVED = {
   io: {
     theory: `### 1. Luồng nhập xuất cơ bản trong C++
 C++ sử dụng thư viện \`<iostream>\` để xử lý việc nhập dữ liệu từ bàn phím và in kết quả ra màn hình.
@@ -145,14 +146,6 @@ int main() {
 }`,
     input: '',
   },
-}
-
-function getFallbackLesson(title = '') {
-  const t = title.toLowerCase()
-  if (t.includes('nhập xuất') || t.includes('cin') || t.includes('cout')) return SAMPLE_LESSONS.io
-  if (t.includes('rẽ nhánh') || t.includes('if') || t.includes('switch')) return SAMPLE_LESSONS.branches
-  if (t.includes('lặp') || t.includes('for') || t.includes('while')) return SAMPLE_LESSONS.loop
-  return SAMPLE_LESSONS.default
 }
 
 export default function CourseLearnPage() {
@@ -261,23 +254,17 @@ export default function CourseLearnPage() {
       return Promise.all([
         api.getLesson(unitIdKey),
         api.getUnitProblems(unitIdKey),
-      ]).then(([resLesson, resProblems]) => {
-        const fallback = getFallbackLesson(currentUnit?.title)
-        return {
-          theoryContent: resLesson?.theoryContent || fallback.theory,
-          sampleCode: resLesson?.sampleCode || fallback.code,
-          sampleInput: resLesson?.sampleInput || fallback.input,
-          problems: resProblems || [],
-        }
-      }).catch(() => {
-        const fallback = getFallbackLesson(currentUnit?.title)
-        return {
-          theoryContent: fallback.theory,
-          sampleCode: fallback.code,
-          sampleInput: fallback.input,
-          problems: [],
-        }
-      })
+      ]).then(([resLesson, resProblems]) => ({
+        theoryContent: resLesson?.theoryContent || '',
+        sampleCode: resLesson?.sampleCode || '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code của bạn ở đây\n    return 0;\n}',
+        sampleInput: resLesson?.sampleInput || '',
+        problems: resProblems || [],
+      })).catch(() => ({
+        theoryContent: '',
+        sampleCode: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code của bạn ở đây\n    return 0;\n}',
+        sampleInput: '',
+        problems: [],
+      }))
     },
     [unitIdKey]
   )
@@ -694,7 +681,19 @@ export default function CourseLearnPage() {
                       }}
                       styles={{ body: { padding: '28px 36px' } }}
                     >
-                      <MarkdownViewer content={lessonData?.theoryContent || ''} />
+                      {lessonData?.theoryContent ? (
+                        <MarkdownViewer content={lessonData.theoryContent} />
+                      ) : (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={
+                            <span>
+                              Nội dung lý thuyết đang được cập nhật.
+                              {isAdmin && <><br /><Typography.Text type="secondary" style={{ fontSize: 12 }}>Nhấn <b>Chỉnh sửa khóa học</b> để thêm lý thuyết cho chủ đề này.</Typography.Text></>}
+                            </span>
+                          }
+                        />
+                      )}
                     </Card>
                   )}
 
