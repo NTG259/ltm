@@ -1,5 +1,6 @@
 package com.cplusplus.backend.controller;
 
+import com.cplusplus.backend.domain.submission.Language;
 import com.cplusplus.backend.domain.submission.Submission;
 import com.cplusplus.backend.domain.submission.Verdict;
 import com.cplusplus.backend.domain.user.User;
@@ -29,7 +30,15 @@ public class SubmissionController {
     }
 
     public record SubmitRequest(Long problemId, String language, String sourceCode, Long contestId) {}
-    public record RunTestRequest(Long problemId, String sourceCode, String input, String expectedOutput) {}
+    public record RunTestRequest(Long problemId, String language, String sourceCode, String input, String expectedOutput) {}
+
+    @GetMapping("/languages")
+    public ResponseEntity<List<Map<String, String>>> getLanguages() {
+        List<Map<String, String>> langs = Arrays.stream(Language.values())
+                .map(l -> Map.of("code", l.code(), "label", l.label()))
+                .toList();
+        return ResponseEntity.ok(langs);
+    }
 
     @PostMapping("/run")
     public ResponseEntity<?> runTest(@RequestBody RunTestRequest req) {
@@ -38,6 +47,7 @@ public class SubmissionController {
         }
         Map<String, Object> result = judgeMasterService.runCustomTest(
                 req.problemId(),
+                req.language(),
                 req.sourceCode(),
                 req.input(),
                 req.expectedOutput()

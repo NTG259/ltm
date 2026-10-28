@@ -198,9 +198,11 @@ export function Workspace({ id, contest, label }) {
   const [activeId, setActiveId] = useState(null)
   const [tab, setTab] = useState('testcase')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [language, setLanguage] = useState('cpp17')
   const [customInput, setCustomInput] = useState(null)
   const [runningTest, setRunningTest] = useState(false)
   const [testResult, setTestResult] = useState(null)
+  const { data: availableLanguages } = useFetch(() => api.languages(), [])
   const { sub: active } = useLiveSubmission(activeId)
 
   const activeInput = customInput ?? (problem?.samples?.[0]?.input || '')
@@ -280,7 +282,7 @@ export function Workspace({ id, contest, label }) {
     setActiveId(null)
     setTab('result')
     try {
-      const s = await api.submit({ problemId: Number(id), language: 'cpp17', sourceCode: code, contestId: contest?.id }, user)
+      const s = await api.submit({ problemId: Number(id), language, sourceCode: code, contestId: contest?.id }, user)
       setActiveId(s.id)
       setTab('result')
       setRefreshKey((k) => k + 1)
@@ -303,6 +305,7 @@ export function Workspace({ id, contest, label }) {
     try {
       const res = await api.runTest({
         problemId: Number(id),
+        language,
         sourceCode: code,
         input: inVal,
         expectedOutput: expVal,
@@ -315,9 +318,13 @@ export function Workspace({ id, contest, label }) {
     }
   }
 
+  const LANG_EXT = {
+    cpp17: /\.(cpp|cc|cxx|h|hpp)$/i,
+  }
   const loadFile = (file) => {
-    if (!/\.(cpp|cc|cxx|h|hpp)$/i.test(file.name)) {
-      message.error('Chỉ chấp nhận tệp .cpp')
+    const pattern = LANG_EXT[language] || LANG_EXT.cpp17
+    if (!pattern.test(file.name)) {
+      message.error(`Ngôn ngữ ${language} không nhận tệp này`)
       return Upload.LIST_IGNORE
     }
     if (file.size > 256 * 1024) {
@@ -428,9 +435,26 @@ export function Workspace({ id, contest, label }) {
                       <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#f59e0b', opacity: 0.8 }} />
                       <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#10b981', opacity: 0.8 }} />
                     </div>
-                    <Typography.Text className="mono" style={{ fontSize: 12.5, fontWeight: 600 }}>
-                      solution.cpp <span className="muted" style={{ fontWeight: 400 }}>· C++17</span>
-                    </Typography.Text>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: (availableLanguages || [{ code: 'cpp17', label: 'C++17' }]).map((l) => ({
+                          key: l.code,
+                          label: <span className="mono">{l.label}</span>,
+                        })),
+                        selectedKeys: [language],
+                        onClick: ({ key }) => setLanguage(key),
+                      }}
+                    >
+                      <Typography.Text
+                        className="mono"
+                        style={{ fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                        title="Chọn ngôn ngữ"
+                      >
+                        {(availableLanguages || []).find((l) => l.code === language)?.label ?? 'C++17'}
+                        <span className="muted" style={{ fontWeight: 400, marginLeft: 4 }}>▾</span>
+                      </Typography.Text>
+                    </Dropdown>
                   </div>
                   <Space size={4}>
                     <Typography.Text type="secondary" className="mono" style={{ fontSize: 12, marginInlineEnd: 4 }}>

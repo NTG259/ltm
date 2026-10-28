@@ -622,7 +622,7 @@ public class JudgeMasterService {
         return sub;
     }
 
-    public Map<String, Object> runCustomTest(Long problemId, String sourceCode, String input, String expectedOutput) {
+    public Map<String, Object> runCustomTest(Long problemId, String language, String sourceCode, String input, String expectedOutput) {
         if (activeWorkers.isEmpty()) {
             throw new IllegalStateException("Không có máy chấm Worker nào đang online");
         }
@@ -656,11 +656,13 @@ public class JudgeMasterService {
         pendingRunTests.put(runId, future);
 
         Map<String, Object> taskPayload = new LinkedHashMap<>();
+        String resolvedLanguage = (language != null && !language.isBlank()) ? language : "cpp17";
+
         taskPayload.put("submissionId", runId);
         taskPayload.put("sourceCode", sourceCode);
         taskPayload.put("timeLimitMs", timeLimitMs > 0 ? timeLimitMs : 1000);
         taskPayload.put("memoryLimitMb", memoryLimitMb > 0 ? memoryLimitMb : 256);
-        taskPayload.put("language", "cpp17");
+        taskPayload.put("language", resolvedLanguage);
         taskPayload.put("stopOnFirstFailure", true);
 
         Map<String, Object> testMap = new LinkedHashMap<>();

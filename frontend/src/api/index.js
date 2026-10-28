@@ -249,6 +249,7 @@ const mockApi = {
     const p = engine.problems().find((x) => x.id === Number(id))
     return p ? delay(p) : Promise.reject(new Error('Không tìm thấy đề bài'))
   },
+  languages: () => delay([{ code: 'cpp17', label: 'C++17' }]),
   submit: (payload, user) => delay(engine.submit({ ...payload, user }), 120),
   runTest: (payload) =>
     delay({
@@ -563,6 +564,7 @@ const realApi = {
   login: (payload) => http('POST', '/auth/login', payload),
   listProblems: () => http('GET', '/problems'),
   getProblem: (id) => http('GET', `/problems/${id}`),
+  languages: () => http('GET', '/submissions/languages'),
   submit: (payload) => http('POST', '/submissions', payload),
   runTest: (payload) => http('POST', '/submissions/run', payload),
   listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
