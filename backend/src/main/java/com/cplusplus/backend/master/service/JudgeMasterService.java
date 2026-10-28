@@ -904,4 +904,8 @@ public class JudgeMasterService {
         if (wsServer == null) return java.util.Set.of();
         return wsServer.getOnlineUserIds();
     }
+
+    public int getOnlineStudentCount() {
+        return getOnlineUserIds().size();
+    }
 }

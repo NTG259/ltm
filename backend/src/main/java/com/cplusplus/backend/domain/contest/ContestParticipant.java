@@ -82,7 +82,7 @@ public class ContestParticipant {
     protected ContestParticipant() {
     }
 
-    ContestParticipant(Contest contest, User user, Instant registeredAt) {
+    public ContestParticipant(Contest contest, User user, Instant registeredAt) {
         this.id = new Id(contest.getId(), user.getId());
         this.contest = contest;
         this.user = user;

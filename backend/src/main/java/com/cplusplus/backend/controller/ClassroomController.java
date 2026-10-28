@@ -4,11 +4,13 @@ import com.cplusplus.backend.domain.classroom.Classroom;
 import com.cplusplus.backend.domain.classroom.ClassroomContest;
 import com.cplusplus.backend.domain.classroom.ClassroomStudent;
 import com.cplusplus.backend.domain.contest.Contest;
+import com.cplusplus.backend.domain.contest.ContestParticipant;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.repository.ClassroomContestRepository;
 import com.cplusplus.backend.repository.ClassroomRepository;
 import com.cplusplus.backend.repository.ClassroomStudentRepository;
+import com.cplusplus.backend.repository.ContestParticipantRepository;
 import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
 import com.cplusplus.backend.service.ClassroomCsvImporter;
@@ -33,6 +35,7 @@ public class ClassroomController {
     private final ClassroomStudentRepository classroomStudentRepository;
     private final ClassroomContestRepository classroomContestRepository;
     private final ContestRepository contestRepository;
+    private final ContestParticipantRepository contestParticipantRepository;
     private final ClassroomCsvImporter csvImporter;
     private final UserRepository userRepository;
 
@@ -40,12 +43,14 @@ public class ClassroomController {
                                ClassroomStudentRepository classroomStudentRepository,
                                ClassroomContestRepository classroomContestRepository,
                                ContestRepository contestRepository,
+                               ContestParticipantRepository contestParticipantRepository,
                                ClassroomCsvImporter csvImporter,
                                UserRepository userRepository) {
         this.classroomRepository = classroomRepository;
         this.classroomStudentRepository = classroomStudentRepository;
         this.classroomContestRepository = classroomContestRepository;
         this.contestRepository = contestRepository;
+        this.contestParticipantRepository = contestParticipantRepository;
         this.csvImporter = csvImporter;
         this.userRepository = userRepository;
     }
@@ -262,8 +267,22 @@ public class ClassroomController {
         }
 
         classroomContestRepository.save(new ClassroomContest(classroom, contest, Instant.now()));
+
+        // Auto-register tất cả sinh viên trong lớp vào contest
+        Instant now = Instant.now();
+        List<ClassroomStudent> students = classroomStudentRepository.findAllWithUserByClassroomId(id);
+        int registered = 0;
+        for (ClassroomStudent cs : students) {
+            ContestParticipant.Id pid = new ContestParticipant.Id(contest.getId(), cs.getUser().getId());
+            if (!contestParticipantRepository.existsById(pid)) {
+                contestParticipantRepository.save(new ContestParticipant(contest, cs.getUser(), now));
+                registered++;
+            }
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "contestId", contest.getId(), "title", contest.getTitle()));
+                "contestId", contest.getId(), "title", contest.getTitle(),
+                "autoRegistered", registered));
     }
 
     @DeleteMapping("/{id}/contests/{contestId}")

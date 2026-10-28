@@ -245,6 +245,7 @@ const mockApi = {
     })
   },
   logout: () => delay(null),
+  onlineCount: () => delay({ count: engine.submissions().length % 5 }),
   listProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
   getProblem: (id) => {
     const p = engine.problems().find((x) => x.id === Number(id))
@@ -566,6 +567,7 @@ const mockApi = {
 const realApi = {
   login: (payload) => http('POST', '/auth/login', payload),
   logout: () => http('DELETE', '/auth/logout'),
+  onlineCount: () => http('GET', '/stats/online'),
   listProblems: () => http('GET', '/problems'),
   getProblem: (id) => http('GET', `/problems/${id}`),
   languages: () => http('GET', '/submissions/languages'),
