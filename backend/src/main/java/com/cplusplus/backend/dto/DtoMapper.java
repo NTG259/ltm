@@ -203,6 +203,7 @@ public final class DtoMapper {
         map.put("username", cs.getUser().getUsername());
         map.put("fullName", cs.getUser().getFullName());
         map.put("joinedAt", cs.getJoinedAt().toEpochMilli());
+        map.put("importedPassword", cs.getImportedPassword());
         return map;
     }
 

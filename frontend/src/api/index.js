@@ -341,6 +341,29 @@ const mockApi = {
     delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
   saveProblem: (data) => delay(engine.saveProblem(data)),
   deleteProblem: (id) => delay(engine.deleteProblem(id)),
+  uploadProblemTestCasesZip: (problemId, file) =>
+    delay({
+      success: true,
+      message: `Đã nạp thành công bộ test từ file ${file.name}`,
+      importedCount: 5,
+      totalTestCount: 5,
+      testKeys: ['1', '2', '3', '4', '5'],
+      unpairedInputs: [],
+      unpairedOutputs: [],
+    }),
+  parseProblemTestCasesZip: (file) =>
+    delay({
+      success: true,
+      message: `Giải nén thành công từ ${file.name}`,
+      count: 3,
+      tests: [
+        { key: '1', input: '1 2\n', output: '3\n' },
+        { key: '2', input: '5 7\n', output: '12\n' },
+        { key: '3', input: '100 200\n', output: '300\n' },
+      ],
+      unpairedInputs: [],
+      unpairedOutputs: [],
+    }),
   killWorker: (id) => delay(engine.killWorker(id), 50),
   reviveWorker: (id) => delay(engine.reviveWorker(id), 50),
   // ---- Khóa học (Curriculum mock) ----
@@ -559,6 +582,34 @@ const realApi = {
   adminOverview: () => http('GET', '/admin/overview'),
   saveProblem: (data) => (data.id ? http('PUT', `/admin/problems/${data.id}`, data) : http('POST', '/admin/problems', data)),
   deleteProblem: (id) => http('DELETE', `/admin/problems/${id}`),
+  uploadProblemTestCasesZip: (problemId, file, keepSamples = true) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/admin/problems/${problemId}/testcases/zip?keepSamples=${keepSamples}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
+  parseProblemTestCasesZip: (file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/admin/problems/parse-zip`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
   killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
   reviveWorker: () => Promise.reject(new Error('Hãy khởi động lại tiến trình judge_worker.py')),
   // ---- Lớp học ----
@@ -595,15 +646,15 @@ const realApi = {
           return { success: true, ...res }
         }
         if (res.alreadyEnrolled > 0) {
-          throw new Error('Sinh viên này đã có trong lớp rồi')
+          throw new Error('Sinh viên này đã có trong lớp rồi', { cause: err })
         }
         if (res.skippedInOtherClass > 0) {
-          throw new Error('Sinh viên này hiện đã thuộc lớp khác (mỗi sinh viên chỉ được ở 1 lớp)')
+          throw new Error('Sinh viên này hiện đã thuộc lớp khác (mỗi sinh viên chỉ được ở 1 lớp)', { cause: err })
         }
         if (res.skippedInvalid > 0) {
-          throw new Error('Mã sinh viên không đúng định dạng (VD: B20DCCN001)')
+          throw new Error('Mã sinh viên không đúng định dạng (VD: B20DCCN001)', { cause: err })
         }
-        throw new Error('Không thể thêm sinh viên vào lớp')
+        throw new Error('Không thể thêm sinh viên vào lớp', { cause: err })
       }
       throw err
     }

@@ -246,7 +246,7 @@ export default function ContestDetailPage() {
             },
             {
               key: 'standings',
-              label: 'Bảng xếp hạng',
+              label: 'Xếp hạng',
               children: (
                 <ContestStandings
                   data={standings.data}
@@ -258,7 +258,7 @@ export default function ContestDetailPage() {
             },
             {
               key: 'subs',
-              label: isAdmin ? 'Tất cả bài nộp' : 'Bài nộp của tôi',
+              label: 'Bài nộp',
               children: <SubmissionsTab subs={subs.data || []} labels={labels} showUser={isAdmin} />,
             },
             ...(isAdmin
@@ -268,7 +268,7 @@ export default function ContestDetailPage() {
                     label: (
                       <Space size={6}>
                         <SafetyCertificateOutlined style={{ color: '#ef4444' }} />
-                        <span>Giám sát phòng thi</span>
+                        <span>Giám sát</span>
                       </Space>
                     ),
                     children: <ContestProctoring contestId={c.id} />,
@@ -278,7 +278,7 @@ export default function ContestDetailPage() {
                     label: (
                       <Space size={6}>
                         <DiffOutlined style={{ color: '#f59e0b' }} />
-                        <span>Chống đạo văn (MOSS)</span>
+                        <span>Chống đạo văn</span>
                       </Space>
                     ),
                     children: <ContestPlagiarism contestId={c.id} />,

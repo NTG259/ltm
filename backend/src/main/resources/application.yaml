@@ -2,6 +2,11 @@ spring:
   application:
     name: backend
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   # Mặc định trỏ tới PostgreSQL của compose.yaml (cổng 5433 trên máy);
   # ghi đè bằng biến môi trường khi triển khai.
   datasource:

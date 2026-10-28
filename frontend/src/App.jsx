@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { App as AntApp, ConfigProvider, Spin } from 'antd'
 import viVN from 'antd/locale/vi_VN'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
@@ -166,6 +166,12 @@ function AppRoutes() {
 
 export default function App() {
   const [mode, setMode] = useState(readTheme)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode)
+    document.body.setAttribute('data-theme', mode)
+  }, [mode])
+
   const toggle = useCallback(() => {
     setMode((m) => {
       const next = m === 'dark' ? 'light' : 'dark'

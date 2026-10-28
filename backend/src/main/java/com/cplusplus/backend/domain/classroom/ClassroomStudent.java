@@ -67,6 +67,9 @@ public class ClassroomStudent {
     @Column(name = "joined_at", nullable = false)
     private Instant joinedAt;
 
+    @Column(name = "imported_password", columnDefinition = "text")
+    private String importedPassword;
+
     protected ClassroomStudent() {
     }
 
@@ -84,6 +87,10 @@ public class ClassroomStudent {
     public User getUser() { return user; }
 
     public Instant getJoinedAt() { return joinedAt; }
+
+    public String getImportedPassword() { return importedPassword; }
+
+    public void setImportedPassword(String importedPassword) { this.importedPassword = importedPassword; }
 
     @Override
     public boolean equals(Object o) {
