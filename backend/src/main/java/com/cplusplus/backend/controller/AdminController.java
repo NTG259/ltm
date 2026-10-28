@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.MediaType;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.cplusplus.backend.service.TestCaseZipImporter;
@@ -93,7 +94,7 @@ public class AdminController {
     private void requireAdmin(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         if (user == null || !user.isAdmin()) {
-            throw new IllegalArgumentException("Yêu cầu quyền quản trị viên");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Yêu cầu quyền quản trị viên");
         }
     }
 

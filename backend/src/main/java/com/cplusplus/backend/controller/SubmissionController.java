@@ -41,7 +41,12 @@ public class SubmissionController {
     }
 
     @PostMapping("/run")
-    public ResponseEntity<?> runTest(@RequestBody RunTestRequest req) {
+    public ResponseEntity<?> runTest(@RequestBody RunTestRequest req, HttpServletRequest servletReq) {
+        User user = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Vui lòng đăng nhập để chạy thử"));
+        }
         if (req.sourceCode() == null || req.sourceCode().isBlank()) {
             throw new IllegalArgumentException("Mã nguồn không được để trống");
         }
@@ -129,10 +134,19 @@ public class SubmissionController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getSubmission(@PathVariable Long id) {
+    public ResponseEntity<?> getSubmission(@PathVariable Long id, HttpServletRequest servletReq) {
+        User caller = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (caller == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Vui lòng đăng nhập"));
+        }
         Submission sub = submissionRepository.findDetailed(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài nộp #" + id));
 
+        if (!caller.isAdmin() && !sub.getUser().getId().equals(caller.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn không có quyền xem bài nộp này"));
+        }
         return ResponseEntity.ok(DtoMapper.toSubmissionMap(sub));
     }
 }

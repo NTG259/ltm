@@ -383,10 +383,7 @@ public class CourseController {
 
         for (CourseUnitProblem up : list) {
             Long pid = up.getProblem().getId();
-            boolean solved = submissionRepository.findAll().stream().anyMatch(s ->
-                    s.getUser() != null && s.getUser().getId().equals(user.getId())
-                            && s.getProblem() != null && s.getProblem().getId().equals(pid)
-                            && s.getVerdict() == Verdict.AC);
+            boolean solved = submissionRepository.existsByUserIdAndProblemIdAndVerdict(user.getId(), pid, Verdict.AC);
             result.add(DtoMapper.toUnitProblemMap(up, solved));
         }
 
@@ -462,6 +459,16 @@ public class CourseController {
     public ResponseEntity<?> toggleUnitProgress(@PathVariable Long unitId, HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
+
+        Optional<CourseUnit> unitOpt = courseUnitRepository.findById(unitId);
+        if (unitOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
+        }
+        CourseUnit unit = unitOpt.get();
+        if (courseProgressService.isUnitLocked(user, unit)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Hãy hoàn thành chủ đề trước để mở khóa chủ đề này"));
+        }
 
         boolean completed = courseProgressService.toggleUnitProgress(user, unitId);
         return ResponseEntity.ok(Map.of("unitId", unitId, "completed", completed));
