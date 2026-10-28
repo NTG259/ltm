@@ -337,6 +337,7 @@ const mockApi = {
     return delay({ imported, created, alreadyEnrolled: 0, skippedInOtherClass: 0, skippedInvalid, skippedExisting })
   },
   removeClassroomStudent: () => delay(null),
+  resetStudentPassword: (_id, _password) => delay({ message: 'Đã đặt lại mật khẩu thành công' }),
   listClassroomContests: () => delay([]),
   assignClassroomContest: (_id, contestId) => delay({ contestId, title: '(mock)' }),
   unassignClassroomContest: () => delay(null),
@@ -684,6 +685,7 @@ const realApi = {
     })
   },
   removeClassroomStudent: (classroomId, userId) => http('DELETE', `/classrooms/${classroomId}/students/${userId}`),
+  resetStudentPassword: (userId, password) => http('POST', `/admin/students/${userId}/reset-password`, { password }),
   listClassroomContests: (id) => http('GET', `/classrooms/${id}/contests`),
   assignClassroomContest: (id, contestId) => http('POST', `/classrooms/${id}/contests`, { contestId }),
   unassignClassroomContest: (classroomId, contestId) => http('DELETE', `/classrooms/${classroomId}/contests/${contestId}`),

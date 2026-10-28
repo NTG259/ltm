@@ -12,7 +12,9 @@ import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import com.cplusplus.backend.repository.SystemLogRepository;
+import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
+import com.cplusplus.backend.security.SecurityService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +39,8 @@ public class AdminController {
     private final ContestRepository contestRepository;
     private final SystemLogRepository systemLogRepository;
     private final TestCaseZipImporter testCaseZipImporter;
+    private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     public AdminController(
             JudgeMasterService judgeMasterService,
@@ -44,13 +48,17 @@ public class AdminController {
             ProblemRepository problemRepository,
             ContestRepository contestRepository,
             SystemLogRepository systemLogRepository,
-            TestCaseZipImporter testCaseZipImporter) {
+            TestCaseZipImporter testCaseZipImporter,
+            UserRepository userRepository,
+            SecurityService securityService) {
         this.judgeMasterService = judgeMasterService;
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.contestRepository = contestRepository;
         this.systemLogRepository = systemLogRepository;
         this.testCaseZipImporter = testCaseZipImporter;
+        this.userRepository = userRepository;
+        this.securityService = securityService;
     }
 
     public record TestCaseRequest(String input, String output, Boolean sample) {}
@@ -364,5 +372,26 @@ public class AdminController {
         contestRepository.deleteById(id);
         judgeMasterService.broadcastContestUpdate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ---------------------------------------------------- Student management
+    @PostMapping("/students/{id}/reset-password")
+    @Transactional
+    public ResponseEntity<?> resetStudentPassword(@PathVariable Long id,
+                                                  @RequestBody Map<String, String> body,
+                                                  HttpServletRequest req) {
+        requireAdmin(req);
+        User student = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng #" + id));
+        if (student.isAdmin()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Không thể reset mật khẩu admin qua API này"));
+        }
+        String newPassword = body.get("password");
+        if (newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Mật khẩu phải có ít nhất 8 ký tự"));
+        }
+        student.setPasswordHash(securityService.hashPassword(newPassword));
+        userRepository.save(student);
+        return ResponseEntity.ok(Map.of("message", "Đã đặt lại mật khẩu thành công"));
     }
 }
