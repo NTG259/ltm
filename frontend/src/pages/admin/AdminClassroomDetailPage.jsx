@@ -195,6 +195,20 @@ export default function AdminClassroomDetailPage() {
     },
     { title: 'Họ tên', dataIndex: 'fullName', key: 'fullName' },
     {
+      title: 'Mật khẩu import',
+      dataIndex: 'importedPassword',
+      key: 'importedPassword',
+      width: 210,
+      render: (password) => password ? (
+        <Input.Password
+          value={password}
+          readOnly
+          autoComplete="off"
+          aria-label="Mật khẩu ban đầu từ CSV"
+        />
+      ) : <Typography.Text type="secondary">Chưa lưu</Typography.Text>,
+    },
+    {
       title: 'Ngày thêm',
       dataIndex: 'joinedAt',
       key: 'joinedAt',
@@ -319,7 +333,7 @@ export default function AdminClassroomDetailPage() {
                   type="info"
                   showIcon
                   message="Định dạng file: mssv,password"
-                  description="Mật khẩu được mã hóa khi import và không thể xem lại. MSSV đã có mật khẩu sẽ không bị ghi đè."
+                  description="Mật khẩu ban đầu từ CSV được lưu để admin xem lại bằng nút hiện/ẩn. Cột này không cập nhật khi mật khẩu tài khoản thay đổi. Các lần import cũ hiển thị Chưa lưu. MSSV đã có mật khẩu sẽ không bị ghi đè."
                   style={{ marginBottom: 16 }}
                 />
 
