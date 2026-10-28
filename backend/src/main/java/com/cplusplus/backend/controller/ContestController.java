@@ -83,6 +83,28 @@ public class ContestController {
         return ResponseEntity.ok(toContestMap(contest, currentUser));
     }
 
+    @DeleteMapping("/{id}/register")
+    @Transactional
+    public ResponseEntity<?> unregisterContest(@PathVariable Long id, HttpServletRequest req) {
+        User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Vui lòng đăng nhập"));
+        }
+
+        Contest contest = contestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+
+        if (contest.phaseAt(Instant.now()) != com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể hủy đăng ký khi kỳ thi chưa bắt đầu"));
+        }
+
+        contestParticipantRepository.findByContestIdAndUserId(id, currentUser.getId())
+                .ifPresent(contestParticipantRepository::delete);
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}/standings")
     public ResponseEntity<?> getStandings(@PathVariable Long id) {
         Contest contest = contestRepository.findWithProblems(id)
