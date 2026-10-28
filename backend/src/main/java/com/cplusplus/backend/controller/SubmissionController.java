@@ -87,13 +87,13 @@ public class SubmissionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listSubmissions(
+    public ResponseEntity<?> listSubmissions(
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) Long problemId,
             @RequestParam(required = false) Long contestId,
             @RequestParam(required = false) String verdict,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(defaultValue = "50") int size) {
 
         Verdict v = null;
         if (verdict != null && !verdict.isBlank()) {
@@ -102,16 +102,14 @@ public class SubmissionController {
             } catch (Exception ignored) {}
         }
 
-        Pageable pageable = PageRequest.of(page, Math.min(size, 200));
-        List<SubmissionRepository.Summary> summaries = submissionRepository.search(
-                (userId != null && !userId.isBlank()) ? userId : null,
-                problemId,
-                contestId,
-                v,
-                pageable
-        );
+        int pageNum = page != null ? page : 0;
+        Pageable pageable = PageRequest.of(pageNum, Math.min(size, 200));
+        String usernameFilter = (userId != null && !userId.isBlank()) ? userId : null;
 
-        List<Map<String, Object>> result = summaries.stream().map(s -> {
+        List<SubmissionRepository.Summary> summaries = submissionRepository.search(
+                usernameFilter, problemId, contestId, v, pageable);
+
+        List<Map<String, Object>> rows = summaries.stream().map(s -> {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", s.getId());
             map.put("problemId", s.getProblemId());
@@ -130,7 +128,12 @@ public class SubmissionController {
             return map;
         }).toList();
 
-        return ResponseEntity.ok(result);
+        // Khi page được chỉ định rõ → trả về { total, submissions } cho phân trang phía client
+        if (page != null) {
+            long total = submissionRepository.countSearch(usernameFilter, problemId, contestId, v);
+            return ResponseEntity.ok(Map.of("total", total, "submissions", rows));
+        }
+        return ResponseEntity.ok(rows);
     }
 
     @GetMapping("/{id}")

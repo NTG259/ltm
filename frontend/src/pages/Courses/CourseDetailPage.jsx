@@ -32,8 +32,7 @@ export default function CourseDetailPage() {
   const { isAdmin } = useAuth()
   const { mode } = useThemeMode()
   const isDark = mode === 'dark'
-  const { data: course, loading } = useFetch(() => api.getCourse(id), [id])
-  const { data: progress, reload: reloadProgress } = useFetch(() => api.getCourseProgress(id), [id])
+  const { data: course, loading, reload: reloadCourse } = useFetch(() => api.getCourse(id), [id])
 
   // Cache tiến độ vào localStorage để hiển thị tức thì không bị chớp 0%
   const cacheKey = `cj.cache_progress_${id}`
@@ -46,26 +45,25 @@ export default function CourseDetailPage() {
     }
   }, [cacheKey])
 
-  // Ưu tiên dữ liệu mới nhất: progress API riêng -> course.progress đi kèm -> cached progress
-  const activeProgress = progress || course?.progress || cachedProgress
+  // Dùng progress nhúng trong getCourse — không cần gọi API riêng nữa
+  const activeProgress = course?.progress || cachedProgress
 
   // Lưu lại cache khi có dữ liệu mới từ server
   useEffect(() => {
-    const p = progress || course?.progress
-    if (p) {
+    if (course?.progress) {
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(p))
+        localStorage.setItem(cacheKey, JSON.stringify(course.progress))
       } catch {
         /* bỏ qua khi trình duyệt chặn storage */
       }
     }
-  }, [progress, course?.progress, cacheKey])
+  }, [course?.progress, cacheKey])
 
   const toggleComplete = async (unitId) => {
     try {
       await api.toggleUnitProgress(unitId)
       message.success('Đã cập nhật tiến độ học tập!')
-      reloadProgress()
+      reloadCourse()
     } catch (e) {
       message.error(e.message || 'Lỗi khi cập nhật tiến độ')
     }

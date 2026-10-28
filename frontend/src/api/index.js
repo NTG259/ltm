@@ -274,16 +274,20 @@ const mockApi = {
       compileLog: null,
       securityMessage: null,
     }, 300),
-  listSubmissions: ({ userId, problemId, verdict, contestId } = {}) =>
-    delay(
-      engine
-        .submissions()
-        .filter((s) => (!userId || s.userId === userId) && (!problemId || s.problemId === Number(problemId)))
-        .filter((s) => !contestId || s.contestId === Number(contestId))
-        .filter((s) => !verdict || s.verdict === verdict)
-        // eslint-disable-next-line no-unused-vars
-        .map(({ sourceCode, tests, history, ...rest }) => rest),
-    ),
+  listSubmissions: ({ userId, problemId, verdict, contestId, page, size = 50 } = {}) => {
+    const all = engine
+      .submissions()
+      .filter((s) => (!userId || s.userId === userId) && (!problemId || s.problemId === Number(problemId)))
+      .filter((s) => !contestId || s.contestId === Number(contestId))
+      .filter((s) => !verdict || s.verdict === verdict)
+      // eslint-disable-next-line no-unused-vars
+      .map(({ sourceCode, tests, history, ...rest }) => rest)
+    if (page != null) {
+      const start = page * size
+      return delay({ total: all.length, submissions: all.slice(start, start + size) })
+    }
+    return delay(all)
+  },
   getSubmission: (id) => {
     const s = engine.submission(id)
     return s ? delay(s) : Promise.reject(new Error('Không tìm thấy bài nộp'))
@@ -592,7 +596,12 @@ const realApi = {
   languages: () => http('GET', '/submissions/languages'),
   submit: (payload) => http('POST', '/submissions', payload),
   runTest: (payload) => http('POST', '/submissions/run', payload),
-  listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
+  listSubmissions: (q = {}) => {
+    const params = new URLSearchParams(
+      Object.entries(q).filter(([k, v]) => v != null && v !== '' && (k === 'page' ? true : v))
+    )
+    return http('GET', `/submissions?${params}`)
+  },
   getSubmission: (id) => http('GET', `/submissions/${id}`),
   leaderboard: (classroomId) => http('GET', classroomId ? `/leaderboard?classroomId=${classroomId}` : '/leaderboard'),
   listContests: () => http('GET', '/contests'),

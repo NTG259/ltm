@@ -104,6 +104,16 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             """)
     List<Summary> search(String username, Long problemId, Long contestId, Verdict verdict, Pageable page);
 
+    @Query("""
+            select count(s)
+            from Submission s join s.user u join s.problem p
+            where (:username is null or upper(u.username) = upper(cast(:username as string)))
+              and (:problemId is null or p.id = :problemId)
+              and (:contestId is null or s.contest.id = :contestId)
+              and (:verdict is null or s.verdict = :verdict)
+            """)
+    long countSearch(String username, Long problemId, Long contestId, Verdict verdict);
+
     @Query(value = """
             select rank, user_id as userId, username, full_name as fullName, solved, score, attempts
             from v_leaderboard order by rank, username
