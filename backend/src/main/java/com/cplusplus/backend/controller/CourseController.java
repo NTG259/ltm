@@ -79,7 +79,24 @@ public class CourseController {
         }
 
         Map<String, Object> map = new LinkedHashMap<>(DtoMapper.toCourseDetailMap(course));
-        map.put("progress", courseProgressService.getCourseProgress(user, id));
+        Map<String, Object> progress = courseProgressService.getCourseProgress(user, id);
+        map.put("progress", progress);
+
+        // Mark units locked/unlocked (sequential unlock; admins bypass)
+        if (!user.isAdmin()) {
+            @SuppressWarnings("unchecked")
+            List<Long> completedIds = (List<Long>) progress.get("completedUnitIds");
+            Set<Long> completedSet = completedIds != null ? new HashSet<>(completedIds) : Set.of();
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> units = (List<Map<String, Object>>) map.get("units");
+            if (units != null) {
+                for (int i = 0; i < units.size(); i++) {
+                    boolean locked = i > 0 && !completedSet.contains((Long) units.get(i - 1).get("id"));
+                    units.get(i).put("locked", locked);
+                }
+            }
+        }
+
         return ResponseEntity.ok(map);
     }
 
@@ -303,6 +320,10 @@ public class CourseController {
         CourseUnit unit = unitOpt.get();
         if (!user.isAdmin() && !unit.getCourse().isPublished()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Khóa học chưa được công khai"));
+        }
+
+        if (courseProgressService.isUnitLocked(user, unit)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Bạn cần hoàn thành chủ đề trước để mở khóa chủ đề này"));
         }
 
         Optional<CourseLesson> lessonOpt = courseLessonRepository.findByUnitId(unitId);
