@@ -13,13 +13,14 @@ import {
   ThunderboltOutlined,
   TrophyOutlined,
   UserOutlined,
+  UsergroupAddOutlined,
   SunOutlined,
   MoonOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
-import { useSocketStatus } from '../lib/hooks'
+import { useOnlineCount, useSocketStatus } from '../lib/hooks'
 import { USE_MOCK } from '../api'
 import CyberBackground from './CyberBackground'
 
@@ -35,7 +36,9 @@ const SOCKET_LABEL = {
 export default function AppLayout() {
   const { user, isAdmin, logout } = useAuth()
   const { mode, toggle } = useThemeMode()
-  const socket = SOCKET_LABEL[useSocketStatus()] || SOCKET_LABEL.connecting
+  const socketStatus = useSocketStatus()
+  const socket = SOCKET_LABEL[socketStatus] || SOCKET_LABEL.connecting
+  const onlineCount = useOnlineCount()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -109,7 +112,11 @@ export default function AppLayout() {
         </Link>
         <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
         <Space size={8} align="center" style={{ lineHeight: 1 }}>
-          {isAdmin && <Tooltip title={socket.tip}>
+          {isAdmin && <Tooltip title={
+            (socketStatus === 'open' || socketStatus === 'mock') && onlineCount != null
+              ? `${onlineCount} sinh viên đang online`
+              : socket.tip
+          }>
             <div className="header-status-pill">
               <span
                 style={{
@@ -128,7 +135,14 @@ export default function AppLayout() {
                       : 'none',
                 }}
               />
-              <span>{socket.text}</span>
+              {(socketStatus === 'open' || socketStatus === 'mock') && onlineCount != null ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <UsergroupAddOutlined style={{ fontSize: 12 }} />
+                  {onlineCount}
+                </span>
+              ) : (
+                <span>{socket.text}</span>
+              )}
             </div>
           </Tooltip>}
 
@@ -209,12 +223,6 @@ export default function AppLayout() {
       <Layout.Content style={{ background: 'transparent', position: 'relative', zIndex: 1 }}>
         <Outlet />
       </Layout.Content>
-      {isAdmin && !location.pathname.match(/^\/(problems\/\d+|contests\/\d+\/problems\/|courses\/\d+\/learn)/) && (
-        <Layout.Footer style={{ textAlign: 'center', padding: '14px 20px', fontSize: 12, color: 'var(--text-2)' }}>
-          CodeJudge – Hệ thống chấm bài C++ phân tán · Master HTTP :8082 · WebSocket :8001 · Worker TCP :9000
-          {USE_MOCK && ' · Chế độ mock'}
-        </Layout.Footer>
-      )}
     </Layout>
   )
 }
