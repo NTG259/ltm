@@ -122,6 +122,8 @@ services:
       WORKER_ID: ""   # để trống → dùng hostname container (tự động unique khi scale)
       TZ: Asia/Ho_Chi_Minh
     networks: [default, judge]
+    deploy:
+      replicas: 10
 
   # Nạp dữ liệu demo sau khi Flyway (trong backend) đã tạo bảng. Xóa sạch dữ liệu cũ!
   seed:

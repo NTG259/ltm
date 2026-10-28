@@ -10,6 +10,7 @@ spring:
     password: ${DB_PASSWORD:npg_JFQV3Eyr0iaN}
 
     hikari:
+      maximum-pool-size: 30
       max-lifetime: 300000
       idle-timeout: 120000
       connection-timeout: 30000
