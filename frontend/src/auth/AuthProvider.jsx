@@ -12,9 +12,13 @@ export default function AuthProvider({ children }) {
     return s.user
   }, [])
 
-  const logout = useCallback(() => {
-    storeSession(null)
-    setSession(null)
+  const logout = useCallback(async () => {
+    try {
+      await api.logout()
+    } finally {
+      storeSession(null)
+      setSession(null)
+    }
   }, [])
 
   const value = useMemo(

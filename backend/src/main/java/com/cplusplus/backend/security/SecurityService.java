@@ -96,6 +96,14 @@ public class SecurityService {
         return new AuthResult(token, admin);
     }
 
+    @Transactional
+    public void logout(String token) {
+        if (token == null || token.isBlank()) return;
+        byte[] hash = sha256(token);
+        userSessionRepository.findActive(hash, Instant.now())
+                .ifPresent(userSessionRepository::delete);
+    }
+
     @Transactional(readOnly = true)
     public Optional<User> authenticate(String bearerToken) {
         if (bearerToken == null || bearerToken.isBlank()) {

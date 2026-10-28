@@ -163,8 +163,8 @@ export default function AppLayout() {
                   icon: <LogoutOutlined />,
                   danger: true,
                   label: 'Đăng xuất',
-                  onClick: () => {
-                    logout()
+                  onClick: async () => {
+                    await logout()
                     navigate('/login')
                   },
                 },
