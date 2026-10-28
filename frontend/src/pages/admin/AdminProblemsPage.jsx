@@ -15,6 +15,7 @@ import {
   Row,
   Select,
   Space,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -400,6 +401,15 @@ export default function AdminProblemsPage() {
     list.reload()
   }
 
+  const toggleVisibility = async (id, visible) => {
+    try {
+      await api.toggleProblemVisibility(id, visible)
+      list.reload()
+    } catch (e) {
+      message.error(e.message)
+    }
+  }
+
   return (
     <div className="page">
       <AdminPageHeader
@@ -451,6 +461,17 @@ export default function AdminProblemsPage() {
               ),
             },
             { title: 'Số test', dataIndex: 'testCount', width: 80, align: 'center' },
+            {
+              title: 'Công khai',
+              dataIndex: 'publicVisible',
+              width: 90,
+              align: 'center',
+              render: (val, p) => (
+                <Tooltip title={val ? 'Đang công khai — bấm để ẩn' : 'Đang ẩn — bấm để công khai'}>
+                  <Switch size="small" checked={val} onChange={(v) => toggleVisibility(p.id, v)} />
+                </Tooltip>
+              ),
+            },
             {
               title: 'Bài nộp (AC)',
               width: 140,

@@ -342,6 +342,7 @@ const mockApi = {
   adminOverview: () =>
     delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
   saveProblem: (data) => delay(engine.saveProblem(data)),
+  toggleProblemVisibility: (id, visible) => delay({ publicVisible: visible }),
   deleteProblem: (id) => delay(engine.deleteProblem(id)),
   uploadProblemTestCasesZip: (problemId, file) =>
     delay({
@@ -585,6 +586,7 @@ const realApi = {
   deleteContest: (id) => http('DELETE', `/admin/contests/${id}`),
   adminOverview: () => http('GET', '/admin/overview'),
   saveProblem: (data) => (data.id ? http('PUT', `/admin/problems/${data.id}`, data) : http('POST', '/admin/problems', data)),
+  toggleProblemVisibility: (id, visible) => http('PATCH', `/admin/problems/${id}/visibility`, { publicVisible: visible }),
   deleteProblem: (id) => http('DELETE', `/admin/problems/${id}`),
   uploadProblemTestCasesZip: (problemId, file, keepSamples = true) => {
     const token = storageGet(TOKEN_KEY)

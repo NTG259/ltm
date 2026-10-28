@@ -128,6 +128,7 @@ public final class DtoMapper {
                 }
             }
         }
+        map.put("publicVisible", p.isPublicVisible());
         map.put("samples", samples);
         map.put("testCount", p.getTestCases() != null ? p.getTestCases().size() : 0);
 

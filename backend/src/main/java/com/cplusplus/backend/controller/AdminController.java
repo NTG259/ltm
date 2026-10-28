@@ -154,6 +154,20 @@ public class AdminController {
         return ResponseEntity.ok(DtoMapper.toProblemMap(problem, true));
     }
 
+    @PatchMapping("/problems/{id}/visibility")
+    @Transactional
+    public ResponseEntity<?> toggleProblemVisibility(@PathVariable Long id, @RequestBody Map<String, Boolean> body, HttpServletRequest req) {
+        requireAdmin(req);
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
+        Boolean visible = body.get("publicVisible");
+        if (visible != null) {
+            problem.setPublicVisible(visible);
+            problemRepository.save(problem);
+        }
+        return ResponseEntity.ok(Map.of("publicVisible", problem.isPublicVisible()));
+    }
+
     @DeleteMapping("/problems/{id}")
     @Transactional
     public ResponseEntity<?> deleteProblem(@PathVariable Long id, HttpServletRequest req) {
