@@ -1,6 +1,7 @@
 package com.cplusplus.backend.controller;
 
 import com.cplusplus.backend.domain.contest.Contest;
+import com.cplusplus.backend.domain.problem.CheckerType;
 import com.cplusplus.backend.domain.problem.Difficulty;
 import com.cplusplus.backend.domain.problem.Problem;
 import com.cplusplus.backend.domain.problem.TestCase;
@@ -74,7 +75,8 @@ public class AdminController {
             String inputSpec,
             String outputSpec,
             List<TestCaseRequest> samples,
-            List<TestCaseRequest> tests
+            List<TestCaseRequest> tests,
+            String checker
     ) {}
 
     public record ContestSaveRequest(
@@ -253,6 +255,12 @@ public class AdminController {
         if (req.difficulty() != null) {
             try {
                 problem.setDifficulty(Difficulty.valueOf(req.difficulty().toUpperCase(Locale.ROOT)));
+            } catch (Exception ignored) {
+            }
+        }
+        if (req.checker() != null) {
+            try {
+                problem.setChecker(CheckerType.valueOf(req.checker().toUpperCase(Locale.ROOT)));
             } catch (Exception ignored) {
             }
         }

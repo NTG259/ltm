@@ -565,7 +565,7 @@ public class JudgeMasterService {
             taskPayload.put("timeLimitMs", sub.getTimeLimitMs());
             taskPayload.put("memoryLimitMb", sub.getMemoryLimitMb());
             taskPayload.put("language", sub.getLanguage().code());
-            taskPayload.put("checker", "lines");
+            taskPayload.put("checker", problem.getChecker() != null ? problem.getChecker().code() : "lines");
             taskPayload.put("stopOnFirstFailure", false);
             taskPayload.put("attempt", (int) sub.getAttempts());
             taskPayload.put("attemptToken", token.toString());
