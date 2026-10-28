@@ -717,18 +717,36 @@ export const api = USE_MOCK ? mockApi : realApi
 const wsListeners = new Set()
 const statusListeners = new Set()
 let ws = null
-let wsStatus = USE_MOCK ? 'mock' : 'connecting'
+let wsStatus = USE_MOCK ? 'mock' : 'disconnected'
 let retry = 0
+let retryTimer = null
 
 function setStatus(s) {
   wsStatus = s
   statusListeners.forEach((fn) => fn(s))
 }
 
+function scheduleReconnect() {
+  if (retryTimer) return
+  const delay = Math.min(30000, 1000 * 2 ** retry++)
+  setStatus('reconnecting')
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    connect()
+  }, delay)
+}
+
 function connect() {
-  if (USE_MOCK || ws) return
+  if (USE_MOCK) return
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return
+  if (ws) { ws.onclose = null; ws.onerror = null; ws.close(); ws = null }
   setStatus('connecting')
-  ws = new WebSocket(WS_URL)
+  try {
+    ws = new WebSocket(WS_URL)
+  } catch {
+    scheduleReconnect()
+    return
+  }
   ws.onopen = () => {
     retry = 0
     setStatus('open')
@@ -743,11 +761,28 @@ function connect() {
       /* bỏ qua frame không phải JSON */
     }
   }
+  ws.onerror = () => {
+    // onclose will always follow onerror; just mark closed proactively
+    ws = null
+    scheduleReconnect()
+  }
   ws.onclose = () => {
     ws = null
-    setStatus('closed')
-    setTimeout(connect, Math.min(10000, 1000 * 2 ** retry++))
+    scheduleReconnect()
   }
+}
+
+// Reconnect when the user returns to the tab after a long absence
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !USE_MOCK) {
+      if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+        retry = 0
+        connect()
+      }
+    }
+  })
 }
 
 export function subscribe(fn) {

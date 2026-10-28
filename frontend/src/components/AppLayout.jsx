@@ -27,6 +27,8 @@ const SOCKET_LABEL = {
   mock: { status: 'processing', text: 'Mock Master', tip: 'Đang dùng Master giả lập trong trình duyệt (VITE_USE_MOCK)' },
   open: { status: 'success', text: 'WS :8001', tip: 'Đã kết nối WebSocket RFC 6455 tới Master' },
   connecting: { status: 'warning', text: 'Đang kết nối…', tip: 'Đang kết nối WebSocket tới Master :8001' },
+  reconnecting: { status: 'warning', text: 'Đang thử lại…', tip: 'WebSocket bị ngắt – đang tự động kết nối lại' },
+  disconnected: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket chưa kết nối' },
   closed: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket bị ngắt – tự động thử lại' },
 }
 

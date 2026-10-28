@@ -54,7 +54,7 @@ export function useSocket(handler) {
 }
 
 export function useSocketStatus() {
-  const [status, setStatus] = useState('connecting')
+  const [status, setStatus] = useState('disconnected')
   useEffect(() => onSocketStatus(setStatus), [])
   return status
 }
