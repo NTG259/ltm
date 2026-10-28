@@ -4,18 +4,29 @@ import { testStatusLabel, testTone, VERDICTS } from '../lib/verdicts'
 import { formatMemory, formatTime } from '../lib/format'
 import CompilerErrorExplainer from './CompilerErrorExplainer'
 
-function DiffText({ output, expected }) {
-  const a = output.split(/(\s+)/)
-  const b = expected.split(/(\s+)/)
-  return a.map((tok, i) =>
-    tok.trim() && tok !== b[i] ? (
-      <span key={i} className="diff-bad">
-        {tok}
-      </span>
+function DiffLine({ actual, expected }) {
+  const aTokens = (actual || '').split(/(\s+)/)
+  const bTokens = (expected || '').split(/(\s+)/)
+  return aTokens.map((tok, i) =>
+    tok.trim() && tok !== bTokens[i] ? (
+      <span key={i} className="diff-bad">{tok}</span>
     ) : (
       tok
     ),
   )
+}
+
+function DiffText({ output, expected }) {
+  if (output == null) return <span className="muted">Không có đầu ra</span>
+  if (expected == null) return <>{output}</>
+  const aLines = output.split('\n')
+  const bLines = expected.split('\n')
+  return aLines.map((line, i) => (
+    <span key={i}>
+      {line !== bLines[i] ? <DiffLine actual={line} expected={bLines[i] || ''} /> : line}
+      {i < aLines.length - 1 ? '\n' : ''}
+    </span>
+  ))
 }
 
 function TestDetail({ test }) {
@@ -40,8 +51,10 @@ function TestDetail({ test }) {
           <div className={`io-box ${failed ? 'bad' : 'good'}`}>
             <div className="io-box-head">Output của bạn</div>
             <pre>
-              {test.output == null ? (
-                <span className="muted">{test.stderr || 'Không có đầu ra'}</span>
+              {test.output == null && !test.stderr ? (
+                <span className="muted">Không có đầu ra</span>
+              ) : test.output == null ? (
+                <span className="muted">{test.stderr}</span>
               ) : test.status === 'WA' ? (
                 <DiffText output={test.output} expected={test.expected} />
               ) : (
@@ -52,7 +65,9 @@ function TestDetail({ test }) {
         )}
         <div className="io-box">
           <div className="io-box-head">Đáp án đúng</div>
-          <pre>{test.expected}</pre>
+          <pre>
+            {test.expected != null ? test.expected : <span className="muted">Ẩn (test ẩn)</span>}
+          </pre>
         </div>
       </div>
       {test.status === 'WA' && (
