@@ -278,7 +278,7 @@ const mockApi = {
     const s = engine.submission(id)
     return s ? delay(s) : Promise.reject(new Error('Không tìm thấy bài nộp'))
   },
-  leaderboard: () => delay(leaderboardFrom(engine.submissions(), engine.problems())),
+  leaderboard: (_classroomId) => delay(leaderboardFrom(engine.submissions(), engine.problems())),
   // ---- Kỳ thi ----
   listContests: (user) => {
     const subs = engine.submissions()
@@ -576,7 +576,7 @@ const realApi = {
   runTest: (payload) => http('POST', '/submissions/run', payload),
   listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
   getSubmission: (id) => http('GET', `/submissions/${id}`),
-  leaderboard: () => http('GET', '/leaderboard'),
+  leaderboard: (classroomId) => http('GET', classroomId ? `/leaderboard?classroomId=${classroomId}` : '/leaderboard'),
   listContests: () => http('GET', '/contests'),
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),
