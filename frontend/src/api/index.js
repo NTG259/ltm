@@ -247,6 +247,16 @@ const mockApi = {
   logout: () => delay(null),
   onlineCount: () => delay({ count: engine.submissions().length % 5 }),
   listProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
+  searchProblems: ({ q = '', difficulty = '', page = 1, size = 20 } = {}) => {
+    const all = problemStats(engine.problems(), engine.submissions())
+    const filtered = all.filter(
+      (p) =>
+        (!q || `#${p.id} ${p.title}`.toLowerCase().includes(q.toLowerCase())) &&
+        (!difficulty || p.difficulty === difficulty),
+    )
+    const start = (page - 1) * size
+    return delay({ total: filtered.length, problems: filtered.slice(start, start + size) })
+  },
   getProblem: (id) => {
     const p = engine.problems().find((x) => x.id === Number(id))
     return p ? delay(p) : Promise.reject(new Error('Không tìm thấy đề bài'))
@@ -570,6 +580,12 @@ const realApi = {
   logout: () => http('DELETE', '/auth/logout'),
   onlineCount: () => http('GET', '/stats/online'),
   listProblems: () => http('GET', '/problems'),
+  searchProblems: ({ q = '', difficulty = '', page = 1, size = 20 } = {}) => {
+    const params = new URLSearchParams({ page, size })
+    if (q) params.set('q', q)
+    if (difficulty) params.set('difficulty', difficulty)
+    return http('GET', `/problems?${params}`)
+  },
   getProblem: (id) => http('GET', `/problems/${id}`),
   languages: () => http('GET', '/submissions/languages'),
   submit: (payload) => http('POST', '/submissions', payload),

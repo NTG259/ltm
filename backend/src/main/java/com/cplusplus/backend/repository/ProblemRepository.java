@@ -3,9 +3,12 @@ package com.cplusplus.backend.repository;
 import com.cplusplus.backend.domain.problem.Problem;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ProblemRepository extends JpaRepository<Problem, Long> {
 
@@ -35,6 +38,17 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     @EntityGraph(attributePaths = "testCases")
     @Query("select p from Problem p where p.id = :id")
     Optional<Problem> findWithTestCases(Long id);
+
+    /** Tìm kiếm có phân trang (dùng cho GET /api/problems với page param). */
+    @Query("select p from Problem p where p.deletedAt is null " +
+           "and (:adminMode = true or p.publicVisible = true) " +
+           "and (:q is null or lower(p.title) like lower(concat('%', :q, '%'))) " +
+           "and (:difficulty is null or p.difficulty = :difficulty) " +
+           "order by p.id")
+    Page<Problem> searchProblems(@Param("adminMode") boolean adminMode,
+                                 @Param("q") String q,
+                                 @Param("difficulty") String difficulty,
+                                 Pageable pageable);
 
     @Query(value = """
             select problem_id as problemId, test_count as testCount, total_submissions as totalSubmissions,

@@ -6,6 +6,8 @@ import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,31 +28,48 @@ public class ProblemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listProblems(HttpServletRequest req) {
+    public ResponseEntity<?> listProblems(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String difficulty,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false, defaultValue = "20") int size,
+            HttpServletRequest req) {
         User currentUser = req != null ? (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR) : null;
         boolean isAdmin = currentUser != null && currentUser.isAdmin();
 
-        List<Problem> problems = isAdmin
-                ? problemRepository.findByDeletedAtIsNullOrderById()
-                : problemRepository.findByDeletedAtIsNullAndPublicVisibleTrueOrderById();
         Map<Long, ProblemRepository.Stats> statsMap = problemRepository.findAllStats().stream()
                 .collect(Collectors.toMap(ProblemRepository.Stats::getProblemId, s -> s));
 
-        List<Map<String, Object>> result = problems.stream().map(p -> {
-            Map<String, Object> map = DtoMapper.toProblemMap(p, false);
-            ProblemRepository.Stats st = statsMap.get(p.getId());
-            if (st != null) {
-                map.put("totalSubmissions", st.getTotalSubmissions());
-                map.put("acceptedSubmissions", st.getAcceptedSubmissions());
-                map.put("testCount", st.getTestCount());
-            } else {
-                map.put("totalSubmissions", 0);
-                map.put("acceptedSubmissions", 0);
-            }
-            return map;
-        }).toList();
+        // Paginated mode: client sent a page number (1-indexed)
+        if (page != null) {
+            String qParam = (q != null && !q.isBlank()) ? q.trim() : null;
+            String diffParam = (difficulty != null && !difficulty.isBlank()) ? difficulty : null;
+            Page<Problem> paged = problemRepository.searchProblems(
+                    isAdmin, qParam, diffParam, PageRequest.of(Math.max(page - 1, 0), Math.min(size, 100)));
+            List<Map<String, Object>> rows = paged.getContent().stream().map(p -> buildProblemRow(p, statsMap)).toList();
+            return ResponseEntity.ok(Map.of("total", paged.getTotalElements(), "problems", rows));
+        }
 
+        // Legacy full-list mode (for admin selectors, contest config, etc.)
+        List<Problem> problems = isAdmin
+                ? problemRepository.findByDeletedAtIsNullOrderById()
+                : problemRepository.findByDeletedAtIsNullAndPublicVisibleTrueOrderById();
+        List<Map<String, Object>> result = problems.stream().map(p -> buildProblemRow(p, statsMap)).toList();
         return ResponseEntity.ok(result);
+    }
+
+    private Map<String, Object> buildProblemRow(Problem p, Map<Long, ProblemRepository.Stats> statsMap) {
+        Map<String, Object> map = DtoMapper.toProblemMap(p, false);
+        ProblemRepository.Stats st = statsMap.get(p.getId());
+        if (st != null) {
+            map.put("totalSubmissions", st.getTotalSubmissions());
+            map.put("acceptedSubmissions", st.getAcceptedSubmissions());
+            map.put("testCount", st.getTestCount());
+        } else {
+            map.put("totalSubmissions", 0);
+            map.put("acceptedSubmissions", 0);
+        }
+        return map;
     }
 
     @GetMapping("/{id}")
