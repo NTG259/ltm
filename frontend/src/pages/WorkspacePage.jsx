@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import {
   App,
   Badge,
@@ -60,13 +61,7 @@ function readDraft(pid, uid) {
 
 /** Hiển thị đoạn văn có `code` inline. */
 function Rich({ text }) {
-  return text
-    .split('\n\n')
-    .map((para, i) => (
-      <p key={i}>
-        {para.split(/(`[^`]+`)/).map((part, j) => (part.startsWith('`') ? <code key={j}>{part.slice(1, -1)}</code> : part))}
-      </p>
-    ))
+  return <ReactMarkdown>{text || ''}</ReactMarkdown>
 }
 
 function Statement({ problem }) {
