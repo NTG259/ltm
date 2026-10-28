@@ -68,12 +68,24 @@ public class PlagiarismReport {
         return submissionCount;
     }
 
+    public void setSubmissionCount(int submissionCount) {
+        this.submissionCount = submissionCount;
+    }
+
     public int getSuspiciousCount() {
         return suspiciousCount;
     }
 
+    public void setSuspiciousCount(int suspiciousCount) {
+        this.suspiciousCount = suspiciousCount;
+    }
+
     public int getHighRiskCount() {
         return highRiskCount;
+    }
+
+    public void setHighRiskCount(int highRiskCount) {
+        this.highRiskCount = highRiskCount;
     }
 
     public Instant getCreatedAt() {

@@ -274,14 +274,13 @@ public class ContestController {
     }
 
     @PostMapping("/{id}/plagiarism/run")
-    @Transactional
     public ResponseEntity<?> runPlagiarismCheck(@PathVariable Long id, HttpServletRequest servletReq) {
         User currentUser = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         if (currentUser == null || !currentUser.isAdmin()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Chỉ quản trị viên mới có quyền quét đạo văn"));
         }
-
+        // Tạo report RUNNING ngay lập tức, trả về frontend — không chặn HTTP thread
         plagiarismService.runPlagiarismCheck(id);
         return ResponseEntity.ok(plagiarismService.getLatestReportDto(id));
     }

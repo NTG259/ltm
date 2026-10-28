@@ -302,8 +302,8 @@ const mockApi = {
   deleteContest: (id) => delay(engine.deleteContest(id)),
   reportViolation: () => delay({ success: true, violationCount: 1 }),
   getProctorStatus: (id) => delay({ contestId: id, participants: [], recentViolations: [] }),
-  runPlagiarismCheck: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
-  getPlagiarismStatus: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
+  runPlagiarismCheck: (id) => delay({ hasReport: true, status: 'RUNNING', contestId: id, submissionCount: 0, suspiciousCount: 0, highRiskCount: 0, totalMatches: 0, matches: [] }, 300),
+  getPlagiarismStatus: (id) => delay({ hasReport: true, status: 'COMPLETED', contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
   compareSubmissions: () => delay({ similarityScore: 95.0, verdictLevel: 'HIGH_RISK', submissionA: { id: 1, username: 'A', sourceCode: '// code A' }, submissionB: { id: 2, username: 'B', sourceCode: '// code B' } }),
   // ---- Lớp học (mock stub) ----
   listClassrooms: () => delay([]),

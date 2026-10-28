@@ -25,124 +25,38 @@ public class PlagiarismService {
     private final PlagiarismReportRepository reportRepository;
     private final PlagiarismMatchRepository matchRepository;
     private final JudgeMasterService judgeMasterService;
+    private final PlagiarismAsyncWorker asyncWorker;
 
     public PlagiarismService(
             ContestRepository contestRepository,
             SubmissionRepository submissionRepository,
             PlagiarismReportRepository reportRepository,
             PlagiarismMatchRepository matchRepository,
-            JudgeMasterService judgeMasterService) {
+            JudgeMasterService judgeMasterService,
+            PlagiarismAsyncWorker asyncWorker) {
         this.contestRepository = contestRepository;
         this.submissionRepository = submissionRepository;
         this.reportRepository = reportRepository;
         this.matchRepository = matchRepository;
         this.judgeMasterService = judgeMasterService;
+        this.asyncWorker = asyncWorker;
     }
 
+    /**
+     * Tạo report với status=RUNNING ngay lập tức và khởi chạy phân tích bất đồng bộ.
+     * Controller trả về ngay mà không chặn HTTP thread.
+     */
     @Transactional
     public PlagiarismReport runPlagiarismCheck(Long contestId) {
         Contest contest = contestRepository.findById(contestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + contestId));
 
-        List<Submission> allSubs = submissionRepository.findAllByContestIdWithDetails(contestId);
-
-        // Gom nhóm theo problem_id
-        Map<Long, List<Submission>> subsByProblem = allSubs.stream()
-                .filter(s -> s.getSourceCode() != null && !s.getSourceCode().isBlank())
-                .collect(Collectors.groupingBy(s -> s.getProblem().getId()));
-
-        List<PlagiarismMatch> detectedMatches = new ArrayList<>();
-        int totalSubmissionsConsidered = 0;
-
-        for (Map.Entry<Long, List<Submission>> entry : subsByProblem.entrySet()) {
-            List<Submission> problemSubs = entry.getValue();
-
-            // Với mỗi thí sinh, chọn bài nộp tốt nhất (điểm cao nhất, nếu bằng nhau chọn bài sau)
-            Map<Long, Submission> bestSubByUser = new HashMap<>();
-            for (Submission s : problemSubs) {
-                Long uid = s.getUser().getId();
-                Submission current = bestSubByUser.get(uid);
-                if (current == null) {
-                    bestSubByUser.put(uid, s);
-                } else {
-                    int scoreS = s.getScore() != null ? s.getScore() : 0;
-                    int scoreCur = current.getScore() != null ? current.getScore() : 0;
-                    if (scoreS > scoreCur || (scoreS == scoreCur && s.getId() > current.getId())) {
-                        bestSubByUser.put(uid, s);
-                    }
-                }
-            }
-
-            List<Submission> candidates = new ArrayList<>(bestSubByUser.values());
-            totalSubmissionsConsidered += candidates.size();
-
-            // Tiền xử lý token hóa
-            Map<Long, List<String>> tokenMap = new HashMap<>();
-            for (Submission s : candidates) {
-                tokenMap.put(s.getId(), CppCodeTokenizer.tokenize(s.getSourceCode()));
-            }
-
-            // So sánh từng cặp (O(N^2))
-            int n = candidates.size();
-            for (int i = 0; i < n; i++) {
-                for (int j = i + 1; j < n; j++) {
-                    Submission subA = candidates.get(i);
-                    Submission subB = candidates.get(j);
-
-                    List<String> tokensA = tokenMap.get(subA.getId());
-                    List<String> tokensB = tokenMap.get(subB.getId());
-
-                    WinnowingEngine.MatchResult res = WinnowingEngine.compare(tokensA, tokensB);
-
-                    // Ngưỡng phát hiện nghi vấn: >= 50.0%
-                    if (res.similarityScore() >= 50.0) {
-                        String level = res.similarityScore() >= 75.0 ? "HIGH_RISK" : "SUSPICIOUS";
-                        PlagiarismMatch match = new PlagiarismMatch(
-                                null, // Sẽ gắn report sau
-                                contest,
-                                subA.getProblem(),
-                                subA,
-                                subB,
-                                res.similarityScore(),
-                                level,
-                                res.matchedFingerprints(),
-                                Instant.now()
-                        );
-                        detectedMatches.add(match);
-                    }
-                }
-            }
-        }
-
-        // Sắp xếp các match theo độ tương đồng giảm dần
-        detectedMatches.sort((a, b) -> Double.compare(b.getSimilarityScore(), a.getSimilarityScore()));
-
-        int highRiskCount = (int) detectedMatches.stream().filter(m -> "HIGH_RISK".equals(m.getVerdictLevel())).count();
-        int suspiciousCount = detectedMatches.size() - highRiskCount;
-
-        PlagiarismReport report = new PlagiarismReport(
-                contest,
-                totalSubmissionsConsidered,
-                suspiciousCount,
-                highRiskCount,
-                Instant.now()
-        );
-
-        for (PlagiarismMatch m : detectedMatches) {
-            report.addMatch(m);
-        }
-
+        PlagiarismReport report = new PlagiarismReport(contest, 0, 0, 0, Instant.now());
+        report.setStatus("RUNNING");
         PlagiarismReport savedReport = reportRepository.save(report);
 
-        // Ghi log cảnh báo hệ thống
-        String logMsg = String.format("[Chống đạo văn] Kỳ thi #%d: Quét %d bài nộp, phát hiện %d cặp trùng lặp (%d nguy cơ cao)",
-                contestId, totalSubmissionsConsidered, detectedMatches.size(), highRiskCount);
-        judgeMasterService.addLog(
-                highRiskCount > 0 ? LogLevel.WARNING : LogLevel.INFO,
-                logMsg,
-                null,
-                null
-        );
+        // Chạy phân tích trên thread pool async (không chặn request thread)
+        asyncWorker.execute(contest, savedReport.getId());
 
         return savedReport;
     }
@@ -199,6 +113,7 @@ public class PlagiarismService {
         res.put("hasReport", true);
         res.put("reportId", report.getId());
         res.put("contestId", contestId);
+        res.put("status", report.getStatus());
         res.put("submissionCount", report.getSubmissionCount());
         res.put("suspiciousCount", report.getSuspiciousCount());
         res.put("highRiskCount", report.getHighRiskCount());
