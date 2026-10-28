@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react'
-import { Card, Select, Space, Table, Tooltip, Typography } from 'antd'
+import { Button, Card, Select, Space, Table, Tooltip, Typography } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useSocket } from '../lib/hooks'
+import { downloadCsv } from '../lib/exportCsv'
 
 export default function LeaderboardPage() {
   const { user, isAdmin } = useAuth()
@@ -22,6 +24,29 @@ export default function LeaderboardPage() {
     ...((classrooms.data || []).map((c) => ({ value: c.id, label: c.name }))),
   ]
 
+  const exportCsv = () => {
+    if (!data.rows?.length) return
+    const problemHeaders = data.problems.map((p) => ({
+      label: `#${p.id} ${p.title}`,
+      value: (r) => {
+        const c = r.cells[p.id]
+        if (!c) return ''
+        if (c.solved) return `AC (${c.tries} lần)`
+        return c.best > 0 ? `${c.best}đ (${c.tries} lần)` : `${c.tries} lần sai`
+      },
+    }))
+    const headers = [
+      { key: 'rank', label: 'Hạng' },
+      { key: 'userId', label: 'MSSV' },
+      { key: 'userName', label: 'Họ tên' },
+      { key: 'solved', label: 'Số bài AC' },
+      { key: 'score', label: 'Điểm' },
+      ...problemHeaders,
+    ]
+    const label = classroomOptions.find((o) => o.value === classroomId)?.label || 'toan-he-thong'
+    downloadCsv(data.rows, headers, `leaderboard-${label.replace(/\s+/g, '-')}.csv`)
+  }
+
   return (
     <div className="page">
       <div className="page-head">
@@ -38,6 +63,9 @@ export default function LeaderboardPage() {
             style={{ minWidth: 180 }}
             loading={classrooms.loading}
           />
+          <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={!data.rows?.length}>
+            Xuất CSV
+          </Button>
         </Space>
       </div>
 

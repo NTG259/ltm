@@ -282,6 +282,7 @@ export default function ContestDetailPage() {
                   loading={standings.loading && !standings.data}
                   currentUserId={user.id}
                   problems={c.problems}
+                  contestTitle={c.title}
                 />
               ),
             },

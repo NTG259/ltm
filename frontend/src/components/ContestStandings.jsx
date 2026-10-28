@@ -1,9 +1,34 @@
-import { Table, Tooltip, Typography } from 'antd'
-import { StarFilled } from '@ant-design/icons'
+import { Button, Table, Tooltip, Typography } from 'antd'
+import { DownloadOutlined, StarFilled } from '@ant-design/icons'
+import { downloadCsv } from '../lib/exportCsv'
 
 /** Bảng xếp hạng ICPC. Ô: thời điểm AC (phút) + số lần sai; xanh = AC, đỏ = chưa AC, vàng = đang chấm. */
-export default function ContestStandings({ data, loading, currentUserId, problems = [] }) {
+export default function ContestStandings({ data, loading, currentUserId, problems = [], contestTitle }) {
   const titles = Object.fromEntries(problems.map((p) => [p.label, p.title]))
+
+  const exportCsv = () => {
+    if (!data?.rows?.length) return
+    const labelHeaders = (data.labels || []).map((label) => ({
+      label,
+      value: (r) => {
+        const c = r.cells[label]
+        if (!c) return ''
+        if (c.solved) return `AC ${c.minute}'${c.wrong ? ` (+${c.wrong})` : ''}`
+        if (c.pending) return 'Đang chấm'
+        return c.wrong ? `-${c.wrong}` : ''
+      },
+    }))
+    const headers = [
+      { key: 'rank', label: 'Hạng' },
+      { key: 'userId', label: 'MSSV' },
+      { key: 'userName', label: 'Họ tên' },
+      { key: 'solved', label: 'Số bài' },
+      { key: 'penalty', label: 'Phạt' },
+      ...labelHeaders,
+    ]
+    downloadCsv(data.rows, headers, `standings-${contestTitle || 'contest'}.csv`)
+  }
+
   return (
     <Table
       rowKey="userId"
@@ -79,10 +104,15 @@ export default function ContestStandings({ data, loading, currentUserId, problem
         })),
       ]}
       footer={() => (
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Ô xanh: phút AC (+ số lần sai). Ô đỏ: số lần sai. <StarFilled style={{ fontSize: 10, color: '#d97706' }} /> người giải
-          đầu tiên. Lỗi biên dịch không bị tính phạt.
-        </Typography.Text>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Ô xanh: phút AC (+ số lần sai). Ô đỏ: số lần sai. <StarFilled style={{ fontSize: 10, color: '#d97706' }} /> người giải
+            đầu tiên. Lỗi biên dịch không bị tính phạt.
+          </Typography.Text>
+          <Button size="small" icon={<DownloadOutlined />} onClick={exportCsv} disabled={!data?.rows?.length}>
+            Xuất CSV
+          </Button>
+        </div>
       )}
     />
   )
