@@ -353,7 +353,9 @@ const mockApi = {
   unassignClassroomContest: () => delay(null),
   // ---- Admin ----
   adminOverview: () =>
-    delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
+    delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length, throughput: [] }),
+  adminLogs: (level) =>
+    delay((engine.logs()).filter((l) => !level || l.level === level)),
   saveProblem: (data) => delay(engine.saveProblem(data)),
   toggleProblemVisibility: (id, visible) => delay({ publicVisible: visible }),
   deleteProblem: (id) => delay(engine.deleteProblem(id)),
@@ -639,6 +641,7 @@ const realApi = {
   },
   killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
   reviveWorker: () => Promise.reject(new Error('Hãy khởi động lại tiến trình judge_worker.py')),
+  adminLogs: (level) => http('GET', level ? `/admin/logs?level=${level}` : '/admin/logs'),
   // ---- Lớp học ----
   listClassrooms: () => http('GET', '/classrooms'),
   createClassroom: (data) => http('POST', '/classrooms', data),

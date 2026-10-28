@@ -126,4 +126,25 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findAllByContestIdWithDetails(Long contestId);
 
     boolean existsByUserIdAndProblemIdAndVerdict(Long userId, Long problemId, Verdict verdict);
+
+    /** Thống kê throughput: số bài finish theo bucket 5 phút trong khoảng [since, now]. */
+    interface ThroughputBucket {
+        Long getBucket();   // epoch seconds, aligned to 5-minute boundary
+        long getTotal();
+        long getAccepted();
+    }
+
+    @Query(value = """
+            select
+              extract(epoch from date_trunc('minute', finished_at) -
+                interval '1 minute' * (extract(minute from finished_at)::int % 5))::bigint as bucket,
+              count(*) as total,
+              sum(case when verdict = 'AC' then 1 else 0 end) as accepted
+            from submissions
+            where status = 'FINISHED'
+              and finished_at >= :since
+            group by 1
+            order by 1
+            """, nativeQuery = true)
+    List<ThroughputBucket> findThroughput(Instant since);
 }

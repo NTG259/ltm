@@ -6,6 +6,7 @@ import com.cplusplus.backend.domain.problem.Difficulty;
 import com.cplusplus.backend.domain.problem.Problem;
 import com.cplusplus.backend.domain.problem.TestCase;
 import com.cplusplus.backend.domain.user.User;
+import com.cplusplus.backend.domain.worker.LogLevel;
 import com.cplusplus.backend.domain.worker.SystemLog;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.master.service.JudgeMasterService;
@@ -17,6 +18,7 @@ import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
 import com.cplusplus.backend.security.SecurityService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -104,21 +106,51 @@ public class AdminController {
         long subCount = submissionRepository.count();
 
         List<SystemLog> dbLogs = systemLogRepository.findTop200ByOrderByCreatedAtDesc();
-        List<Map<String, Object>> logs = dbLogs.stream().map(l -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", l.getId());
-            map.put("time", l.getCreatedAt().toEpochMilli());
-            map.put("level", l.getLevel().code());
-            map.put("message", l.getMessage());
-            return map;
+        List<Map<String, Object>> logs = dbLogs.stream().map(AdminController::logToMap).toList();
+
+        // Throughput: last 60 minutes, 5-min buckets
+        Instant since = Instant.now().minus(Duration.ofHours(1));
+        List<Map<String, Object>> throughput = submissionRepository.findThroughput(since).stream().map(b -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("bucket", b.getBucket());
+            m.put("total", b.getTotal());
+            m.put("accepted", b.getAccepted());
+            return m;
         }).toList();
 
         return ResponseEntity.ok(Map.of(
                 "workers", workers,
                 "queue", queue,
                 "submissions", subCount,
-                "logs", logs
+                "logs", logs,
+                "throughput", throughput
         ));
+    }
+
+    @GetMapping("/logs")
+    public ResponseEntity<?> getLogs(@RequestParam(required = false) String level, HttpServletRequest req) {
+        requireAdmin(req);
+        List<SystemLog> dbLogs;
+        if (level != null && !level.isBlank()) {
+            try {
+                LogLevel lv = LogLevel.valueOf(level.toUpperCase(java.util.Locale.ROOT));
+                dbLogs = systemLogRepository.findTop200ByLevelOrderByCreatedAtDesc(lv, PageRequest.of(0, 200));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "level không hợp lệ"));
+            }
+        } else {
+            dbLogs = systemLogRepository.findTop200ByOrderByCreatedAtDesc();
+        }
+        return ResponseEntity.ok(dbLogs.stream().map(AdminController::logToMap).toList());
+    }
+
+    private static Map<String, Object> logToMap(SystemLog l) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", l.getId());
+        map.put("time", l.getCreatedAt().toEpochMilli());
+        map.put("level", l.getLevel().code());
+        map.put("message", l.getMessage());
+        return map;
     }
 
     @PostMapping("/workers/{id}/disconnect")
