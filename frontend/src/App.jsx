@@ -172,6 +172,7 @@ function AppRoutes() {
         >
           <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
           <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
+          <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />
         </Route>
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>

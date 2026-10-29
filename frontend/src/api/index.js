@@ -1,8 +1,7 @@
-// Lớp truy cập dữ liệu. Mặc định dùng mock (giả lập Master trong trình duyệt);
-// đặt VITE_USE_MOCK=false để gọi Master Server thật qua HTTP :8000 / WebSocket :8001.
+// Lớp truy cập dữ liệu. Mặc định gọi API thật; chỉ bật mock khi đặt VITE_USE_MOCK=true.
 import { engine } from './mock/engine.js'
 
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8001`
 const TOKEN_KEY = 'cj.token'
@@ -632,7 +631,10 @@ const realApi = {
     return http('GET', `/submissions?${params}`)
   },
   getSubmission: (id) => http('GET', `/submissions/${id}`),
-  leaderboard: (classroomId) => http('GET', classroomId ? `/leaderboard?classroomId=${classroomId}` : '/leaderboard'),
+  leaderboardClassrooms: () => http('GET', '/leaderboard/classrooms'),
+  leaderboardStudents: ({ classroomId }) => http('GET', `/leaderboard/students${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  leaderboardProblems: ({ classroomId }) => http('GET', `/leaderboard/problems${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  leaderboardProblemDetails: (problemId, { classroomId }) => http('GET', `/leaderboard/problems/${problemId}/details${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
   listContests: () => http('GET', '/contests'),
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),

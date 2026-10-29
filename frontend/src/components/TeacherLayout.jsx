@@ -8,6 +8,7 @@ import {
   MoonOutlined,
   FlagOutlined,
   DatabaseOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
@@ -24,6 +25,7 @@ export default function TeacherLayout() {
     { key: '/teacher/classrooms', icon: <TeamOutlined />, label: <Link to="/teacher/classrooms">Lớp học</Link> },
     { key: '/teacher/problems', icon: <DatabaseOutlined />, label: <Link to="/teacher/problems">Bài tập</Link> },
     { key: '/teacher/contests', icon: <FlagOutlined />, label: <Link to="/teacher/contests">Kỳ thi</Link> },
+    { key: '/teacher/leaderboard', icon: <TrophyOutlined />, label: <Link to="/teacher/leaderboard">Xếp hạng</Link> },
   ]
 
   const selected = items
