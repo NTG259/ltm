@@ -2,6 +2,7 @@ import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Tooltip, Typography
 import {
   BookOutlined,
   DashboardOutlined,
+  CloudServerOutlined,
   DatabaseOutlined,
   LogoutOutlined,
   ProfileOutlined,
@@ -28,6 +29,7 @@ const SOCKET_LABEL = {
 
 export default function AppLayout() {
   const { user, isAdmin, logout } = useAuth()
+  const isLecturer = user?.role === 'lecturer'
   const { mode, toggle } = useThemeMode()
   const socket = SOCKET_LABEL[useSocketStatus()] || SOCKET_LABEL.connecting
   const location = useLocation()
@@ -36,14 +38,15 @@ export default function AppLayout() {
   const items = [
     ...(isAdmin
       ? [
-          { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát</Link> },
+          { key: '/admin', icon: <CloudServerOutlined />, label: <Link to="/admin">Giám sát</Link> },
+          { key: '/admin/overview', icon: <DashboardOutlined />, label: <Link to="/admin/overview">Tổng quan</Link> },
           { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp sinh viên</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
           { key: '/admin/courses', icon: <BookOutlined />, label: <Link to="/admin/courses">Khóa học</Link> },
           { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
         ]
-      : [
+      : isLecturer ? [] : [
           { key: '/courses', label: <Link to="/courses">Khóa học</Link> },
           { key: '/playground', label: <Link to="/playground">Chạy thử</Link> },
           { key: '/problems', label: <Link to="/problems">Bài tập</Link> },
@@ -93,7 +96,7 @@ export default function AppLayout() {
           zIndex: 100,
         }}
       >
-        <Link to={isAdmin ? '/admin' : '/problems'} className="brand">
+        <Link to={isAdmin ? '/admin' : isLecturer ? '/leaderboard' : '/problems'} className="brand">
           <span>
             Code<b>Judge</b>
           </span>
@@ -102,6 +105,7 @@ export default function AppLayout() {
               Admin
             </Tag>
           )}
+          {isLecturer && <Tag color="blue" style={{ marginInlineStart: 4, borderRadius: 999 }}>Giảng viên</Tag>}
         </Link>
         <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
         <Space size={8} align="center" style={{ lineHeight: 1 }}>

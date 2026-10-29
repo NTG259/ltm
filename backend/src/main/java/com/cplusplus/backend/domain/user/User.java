@@ -63,8 +63,21 @@ public class User {
         return u;
     }
 
+    public static User lecturer(String username, String fullName, String passwordHash) {
+        User u = new User();
+        u.username = username.trim();
+        u.fullName = fullName.trim();
+        u.role = Role.LECTURER;
+        u.passwordHash = Objects.requireNonNull(passwordHash);
+        return u;
+    }
+
     public boolean isAdmin() {
         return role == Role.ADMIN;
+    }
+
+    public boolean isLecturer() {
+        return role == Role.LECTURER;
     }
 
     public Long getId() {

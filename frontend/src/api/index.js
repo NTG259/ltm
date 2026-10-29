@@ -2,7 +2,7 @@
 // đặt VITE_USE_MOCK=false để gọi Master Server thật qua HTTP :8000 / WebSocket :8001.
 import { engine } from './mock/engine.js'
 
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8001`
 const TOKEN_KEY = 'cj.token'
@@ -544,7 +544,15 @@ const realApi = {
   runTest: (payload) => http('POST', '/submissions/run', payload),
   listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
   getSubmission: (id) => http('GET', `/submissions/${id}`),
-  leaderboard: () => http('GET', '/leaderboard'),
+  leaderboardClassrooms: () => http('GET', '/leaderboard/classrooms'),
+  leaderboardStudents: (q = {}) => http('GET', `/leaderboard/students?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null))}`),
+  leaderboardProblems: (q = {}) => http('GET', `/leaderboard/problems?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null))}`),
+  leaderboardProblemDetails: (id, q = {}) => http('GET', `/leaderboard/problems/${id}/details?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null))}`),
+  listLecturers: () => http('GET', '/admin/lecturers'),
+  createLecturer: (data) => http('POST', '/admin/lecturers', data),
+  listClassroomLecturers: (id) => http('GET', `/admin/lecturers/classrooms/${id}`),
+  assignClassroomLecturer: (classroomId, lecturerId) => http('POST', `/admin/lecturers/classrooms/${classroomId}/${lecturerId}`),
+  unassignClassroomLecturer: (classroomId, lecturerId) => http('DELETE', `/admin/lecturers/classrooms/${classroomId}/${lecturerId}`),
   listContests: () => http('GET', '/contests'),
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),
@@ -595,15 +603,15 @@ const realApi = {
           return { success: true, ...res }
         }
         if (res.alreadyEnrolled > 0) {
-          throw new Error('Sinh viên này đã có trong lớp rồi')
+          throw new Error('Sinh viên này đã có trong lớp rồi', { cause: err })
         }
         if (res.skippedInOtherClass > 0) {
-          throw new Error('Sinh viên này hiện đã thuộc lớp khác (mỗi sinh viên chỉ được ở 1 lớp)')
+          throw new Error('Sinh viên này hiện đã thuộc lớp khác (mỗi sinh viên chỉ được ở 1 lớp)', { cause: err })
         }
         if (res.skippedInvalid > 0) {
-          throw new Error('Mã sinh viên không đúng định dạng (VD: B20DCCN001)')
+          throw new Error('Mã sinh viên không đúng định dạng (VD: B20DCCN001)', { cause: err })
         }
-        throw new Error('Không thể thêm sinh viên vào lớp')
+        throw new Error('Không thể thêm sinh viên vào lớp', { cause: err })
       }
       throw err
     }

@@ -9,7 +9,7 @@ Tài liệu chi tiết của từng thành phần:
 
 - [`judgement/README.md`](judgement/README.md): Judge Worker, payload giao thức, quy đổi nhãn, sandbox.
 - [`frontend/README.md`](frontend/README.md): Web client, hợp đồng REST API và bản tin WebSocket.
-- [`backend/src/main/resources/db/migration`](backend/src/main/resources/db/migration): lược đồ cơ sở dữ liệu (Flyway V1–V11).
+- [`backend/src/main/resources/db/migration`](backend/src/main/resources/db/migration): lược đồ cơ sở dữ liệu (Flyway V1–V12).
 - [`ui/stitch_c/algorithmic_precision_ide/DESIGN.md`](ui/stitch_c/algorithmic_precision_ide/DESIGN.md): design token của giao diện.
 
 ---
@@ -84,7 +84,7 @@ Biến môi trường trong `compose.yaml` (không cần `.env` cho môi trườ
 | `DB_PASSWORD` | `codejudge` | Mật khẩu PostgreSQL |
 | `GO_JUDGE_TOKEN` | _(rỗng)_ | Token xác thực go-judge (bỏ trống = không cần) |
 | `GO_JUDGE_PARALLELISM` | `4` | Số luồng chấm song song trong go-judge |
-| `VITE_USE_MOCK` | `true` | `false` để frontend kết nối backend thật |
+| `VITE_USE_MOCK` | `false` | Frontend kết nối backend thật; `true` chỉ dùng khi chủ động chạy chế độ giả lập cũ |
 
 ### 7. Tắt và xóa dữ liệu
 
@@ -103,7 +103,7 @@ docker compose down -v       # tắt và xóa sạch volume
 - Hàng đợi **Redis Streams** 3 mức ưu tiên, điều phối **min-latencyMs** tới nhiều Worker chạy song song.
 - Phát hiện Worker chết qua Heartbeat hoặc đứt socket, rồi **Failover** at-least-once với `attempt_token`: thu hồi bài, re-enqueue, giao lại (tối đa 3 lần).
 - Cập nhật tiến trình chấm từng test case theo thời gian thực qua WebSocket RFC 6455.
-- Hai vai trò: **thí sinh** (làm bài, nộp bài, xem kết quả, thi) và **quản trị viên** (đề bài, kỳ thi, giám sát Worker, lớp học, tra cứu bài nộp).
+- Ba vai trò: **sinh viên** (làm bài, nộp bài, xem kết quả và xếp hạng lớp), **giảng viên** (xem xếp hạng lớp được phân công và thống kê bài tập), **quản trị viên** (đề bài, kỳ thi, giám sát Worker, lớp học, giảng viên và tra cứu bài nộp).
 - Kỳ thi thể thức ICPC, có bảng xếp hạng trực tiếp.
 - Lớp học / LMS: quản lý sinh viên, giao kỳ thi, theo dõi tiến độ.
 - Phát hiện sao chép (Winnowing) và giám sát kỳ thi (proctoring).
@@ -147,7 +147,7 @@ docker compose down -v       # tắt và xóa sạch volume
 | Web client | React 19, Vite, Ant Design 6, Monaco | `frontend/` | Giao diện thí sinh và admin, nhận sự kiện WebSocket |
 | Master | Java 21, Spring Boot 4, Redis | `backend/` | REST API, WebSocket, hàng đợi Redis Streams, điều phối, Heartbeat, Failover, lưu trữ |
 | Judge Worker | TCP client + `g++` (go-judge tham khảo) | `go-judge/` | Kết nối ngược về Master qua TCP :9000, biên dịch, chạy test, trả kết quả |
-| Cơ sở dữ liệu | PostgreSQL (Neon cloud), Flyway V11 | `backend/.../db/migration` | Người dùng, đề, test, kỳ thi, bài nộp, sự kiện, Worker, lớp học, chống gian lận |
+| Cơ sở dữ liệu | PostgreSQL (Neon cloud), Flyway V12 | `backend/.../db/migration` | Người dùng, đề, test, kỳ thi, bài nộp, sự kiện, Worker, lớp học, giảng viên, chống gian lận |
 | Hàng đợi | Redis Streams (3 luồng ưu tiên) | — | `judge:contest` / `judge:practice` / `judge:custom` |
 
 ---
@@ -275,6 +275,13 @@ Quy trình trên mỗi Worker: **quét tĩnh → biên dịch → chạy từng 
 
 Admin tạo `Classroom`, thêm sinh viên thủ công hoặc import hàng loạt qua file CSV (`ClassroomCsvImporter`). Mỗi lớp có thể gán nhiều kỳ thi (`ClassroomContest`). `MonitorController` (dưới `/api/classrooms`) cung cấp view tiến độ làm bài của từng sinh viên theo thời gian thực cho giáo viên.
 
+### Bảng xếp hạng lớp (V12)
+
+- Sinh viên chỉ xem lớp đang tham gia. Admin tạo tài khoản giảng viên và phân công ở tab **Giảng viên** trong chi tiết lớp; giảng viên chỉ xem lớp được phân công.
+- Bảng sinh viên dùng bài luyện tập công khai đã chấm xong, không tính bài thi hoặc Chạy thử. Hạng theo số bài AC giảm dần, lượt nộp đến AC đầu tiên tăng dần, rồi thời điểm AC cuối cùng tăng dần. Sinh viên chưa nộp vẫn xuất hiện; bằng cả ba tiêu chí thì đồng hạng.
+- Admin và giảng viên có tab **Xếp hạng bài tập**: nhiều lượt nộp, nhiều người AC và tỷ lệ AC thấp. Tỷ lệ AC tính theo số người đã thử; tiêu chí tỷ lệ thấp chỉ hiện bài có ít nhất 10 người thử. Có thể lọc lớp và mở rộng dòng để xem kết quả từng sinh viên.
+- API: `GET /api/leaderboard/classrooms`, `/students`, `/problems`, `/problems/{id}/details`. Các bảng được lọc theo `classroomId` khi chọn lớp.
+
 ---
 
 ## 9. Phát hiện sao chép
@@ -289,7 +296,7 @@ Admin tạo `Classroom`, thêm sinh viên thủ công hoặc import hàng loạt
 
 ---
 
-## 11. Mô hình dữ liệu (PostgreSQL – Neon cloud, Flyway V11)
+## 11. Mô hình dữ liệu (PostgreSQL – Neon cloud, Flyway V12)
 
 Không cần cài PostgreSQL cục bộ — chuỗi kết nối Neon đã có sẵn trong `backend/src/main/resources/application.yaml`.
 
@@ -364,7 +371,7 @@ Nguyên tắc trình bày:
 
 ```text
 .
-├── backend/      # Master – Spring Boot 4 (Java 21); db/migration: Flyway V1–V11
+├── backend/      # Master – Spring Boot 4 (Java 21); db/migration: Flyway V1–V12
 ├── judgement/    # Mã nguồn tham khảo go-judge; samples/ (7 nhãn), tests/
 ├── frontend/     # Web SPA – React 19 + Vite + Ant Design 6 + Monaco Editor
 ├── go-judge/     # Mã nguồn go-judge (nguồn mở), tham khảo thiết kế sandbox

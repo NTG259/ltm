@@ -1,63 +1,203 @@
 package com.cplusplus.backend.controller;
 
-import com.cplusplus.backend.domain.problem.Problem;
-import com.cplusplus.backend.repository.ProblemRepository;
-import com.cplusplus.backend.repository.SubmissionRepository;
-import org.springframework.http.ResponseEntity;
+import com.cplusplus.backend.domain.user.User;
+import com.cplusplus.backend.security.AuthInterceptor;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/leaderboard")
 public class LeaderboardController {
+    private final NamedParameterJdbcTemplate jdbc;
 
-    private final SubmissionRepository submissionRepository;
-    private final ProblemRepository problemRepository;
-
-    public LeaderboardController(SubmissionRepository submissionRepository, ProblemRepository problemRepository) {
-        this.submissionRepository = submissionRepository;
-        this.problemRepository = problemRepository;
+    public LeaderboardController(NamedParameterJdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getLeaderboard() {
-        List<Problem> problems = problemRepository.findByDeletedAtIsNullAndPublicVisibleTrueOrderById();
-        List<Map<String, Object>> problemList = problems.stream()
-                .map(p -> Map.<String, Object>of("id", p.getId(), "title", p.getTitle()))
-                .toList();
+    @GetMapping("/classrooms")
+    public List<Map<String, Object>> classrooms(HttpServletRequest request) {
+        User user = requireUser(request);
+        String sql = """
+                SELECT c.id, c.name, c.semester FROM classrooms c
+                WHERE :isAdmin
+                   OR (:isLecturer AND EXISTS (SELECT 1 FROM classroom_lecturers cl
+                                               WHERE cl.classroom_id = c.id AND cl.user_id = :userId))
+                   OR (:isStudent AND EXISTS (SELECT 1 FROM classroom_students cs
+                                              WHERE cs.classroom_id = c.id AND cs.user_id = :userId))
+                ORDER BY c.name, c.id
+                """;
+        var params = new MapSqlParameterSource()
+                .addValue("isAdmin", user.isAdmin())
+                .addValue("isLecturer", user.isLecturer())
+                .addValue("isStudent", !user.isAdmin() && !user.isLecturer())
+                .addValue("userId", user.getId());
+        return jdbc.query(sql, params, (rs, row) -> Map.of(
+                "id", rs.getLong("id"), "name", rs.getString("name"),
+                "semester", rs.getString("semester") == null ? "" : rs.getString("semester")));
+    }
 
-        List<SubmissionRepository.LeaderboardRow> rawRows = submissionRepository.findLeaderboard();
-        List<SubmissionRepository.BestCell> rawCells = submissionRepository.findBestCells();
+    @GetMapping("/students")
+    public Map<String, Object> students(@RequestParam(required = false) Long classroomId,
+                                        HttpServletRequest request) {
+        User user = requireUser(request);
+        checkScope(user, classroomId);
+        var params = parameters(classroomId);
+        String sql = """
+                WITH eligible AS (
+                    SELECT u.id, u.username, u.full_name, c.name AS classroom_name
+                    FROM users u
+                    LEFT JOIN classroom_students cs ON cs.user_id = u.id
+                    LEFT JOIN classrooms c ON c.id = cs.classroom_id
+                    WHERE u.role = 'STUDENT'
+                """ + (classroomId == null ? "" : " AND cs.classroom_id = :classroomId\n") + """
+                ), scoped AS (
+                """ + scopedSubmissions(classroomId) + """
+                ), first_ac AS (
+                    SELECT user_id, problem_id, min(created_at) AS ac_at
+                    FROM scoped WHERE verdict = 'AC' GROUP BY user_id, problem_id
+                ), per_problem AS (
+                    SELECT s.user_id, s.problem_id, fa.ac_at,
+                           count(*) FILTER (WHERE fa.ac_at IS NOT NULL AND s.created_at <= fa.ac_at) AS tries
+                    FROM scoped s LEFT JOIN first_ac fa ON fa.user_id = s.user_id AND fa.problem_id = s.problem_id
+                    GROUP BY s.user_id, s.problem_id, fa.ac_at
+                ), totals AS (
+                    SELECT user_id, count(ac_at) AS solved, sum(tries) AS attempts, max(ac_at) AS completed_at
+                    FROM per_problem GROUP BY user_id
+                ), ranked AS (
+                    SELECT e.id, e.username, e.full_name, e.classroom_name,
+                           coalesce(t.solved, 0) AS solved, coalesce(t.attempts, 0) AS attempts,
+                           rank() OVER (ORDER BY coalesce(t.solved, 0) DESC,
+                                                  coalesce(t.attempts, 0) ASC,
+                                                  t.completed_at ASC NULLS LAST) AS rank
+                    FROM eligible e LEFT JOIN totals t ON t.user_id = e.id
+                ) SELECT * FROM ranked ORDER BY rank, username
+                """;
+        List<Map<String, Object>> rows = jdbc.query(sql, params, (rs, rowNum) -> {
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("rank", rs.getLong("rank"));
+            result.put("userId", rs.getString("username"));
+            result.put("userName", rs.getString("full_name"));
+            result.put("classroomName", rs.getString("classroom_name"));
+            result.put("solved", rs.getLong("solved"));
+            result.put("attempts", rs.getLong("attempts"));
+            return result;
+        });
+        return Map.of("rows", rows, "updatedAt", Instant.now().toEpochMilli());
+    }
 
-        // Gom cells theo userId
-        Map<Long, Map<String, Object>> cellsByUser = new HashMap<>();
-        for (SubmissionRepository.BestCell c : rawCells) {
-            cellsByUser.computeIfAbsent(c.getUserId(), k -> new HashMap<>())
-                    .put(String.valueOf(c.getProblemId()), Map.of(
-                            "best", c.getBestScore(),
-                            "tries", c.getTries(),
-                            "solved", c.isSolved()
-                    ));
+    @GetMapping("/problems")
+    public Map<String, Object> problems(@RequestParam(required = false) Long classroomId,
+                                        HttpServletRequest request) {
+        User user = requireUser(request);
+        if (!user.isAdmin() && !user.isLecturer())
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ giảng viên và quản trị viên được xem xếp hạng bài");
+        checkScope(user, classroomId);
+        var params = parameters(classroomId);
+        String sql = """
+                WITH scoped AS (
+                """ + scopedSubmissions(classroomId) + """
+                ) SELECT p.id, p.title, p.difficulty,
+                         count(s.problem_id) AS submissions,
+                         count(DISTINCT s.user_id) AS attempted_users,
+                         count(DISTINCT s.user_id) FILTER (WHERE s.verdict = 'AC') AS accepted_users
+                FROM problems p LEFT JOIN scoped s ON s.problem_id = p.id
+                WHERE p.is_public = true AND p.deleted_at IS NULL
+                GROUP BY p.id, p.title, p.difficulty
+                ORDER BY submissions DESC, p.id
+                """;
+        List<Map<String, Object>> rows = jdbc.query(sql, params, (rs, rowNum) -> {
+            long tried = rs.getLong("attempted_users");
+            long accepted = rs.getLong("accepted_users");
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("problemId", rs.getLong("id"));
+            result.put("title", rs.getString("title"));
+            result.put("difficulty", rs.getString("difficulty"));
+            result.put("submissions", rs.getLong("submissions"));
+            result.put("attemptedUsers", tried);
+            result.put("acceptedUsers", accepted);
+            result.put("acceptanceRate", tried == 0 ? null : Math.round(accepted * 1000.0 / tried) / 10.0);
+            return result;
+        });
+        return Map.of("rows", rows, "updatedAt", Instant.now().toEpochMilli());
+    }
+
+    @GetMapping("/problems/{problemId}/details")
+    public Map<String, Object> problemDetails(@PathVariable Long problemId,
+                                              @RequestParam(required = false) Long classroomId,
+                                              HttpServletRequest request) {
+        User user = requireUser(request);
+        if (!user.isAdmin() && !user.isLecturer())
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ giảng viên và quản trị viên được xem chi tiết bài");
+        checkScope(user, classroomId);
+        var params = parameters(classroomId).addValue("problemId", problemId);
+        String sql = """
+                WITH scoped AS (
+                """ + scopedSubmissions(classroomId) + """
+                ) SELECT u.username, u.full_name, count(*) AS submissions,
+                         bool_or(s.verdict = 'AC') AS solved, max(s.created_at) AS last_submitted_at
+                FROM scoped s JOIN users u ON u.id = s.user_id
+                WHERE s.problem_id = :problemId
+                GROUP BY u.id, u.username, u.full_name
+                ORDER BY solved ASC, submissions DESC, u.username
+                """;
+        List<Map<String, Object>> rows = jdbc.query(sql, params, (rs, rowNum) -> Map.of(
+                "userId", rs.getString("username"), "userName", rs.getString("full_name"),
+                "submissions", rs.getLong("submissions"), "solved", rs.getBoolean("solved"),
+                "lastSubmittedAt", rs.getTimestamp("last_submitted_at").toInstant().toEpochMilli()));
+        return Map.of("rows", rows);
+    }
+
+    private String scopedSubmissions(Long classroomId) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT s.user_id, s.problem_id, s.verdict, s.created_at
+                FROM submissions s
+                JOIN users u ON u.id = s.user_id AND u.role = 'STUDENT'
+                JOIN problems p ON p.id = s.problem_id AND p.is_public = true AND p.deleted_at IS NULL
+                WHERE s.contest_id IS NULL AND s.status = 'FINISHED'
+                """);
+        if (classroomId != null) sql.append(" AND EXISTS (SELECT 1 FROM classroom_students cs WHERE cs.user_id = s.user_id AND cs.classroom_id = :classroomId)\n");
+        return sql.toString();
+    }
+
+    private MapSqlParameterSource parameters(Long classroomId) {
+        var params = new MapSqlParameterSource();
+        if (classroomId != null) params.addValue("classroomId", classroomId);
+        return params;
+    }
+
+    private User requireUser(HttpServletRequest request) {
+        User user = (User) request.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập");
+        return user;
+    }
+
+    private void checkScope(User user, Long classroomId) {
+        if (classroomId == null) {
+            if (user.isAdmin()) return;
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần chọn lớp học");
         }
-
-        List<Map<String, Object>> rows = rawRows.stream().map(r -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("rank", r.getRank());
-            map.put("userId", r.getUsername());
-            map.put("userName", r.getFullName());
-            map.put("solved", r.getSolved());
-            map.put("score", r.getScore());
-            map.put("attempts", r.getAttempts());
-            map.put("cells", cellsByUser.getOrDefault(r.getUserId(), Map.of()));
-            return map;
-        }).toList();
-
-        return ResponseEntity.ok(Map.of(
-                "problems", problemList,
-                "rows", rows
-        ));
+        if (user.isAdmin()) {
+            Boolean exists = jdbc.getJdbcTemplate().queryForObject(
+                    "SELECT EXISTS (SELECT 1 FROM classrooms WHERE id = ?)", Boolean.class, classroomId);
+            if (!Boolean.TRUE.equals(exists)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp");
+            return;
+        }
+        String table = user.isLecturer() ? "classroom_lecturers" : "classroom_students";
+        Boolean permitted = jdbc.getJdbcTemplate().queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM " + table + " WHERE classroom_id = ? AND user_id = ?)",
+                Boolean.class, classroomId, user.getId());
+        if (!Boolean.TRUE.equals(permitted)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không thuộc lớp này");
     }
 }
