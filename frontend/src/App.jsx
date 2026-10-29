@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { App as AntApp, ConfigProvider, Spin } from 'antd'
 import viVN from 'antd/locale/vi_VN'
-import { createHashRouter, RouterProvider, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AuthProvider from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import { buildTheme, ThemeModeContext } from './theme'
@@ -19,10 +19,8 @@ const ContestDetailPage = lazy(() => import('./pages/ContestDetailPage'))
 const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
 const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
-const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'))
 const AdminProblemsPage = lazy(() => import('./pages/admin/AdminProblemsPage'))
 const AdminClassroomsPage = lazy(() => import('./pages/admin/AdminClassroomsPage'))
-const AdminLecturersPage = lazy(() => import('./pages/admin/AdminLecturersPage'))
 const AdminClassroomDetailPage = lazy(() => import('./pages/admin/AdminClassroomDetailPage'))
 const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroomMonitorPage'))
 const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
@@ -33,7 +31,6 @@ const CourseDetailPage = lazy(() => import('./pages/Courses/CourseDetailPage'))
 const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
 const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
 const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
-const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const TeacherClassroomsPage = lazy(() => import('./pages/teacher/TeacherClassroomsPage'))
 const TeacherClassroomDetailPage = lazy(() => import('./pages/teacher/TeacherClassroomDetailPage'))
 const TeacherProblemsPage = lazy(() => import('./pages/teacher/TeacherProblemsPage'))
@@ -72,7 +69,6 @@ function AppRoutes() {
             </RequireAuth>
           }
         >
-          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/courses" element={<CourseListPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
@@ -92,14 +88,6 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <AdminDashboardPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/overview"
-            element={
-              <RequireAuth admin>
-                <AdminOverviewPage />
               </RequireAuth>
             }
           />
@@ -148,14 +136,6 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <AdminClassroomsPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/lecturers"
-            element={
-              <RequireAuth admin>
-                <AdminLecturersPage />
               </RequireAuth>
             }
           />
@@ -209,8 +189,6 @@ function AppRoutes() {
   )
 }
 
-const router = createHashRouter([{ path: '*', element: <AppRoutes /> }])
-
 export default function App() {
   const [mode, setMode] = useState(readTheme)
 
@@ -238,7 +216,9 @@ export default function App() {
         <AntApp>
           <div className="app-root" data-theme={mode}>
             <AuthProvider>
-              <RouterProvider router={router} />
+              <HashRouter>
+                <AppRoutes />
+              </HashRouter>
             </AuthProvider>
           </div>
         </AntApp>

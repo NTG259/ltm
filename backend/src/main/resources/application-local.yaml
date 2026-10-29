@@ -1,0 +1,13 @@
+# Profile cho phát triển local: backend chạy ngoài Docker,
+# kết nối tới db/redis trong compose.infra.yaml.
+#
+# Chạy: .\mvnw spring-boot:run -Dspring-boot.run.profiles=local
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:15432/codejudge
+    username: codejudge
+    password: codejudge
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 16379

@@ -27,7 +27,6 @@ export default function AuthProvider({ children }) {
     () => ({
       user: session?.user ?? null,
       isAdmin: session?.user?.role === 'admin',
-      isLecturer: session?.user?.role === 'lecturer',
       login,
       logout,
     }),
