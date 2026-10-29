@@ -63,7 +63,7 @@ export default function ContestPlagiarism({ contestId }) {
               message.error('Quét đạo văn thất bại. Vui lòng thử lại.')
             }
           }
-        } catch {}
+        } catch { /* ignore polling error */ }
       }, 3000)
     }
     return () => clearInterval(pollRef.current)

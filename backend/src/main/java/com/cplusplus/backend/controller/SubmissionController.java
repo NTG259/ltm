@@ -23,10 +23,18 @@ public class SubmissionController {
 
     private final SubmissionRepository submissionRepository;
     private final JudgeMasterService judgeMasterService;
+    private final com.cplusplus.backend.repository.ContestRepository contestRepository;
+    private final com.cplusplus.backend.repository.ContestProblemRepository contestProblemRepository;
 
-    public SubmissionController(SubmissionRepository submissionRepository, JudgeMasterService judgeMasterService) {
+    public SubmissionController(
+            SubmissionRepository submissionRepository,
+            JudgeMasterService judgeMasterService,
+            com.cplusplus.backend.repository.ContestRepository contestRepository,
+            com.cplusplus.backend.repository.ContestProblemRepository contestProblemRepository) {
         this.submissionRepository = submissionRepository;
         this.judgeMasterService = judgeMasterService;
+        this.contestRepository = contestRepository;
+        this.contestProblemRepository = contestProblemRepository;
     }
 
     public record SubmitRequest(Long problemId, String language, String sourceCode, Long contestId) {}
@@ -73,6 +81,27 @@ public class SubmissionController {
         }
         if (req.sourceCode() == null || req.sourceCode().isBlank()) {
             throw new IllegalArgumentException("Mã nguồn không được để trống");
+        }
+
+        if (req.contestId() != null) {
+            var contest = contestRepository.findById(req.contestId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + req.contestId()));
+            if (!user.isAdmin()) {
+                if (!contestRepository.isRegistered(req.contestId(), user.getId())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("message", "Bạn chưa đăng ký tham gia kỳ thi này"));
+                }
+                var phase = contest.phaseAt(java.time.Instant.now());
+                if (phase == com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Kỳ thi chưa bắt đầu"));
+                }
+                if (phase == com.cplusplus.backend.domain.contest.ContestPhase.ENDED) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Kỳ thi đã kết thúc"));
+                }
+            }
+            if (!contestProblemRepository.existsById(new com.cplusplus.backend.domain.contest.ContestProblem.Id(req.contestId(), req.problemId()))) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Bài tập #" + req.problemId() + " không thuộc kỳ thi này"));
+            }
         }
 
         Submission submission = judgeMasterService.submit(
@@ -146,7 +175,7 @@ public class SubmissionController {
         Submission sub = submissionRepository.findDetailed(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài nộp #" + id));
 
-        if (!caller.isAdmin() && !sub.getUser().getId().equals(caller.getId())) {
+        if (!caller.isAdmin() && !caller.isLecturer() && !sub.getUser().getId().equals(caller.getId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Bạn không có quyền xem bài nộp này"));
         }

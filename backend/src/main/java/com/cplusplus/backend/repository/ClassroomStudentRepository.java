@@ -13,6 +13,8 @@ public interface ClassroomStudentRepository extends JpaRepository<ClassroomStude
 
     boolean existsByClassroomIdAndUserId(Long classroomId, Long userId);
 
+    Optional<ClassroomStudent> findByClassroomIdAndUserId(Long classroomId, Long userId);
+
     boolean existsByUserId(Long userId);
 
     Optional<ClassroomStudent> findByUserId(Long userId);

@@ -179,10 +179,8 @@ public class MonitorController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
         if (caller.getRole() == Role.LECTURER) {
-            boolean ownsClass = classroomRepository.findById(classroomId)
-                    .map(c -> c.getCreatedBy() != null && c.getCreatedBy().getId().equals(caller.getId()))
-                    .orElse(false);
-            if (!ownsClass || (contestId != null && !classroomContestRepository.existsByClassroomIdAndContestId(classroomId, contestId))) {
+            boolean isAssigned = classroomRepository.isLecturerAssigned(classroomId, caller.getId());
+            if (!isAssigned || (contestId != null && !classroomContestRepository.existsByClassroomIdAndContestId(classroomId, contestId))) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
             }
         }

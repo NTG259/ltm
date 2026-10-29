@@ -1,10 +1,10 @@
 package com.cplusplus.backend.controller;
 
-import com.cplusplus.backend.domain.user.Role;
+
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
-import com.cplusplus.backend.security.SecurityService;
+
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +23,10 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/admin/lecturers")
 public class LecturerAdminController {
     private final UserRepository users;
-    private final SecurityService security;
     private final JdbcTemplate jdbc;
 
-    public LecturerAdminController(UserRepository users, SecurityService security, JdbcTemplate jdbc) {
+    public LecturerAdminController(UserRepository users, JdbcTemplate jdbc) {
         this.users = users;
-        this.security = security;
         this.jdbc = jdbc;
     }
 

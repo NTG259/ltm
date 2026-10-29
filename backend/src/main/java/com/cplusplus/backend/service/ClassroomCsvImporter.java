@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 @Service
 public class ClassroomCsvImporter {
 
-    private static final Pattern STUDENT_CODE = Pattern.compile("^[A-Z][0-9]{2}[A-Z]{4}[0-9]{3}$");
+    private static final Pattern STUDENT_CODE = Pattern.compile("^[A-Za-z0-9._-]{3,32}$");
 
     private final UserRepository userRepository;
     private final ClassroomStudentRepository classroomStudentRepository;
@@ -82,26 +82,21 @@ public class ClassroomCsvImporter {
                     alreadyEnrolled++;
                     continue;
                 }
-                if (user != null && classroomStudentRepository.existsByUserId(user.getId())) {
-                    skippedInOtherClass++;
-                    continue;
-                }
 
                 if (user == null) {
                     user = User.student(mssv, mssv);
                     user.setPasswordHash(securityService.hashPassword(password));
+                    user.setInitialPassword(password);
                     user = userRepository.save(user);
                     created++;
                 } else if (user.getPasswordHash() == null) {
                     user.setPasswordHash(securityService.hashPassword(password));
+                    user.setInitialPassword(password);
                     userRepository.save(user);
-                } else {
-                    skippedExisting++;
-                    continue;
                 }
 
                 ClassroomStudent enrollment = new ClassroomStudent(classroom, user, Instant.now());
-                enrollment.setImportedPassword(password);
+                enrollment.setImportedPassword(user.getInitialPassword() != null ? user.getInitialPassword() : password);
                 classroomStudentRepository.save(enrollment);
                 imported++;
             }

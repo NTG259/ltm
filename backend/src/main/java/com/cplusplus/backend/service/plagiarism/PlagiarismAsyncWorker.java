@@ -6,7 +6,6 @@ import com.cplusplus.backend.domain.plagiarism.PlagiarismReport;
 import com.cplusplus.backend.domain.submission.Submission;
 import com.cplusplus.backend.domain.worker.LogLevel;
 import com.cplusplus.backend.master.service.JudgeMasterService;
-import com.cplusplus.backend.repository.PlagiarismMatchRepository;
 import com.cplusplus.backend.repository.PlagiarismReportRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import org.slf4j.Logger;
@@ -30,17 +29,14 @@ public class PlagiarismAsyncWorker {
 
     private final SubmissionRepository submissionRepository;
     private final PlagiarismReportRepository reportRepository;
-    private final PlagiarismMatchRepository matchRepository;
     private final JudgeMasterService judgeMasterService;
 
     public PlagiarismAsyncWorker(
             SubmissionRepository submissionRepository,
             PlagiarismReportRepository reportRepository,
-            PlagiarismMatchRepository matchRepository,
             JudgeMasterService judgeMasterService) {
         this.submissionRepository = submissionRepository;
         this.reportRepository = reportRepository;
-        this.matchRepository = matchRepository;
         this.judgeMasterService = judgeMasterService;
     }
 

@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
     } catch (e) {
       message.error(e.message || 'Không thể xóa worker đã ngắt kết nối')
     }
-  }, [message, overview.setData])
+  }, [message, overview])
 
   return (
     <div className="page">

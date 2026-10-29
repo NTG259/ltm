@@ -5,10 +5,10 @@ import com.cplusplus.backend.domain.classroom.ClassroomContest;
 import com.cplusplus.backend.domain.classroom.ClassroomStudent;
 import com.cplusplus.backend.domain.contest.Contest;
 import com.cplusplus.backend.domain.contest.ContestParticipant;
-import com.cplusplus.backend.domain.problem.CheckerType;
-import com.cplusplus.backend.domain.problem.Difficulty;
+
+
 import com.cplusplus.backend.domain.problem.Problem;
-import com.cplusplus.backend.domain.problem.TestCase;
+
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.master.service.JudgeMasterService;
@@ -195,7 +195,7 @@ public class TeacherController {
 
     private Classroom ownedClassroom(Long id, User user) {
         if (id == null) throw new IllegalArgumentException("Chọn lớp học");
-        return classroomRepository.findById(id).filter(c -> c.getLecturer() != null && c.getLecturer().getId().equals(user.getId()))
+        return classroomRepository.findById(id).filter(c -> classroomRepository.isLecturerAssigned(c.getId(), user.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Lớp học không thuộc quyền quản lý của bạn"));
     }
 
@@ -207,28 +207,6 @@ public class TeacherController {
             }
         }
     }
-
-    private void applyProblemData(Problem problem, ProblemInput req) {
-        if (req.statement() != null) problem.setStatement(req.statement());
-        if (req.inputSpec() != null) problem.setInputSpec(req.inputSpec());
-        if (req.outputSpec() != null) problem.setOutputSpec(req.outputSpec());
-        if (req.timeLimitMs() != null && req.timeLimitMs() > 0) problem.setTimeLimitMs(req.timeLimitMs());
-        if (req.memoryLimitMb() != null && req.memoryLimitMb() > 0) problem.setMemoryLimitMb(req.memoryLimitMb());
-        if (req.tags() != null) problem.setTags(req.tags());
-        if (req.difficulty() != null) try { problem.setDifficulty(Difficulty.valueOf(req.difficulty().toUpperCase(Locale.ROOT))); } catch (Exception ignored) {}
-        if (req.checker() != null) try { problem.setChecker(CheckerType.valueOf(req.checker().toUpperCase(Locale.ROOT))); } catch (Exception ignored) {}
-        List<TestCase.Data> tests = new ArrayList<>();
-        if (req.samples() != null) for (TestCaseInput tc : req.samples()) {
-            if (tc != null && (notBlank(tc.input()) || notBlank(tc.output()))) tests.add(new TestCase.Data(orEmpty(tc.input()), orEmpty(tc.output()), true));
-        }
-        if (req.tests() != null) for (TestCaseInput tc : req.tests()) {
-            if (tc != null && (notBlank(tc.input()) || notBlank(tc.output()))) tests.add(new TestCase.Data(orEmpty(tc.input()), orEmpty(tc.output()), Boolean.TRUE.equals(tc.sample())));
-        }
-        if (!tests.isEmpty()) problem.replaceTestCases(tests);
-    }
-
-    private boolean notBlank(String value) { return value != null && !value.isBlank(); }
-    private String orEmpty(String value) { return value == null ? "" : value; }
 
     private User requireLecturer(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);

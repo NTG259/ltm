@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 @Service
 public class SecurityService {
 
-    private static final Pattern STUDENT_CODE_PATTERN = Pattern.compile("^[A-Z][0-9]{2}[A-Z]{4}[0-9]{3}$");
+    private static final Pattern STUDENT_CODE_PATTERN = Pattern.compile("^[A-Za-z0-9._-]{3,32}$");
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
     private final ClassroomStudentRepository classroomStudentRepository;

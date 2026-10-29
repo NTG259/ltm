@@ -341,7 +341,7 @@ const mockApi = {
   teacherContestProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
   teacherSaveContest: (data) => delay(engine.saveContest(data)),
   teacherDeleteContest: (id) => delay(engine.deleteContest(id)),
-  listLecturers: () => delay(mockLecturers.map(({ password, ...lecturer }) => lecturer)),
+  listLecturers: () => delay(mockLecturers.map((l) => ({ id: l.id, staffId: l.staffId, fullName: l.fullName, initialPassword: l.initialPassword, classroomCount: l.classroomCount, createdAt: l.createdAt }))),
   createLecturer: (data) => {
     const lecturer = { id: Date.now(), ...data, staffId: data.staffId.toUpperCase(), initialPassword: data.password, createdAt: Date.now() }
     mockLecturers.push(lecturer)
@@ -443,6 +443,7 @@ const mockApi = {
     return delay({ imported, created, alreadyEnrolled: 0, skippedInOtherClass: 0, skippedInvalid, skippedExisting })
   },
   removeClassroomStudent: () => delay(null),
+  resetClassroomStudentPassword: () => delay({ message: 'Đã đặt lại mật khẩu thành công' }),
   resetStudentPassword: () => delay({ message: 'Đã đặt lại mật khẩu thành công' }),
   listClassroomContests: () => delay([]),
   assignClassroomContest: (_id, contestId) => delay({ contestId, title: '(mock)' }),
@@ -868,6 +869,7 @@ const realApi = {
     })
   },
   removeClassroomStudent: (classroomId, userId) => http('DELETE', `/classrooms/${classroomId}/students/${userId}`),
+  resetClassroomStudentPassword: (classroomId, userId, password) => http('POST', `/classrooms/${classroomId}/students/${userId}/reset-password`, { password }),
   resetStudentPassword: (userId, password) => http('POST', `/admin/students/${userId}/reset-password`, { password }),
   listClassroomContests: (id) => http('GET', `/classrooms/${id}/contests`),
   assignClassroomContest: (id, contestId) => http('POST', `/classrooms/${id}/contests`, { contestId }),
