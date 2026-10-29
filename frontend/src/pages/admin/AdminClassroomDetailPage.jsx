@@ -47,6 +47,15 @@ export default function AdminClassroomDetailPage() {
     [id],
   )
   const { data: allContests } = useFetch(() => api.listContests(), [])
+  const { data: lecturers, reload: reloadLecturers } = useFetch(() => api.listLecturers(), [])
+  const { data: assignedLecturers, reload: reloadAssignedLecturers } = useFetch(
+    () => api.listClassroomLecturers(id),
+    [id],
+  )
+  const [lecturerModalOpen, setLecturerModalOpen] = useState(false)
+  const [selectedLecturer, setSelectedLecturer] = useState(null)
+  const [lecturerBusy, setLecturerBusy] = useState(false)
+  const [lecturerForm] = Form.useForm()
 
   const [importing, setImporting] = useState(false)
   const [selectedStudentIds, setSelectedStudentIds] = useState([])
@@ -199,6 +208,46 @@ export default function AdminClassroomDetailPage() {
       await api.unassignClassroomContest(id, contestId)
       message.success('Đã bỏ gán kỳ thi')
       refetchContests()
+    } catch (e) {
+      message.error(e.message)
+    }
+  }
+
+  const createLecturer = async (values) => {
+    setLecturerBusy(true)
+    try {
+      await api.createLecturer(values)
+      message.success('Đã tạo tài khoản giảng viên')
+      lecturerForm.resetFields()
+      setLecturerModalOpen(false)
+      reloadLecturers()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setLecturerBusy(false)
+    }
+  }
+
+  const assignLecturer = async () => {
+    if (!selectedLecturer) return
+    setLecturerBusy(true)
+    try {
+      await api.assignClassroomLecturer(id, selectedLecturer)
+      message.success('Đã phân công giảng viên')
+      setSelectedLecturer(null)
+      reloadAssignedLecturers()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setLecturerBusy(false)
+    }
+  }
+
+  const unassignLecturer = async (lecturerId) => {
+    try {
+      await api.unassignClassroomLecturer(id, lecturerId)
+      reloadAssignedLecturers()
+      message.success('Đã bỏ phân công')
     } catch (e) {
       message.error(e.message)
     }
@@ -448,8 +497,73 @@ export default function AdminClassroomDetailPage() {
               </Card>
             ),
           },
+          {
+            key: 'lecturers',
+            label: `Giảng viên (${(assignedLecturers || []).length})`,
+            children: (
+              <Card>
+                <Space wrap style={{ marginBottom: 16 }}>
+                  <Select
+                    placeholder="Chọn giảng viên"
+                    style={{ minWidth: 260 }}
+                    value={selectedLecturer}
+                    onChange={setSelectedLecturer}
+                    showSearch
+                    optionFilterProp="label"
+                    options={(lecturers || [])
+                      .filter((lecturer) => !(assignedLecturers || []).some((assigned) => assigned.id === lecturer.id))
+                      .map((lecturer) => ({ value: lecturer.id, label: `${lecturer.fullName} (${lecturer.username})` }))}
+                  />
+                  <Button type="primary" onClick={assignLecturer} disabled={!selectedLecturer} loading={lecturerBusy}>
+                    Phân công
+                  </Button>
+                  <Button onClick={() => setLecturerModalOpen(true)}>Tạo tài khoản giảng viên</Button>
+                </Space>
+                <Table
+                  rowKey="id"
+                  dataSource={assignedLecturers || []}
+                  pagination={false}
+                  columns={[
+                    { title: 'Tài khoản', dataIndex: 'username' },
+                    { title: 'Họ tên', dataIndex: 'fullName' },
+                    {
+                      title: '',
+                      render: (_, row) => (
+                        <Popconfirm title="Bỏ phân công giảng viên?" onConfirm={() => unassignLecturer(row.id)} okText="Bỏ" cancelText="Hủy">
+                          <Button danger size="small">Bỏ phân công</Button>
+                        </Popconfirm>
+                      ),
+                    },
+                  ]}
+                  locale={{ emptyText: 'Lớp chưa có giảng viên' }}
+                />
+              </Card>
+            ),
+          },
         ]}
       />
+
+      <Modal
+        title="Tạo tài khoản giảng viên"
+        open={lecturerModalOpen}
+        onCancel={() => setLecturerModalOpen(false)}
+        onOk={() => lecturerForm.submit()}
+        confirmLoading={lecturerBusy}
+        okText="Tạo tài khoản"
+        destroyOnClose
+      >
+        <Form form={lecturerForm} layout="vertical" onFinish={createLecturer}>
+          <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, min: 3, message: 'Nhập tên đăng nhập từ 3 ký tự' }]}>
+            <Input autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: 'Nhập họ tên' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Modal Thêm sinh viên thủ công / danh sách nhanh */}
       <Modal

@@ -1,6 +1,7 @@
 import { Avatar, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   BookOutlined,
+  CloudServerOutlined,
   CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
@@ -20,7 +21,6 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
 import { useOnlineCount, useSocketStatus } from '../lib/hooks'
-import { USE_MOCK } from '../api'
 import CyberBackground from './CyberBackground'
 
 const SOCKET_LABEL = {
@@ -44,8 +44,9 @@ export default function AppLayout() {
   const items = [
     ...(isAdmin
       ? [
+          { key: '/admin/overview', icon: <DashboardOutlined />, label: <Link to="/admin/overview">Tổng quan</Link> },
+          { key: '/admin', icon: <CloudServerOutlined />, label: <Link to="/admin">Giám sát</Link> },
           { key: '/admin/lecturers', icon: <UsergroupAddOutlined />, label: <Link to="/admin/lecturers">Giảng viên</Link> },
-          { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát</Link> },
           { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },

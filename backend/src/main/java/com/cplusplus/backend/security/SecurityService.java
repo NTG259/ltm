@@ -66,7 +66,7 @@ public class SecurityService {
         }
         String normalizedCode = studentCode.toUpperCase().trim();
         User user = userRepository.findByUsernameIgnoreCase(normalizedCode).orElse(null);
-        if (user == null || user.isAdmin() || user.getPasswordHash() == null ||
+        if (user == null || user.getRole() != com.cplusplus.backend.domain.user.Role.STUDENT || user.getPasswordHash() == null ||
                 !passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new IllegalArgumentException("MSSV hoặc mật khẩu không chính xác");
         }

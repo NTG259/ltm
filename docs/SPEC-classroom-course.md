@@ -1,6 +1,6 @@
 # Spec: Khóa học gắn với Lớp học
 
-**Intent:** `docs/intent/classroom-course-flow.md`  
+**Intent:** `docs/intent/classroom-course-flow.md`
 **Phiên bản Flyway tiếp theo:** V13
 
 ---
@@ -99,7 +99,7 @@ CREATE INDEX IF NOT EXISTS ix_course_unit_files_unit ON course_unit_files(unit_i
 }
 ```
 
-> Trả `404` nếu lớp chưa được gán khóa học.  
+> Trả `404` nếu lớp chưa được gán khóa học.
 > Sinh viên chỉ gọi được endpoint này nếu thuộc lớp đó (`classroom_students`).
 
 ---
@@ -112,7 +112,7 @@ CREATE INDEX IF NOT EXISTS ix_course_unit_files_unit ON course_unit_files(unit_i
 | `DELETE` | `/api/courses/units/{unitId}/files/{fileId}` | Admin, Lecturer | Xoá file |
 | `GET` | `/api/courses/units/{unitId}/files/{fileId}/download` | Required | Tải file PDF |
 
-`POST` request: `Content-Type: multipart/form-data`, field `file` (PDF), field `filename` (optional override).  
+`POST` request: `Content-Type: multipart/form-data`, field `file` (PDF), field `filename` (optional override).
 `POST` response:
 ```json
 { "id": 7, "filename": "slides-chuong1.pdf", "fileSize": 204800, "orderIndex": 1 }

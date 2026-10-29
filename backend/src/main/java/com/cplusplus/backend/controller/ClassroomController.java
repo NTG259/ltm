@@ -81,7 +81,7 @@ public class ClassroomController {
         if (user.isAdmin()) {
             list = classroomRepository.findAll();
         } else if (user.isLecturer()) {
-            list = classroomRepository.findByLecturerId(user.getId());
+            list = classroomRepository.findByLecturerUserId(user.getId());
         } else {
             list = classroomRepository.findByStudentUserId(user.getId());
         }
@@ -467,14 +467,16 @@ public class ClassroomController {
     /** Admin thấy tất cả; Lecturer thấy lớp của mình; Sinh viên thấy lớp mình thuộc về. */
     private boolean canViewClassroom(Classroom classroom, User user) {
         if (user.isAdmin()) return true;
-        if (user.isLecturer()) return isOwner(classroom, user);
+        if (user.isLecturer()) return isOwner(classroom, user)
+                || classroomRepository.isLecturerAssigned(classroom.getId(), user.getId());
         return classroomStudentRepository.existsByClassroomIdAndUserId(classroom.getId(), user.getId());
     }
 
     /** Admin hoặc Lecturer sở hữu lớp mới được chỉnh sửa. */
     private boolean canManageClassroom(Classroom classroom, User user) {
         if (user.isAdmin()) return true;
-        if (user.isLecturer()) return isOwner(classroom, user);
+        if (user.isLecturer()) return isOwner(classroom, user)
+                || classroomRepository.isLecturerAssigned(classroom.getId(), user.getId());
         return false;
     }
 

@@ -17,4 +17,26 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
     List<Classroom> findByLecturerId(Long lecturerId);
 
     long countByLecturerId(Long lecturerId);
+
+    /** Lớp học do giảng viên tạo hoặc được quản trị viên phân công. */
+    @Query(value = """
+            SELECT DISTINCT c.* FROM classrooms c
+            WHERE c.created_by = :userId
+               OR c.lecturer_id = :userId
+               OR EXISTS (SELECT 1 FROM classroom_lecturers cl
+                          WHERE cl.classroom_id = c.id AND cl.user_id = :userId)
+            ORDER BY c.id
+            """, nativeQuery = true)
+    List<Classroom> findByLecturerUserId(Long userId);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM classroom_lecturers
+                WHERE classroom_id = :classroomId AND user_id = :userId
+            ) OR EXISTS (
+                SELECT 1 FROM classrooms
+                WHERE id = :classroomId AND (created_by = :userId OR lecturer_id = :userId)
+            )
+            """, nativeQuery = true)
+    boolean isLecturerAssigned(Long classroomId, Long userId);
 }

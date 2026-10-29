@@ -6,9 +6,8 @@ WORKDIR /src
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
-# true = dùng Master giả lập trong trình duyệt (backend chưa có REST API);
-# đặt false khi Master đã cài đặt API trong frontend/README.md.
-ARG VITE_USE_MOCK=true
+# Chỉ bật mock khi cần kiểm thử giao diện riêng lẻ; bản build mặc định dùng API thật.
+ARG VITE_USE_MOCK=false
 ARG VITE_WS_URL=
 ENV VITE_USE_MOCK=$VITE_USE_MOCK VITE_WS_URL=$VITE_WS_URL
 RUN npm run build

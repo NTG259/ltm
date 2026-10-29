@@ -19,6 +19,7 @@ const ContestDetailPage = lazy(() => import('./pages/ContestDetailPage'))
 const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
 const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
+const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'))
 const AdminProblemsPage = lazy(() => import('./pages/admin/AdminProblemsPage'))
 const AdminClassroomsPage = lazy(() => import('./pages/admin/AdminClassroomsPage'))
 const AdminLecturersPage = lazy(() => import('./pages/admin/AdminLecturersPage'))
@@ -91,6 +92,14 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <AdminDashboardPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/overview"
+            element={
+              <RequireAuth admin>
+                <AdminOverviewPage />
               </RequireAuth>
             }
           />
@@ -190,6 +199,7 @@ function AppRoutes() {
           <Route path="/teacher/courses/:id" element={<AdminCourseEditPage teacher />} />
           <Route path="/teacher/contests" element={<TeacherContestsPage />} />
           <Route path="/teacher/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage teacher />} />
+          <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />
         </Route>
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>

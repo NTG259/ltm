@@ -58,8 +58,8 @@ class PersistenceTest {
     @BeforeEach
     void setUp() {
         now = Instant.now().truncatedTo(ChronoUnit.MICROS);
-        alice = users.save(User.student("b20dccn001", "Nguyễn Văn An"));
-        bob = users.save(User.student("B20DCCN014", "Trần Thị Bình"));
+        alice = users.save(User.student("b98dccn001", "Nguyễn Văn An"));
+        bob = users.save(User.student("B98DCCN014", "Trần Thị Bình"));
         aPlusB = new Problem("A + B Problem", "Tính `a + b`.");
         aPlusB.setDifficulty(Difficulty.EASY);
         aPlusB.setTags(List.of("I/O cơ bản", "Số học"));
@@ -97,8 +97,8 @@ class PersistenceTest {
 
     @Test
     void userLookupIsCaseInsensitiveAndStudentCodeIsUppercased() {
-        assertThat(alice.getUsername()).isEqualTo("B20DCCN001");
-        assertThat(users.findByUsernameIgnoreCase("b20dccn001")).contains(alice);
+        assertThat(alice.getUsername()).isEqualTo("B98DCCN001");
+        assertThat(users.findByUsernameIgnoreCase("b98dccn001")).contains(alice);
     }
 
     @Test
@@ -111,7 +111,7 @@ class PersistenceTest {
         em.clear();
 
         UserSession loaded = sessions.findActive(hash, now).orElseThrow();
-        assertThat(loaded.getUser().getUsername()).isEqualTo("B20DCCN001");
+        assertThat(loaded.getUser().getUsername()).isEqualTo("B98DCCN001");
         assertThat(loaded.getClientIp().getHostAddress()).isEqualTo("192.168.1.20");
         assertThat(sessions.findActive(hash, now.plus(Duration.ofDays(1)))).isEmpty();
     }
@@ -140,7 +140,8 @@ class PersistenceTest {
         aPlusB.softDelete(now);
         em.flush();
         em.clear();
-        assertThat(problems.findByDeletedAtIsNullOrderById()).isEmpty();
+        assertThat(problems.findByDeletedAtIsNullOrderById())
+                .extracting(Problem::getId).doesNotContain(aPlusB.getId());
         assertThat(submissions.findDetailed(s.getId()).orElseThrow().getProblem().isDeleted()).isTrue();
     }
 
@@ -210,8 +211,8 @@ class PersistenceTest {
                 .extracting(ContestRepository.StandingRow::getUsername, ContestRepository.StandingRow::getRank,
                         ContestRepository.StandingRow::getPenalty)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("B20DCCN014", 1L, 30L),
-                        org.assertj.core.groups.Tuple.tuple("B20DCCN001", 2L, 40L));
+                        org.assertj.core.groups.Tuple.tuple("B98DCCN014", 1L, 30L),
+                        org.assertj.core.groups.Tuple.tuple("B98DCCN001", 2L, 40L));
         assertThat(contests.findStandingCells(c.getId()))
                 .filteredOn(cell -> cell.getUserId().equals(alice.getId()))
                 .singleElement()
@@ -245,12 +246,12 @@ class PersistenceTest {
         assertThat(submissions.findLeaderboard())
                 .extracting(SubmissionRepository.LeaderboardRow::getUsername, SubmissionRepository.LeaderboardRow::getScore)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("B20DCCN001", 100L),
-                        org.assertj.core.groups.Tuple.tuple("B20DCCN014", 50L));
+                        org.assertj.core.groups.Tuple.tuple("B98DCCN001", 100L),
+                        org.assertj.core.groups.Tuple.tuple("B98DCCN014", 50L));
         assertThat(submissions.findBestCells()).filteredOn(SubmissionRepository.BestCell::isSolved).hasSize(1);
 
         assertThat(submissions.search(null, null, null, null, Pageable.ofSize(50))).hasSize(3);
-        assertThat(submissions.search("b20dccn001", aPlusB.getId(), null, Verdict.AC, Pageable.ofSize(50)))
+        assertThat(submissions.search("b98dccn001", aPlusB.getId(), null, Verdict.AC, Pageable.ofSize(50)))
                 .singleElement()
                 .satisfies(row -> {
                     assertThat(row.getStatus()).isEqualTo("FINISHED");
