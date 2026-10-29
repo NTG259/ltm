@@ -107,7 +107,7 @@ services:
     networks: [judge]         # chỉ backend mới gọi được; code thí sinh không ra ngoài
     mem_limit: 4g
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5050/version', timeout=3).read()"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5050/version', timeout=3).read()"]
       interval: 10s
       start_period: 15s
       retries: 5
@@ -126,7 +126,7 @@ services:
       TZ: Asia/Ho_Chi_Minh
     networks: [default, judge]
     deploy:
-      replicas: 10
+      replicas: 4
 
   # Nạp dữ liệu demo sau khi Flyway (trong backend) đã tạo bảng. Xóa sạch dữ liệu cũ!
   seed:

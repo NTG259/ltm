@@ -8,11 +8,12 @@ import com.cplusplus.backend.domain.contest.Contest;
 import com.cplusplus.backend.domain.contest.ContestParticipant;
 import com.cplusplus.backend.domain.course.Course;
 import com.cplusplus.backend.domain.course.CourseUnit;
-import com.cplusplus.backend.domain.course.CourseUnitFile;
+
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.repository.*;
 import com.cplusplus.backend.security.AuthInterceptor;
+import com.cplusplus.backend.security.SecurityService;
 import com.cplusplus.backend.service.ClassroomCsvImporter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,7 @@ public class ClassroomController {
     private final CourseUnitFileRepository courseUnitFileRepository;
     private final ClassroomCsvImporter csvImporter;
     private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     public ClassroomController(ClassroomRepository classroomRepository,
                                ClassroomStudentRepository classroomStudentRepository,
@@ -53,7 +55,8 @@ public class ClassroomController {
                                CourseUnitProblemRepository courseUnitProblemRepository,
                                CourseUnitFileRepository courseUnitFileRepository,
                                ClassroomCsvImporter csvImporter,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               SecurityService securityService) {
         this.classroomRepository = classroomRepository;
         this.classroomStudentRepository = classroomStudentRepository;
         this.classroomContestRepository = classroomContestRepository;
@@ -66,6 +69,7 @@ public class ClassroomController {
         this.courseUnitFileRepository = courseUnitFileRepository;
         this.csvImporter = csvImporter;
         this.userRepository = userRepository;
+        this.securityService = securityService;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -81,7 +85,7 @@ public class ClassroomController {
         if (user.isAdmin()) {
             list = classroomRepository.findAll();
         } else if (user.isLecturer()) {
-            list = classroomRepository.findByCreatedById(user.getId());
+            list = classroomRepository.findByLecturerUserId(user.getId());
         } else {
             list = classroomRepository.findByStudentUserId(user.getId());
         }
@@ -121,7 +125,7 @@ public class ClassroomController {
                                              HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdminOrLecturer()) return forbidden();
+        if (!user.isAdmin()) return forbidden();
 
         String name = body.get("name");
         if (name == null || name.isBlank()) {
@@ -129,6 +133,7 @@ public class ClassroomController {
         }
         Classroom classroom = classroomRepository.save(
                 new Classroom(name.trim(), body.get("semester"), user));
+        classroom.setLecturer(findLecturer(body.get("lecturerId")));
         return ResponseEntity.status(HttpStatus.CREATED).body(DtoMapper.toClassroomMap(classroom));
     }
 
@@ -149,6 +154,9 @@ public class ClassroomController {
         }
         if (body.containsKey("semester")) {
             classroom.setSemester(body.get("semester"));
+        }
+        if (user.isAdmin() && body.containsKey("lecturerId")) {
+            classroom.setLecturer(findLecturer(body.get("lecturerId")));
         }
         return ResponseEntity.ok(DtoMapper.toClassroomMap(classroom));
     }
@@ -311,6 +319,10 @@ public class ClassroomController {
         Contest contest = contestRepository.findById(contestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + contestId));
 
+        if (user.isLecturer() && contest.getCreatedBy() != null && !contest.getCreatedBy().isAdmin()
+                && !contest.getCreatedBy().getId().equals(user.getId())) {
+            return forbidden();
+        }
         if (classroomContestRepository.existsByClassroomIdAndContestId(id, contestId)) {
             return ResponseEntity.ok(Map.of("message", "Kỳ thi đã được gán cho lớp này"));
         }
@@ -425,6 +437,10 @@ public class ClassroomController {
 
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khóa học #" + courseId));
+        if (user.isLecturer() && course.getCreatedBy() != null && !course.getCreatedBy().isAdmin()
+                && !course.getCreatedBy().getId().equals(user.getId())) {
+            return forbidden();
+        }
 
         classroomCourseRepository.findByClassroomId(id).ifPresentOrElse(
                 existing -> existing.setCourse(course),
@@ -455,19 +471,32 @@ public class ClassroomController {
     /** Admin thấy tất cả; Lecturer thấy lớp của mình; Sinh viên thấy lớp mình thuộc về. */
     private boolean canViewClassroom(Classroom classroom, User user) {
         if (user.isAdmin()) return true;
-        if (user.isLecturer()) return isOwner(classroom, user);
+        if (user.isLecturer()) return isOwner(classroom, user)
+                || classroomRepository.isLecturerAssigned(classroom.getId(), user.getId());
         return classroomStudentRepository.existsByClassroomIdAndUserId(classroom.getId(), user.getId());
     }
 
     /** Admin hoặc Lecturer sở hữu lớp mới được chỉnh sửa. */
     private boolean canManageClassroom(Classroom classroom, User user) {
         if (user.isAdmin()) return true;
-        if (user.isLecturer()) return isOwner(classroom, user);
+        if (user.isLecturer()) return isOwner(classroom, user)
+                || classroomRepository.isLecturerAssigned(classroom.getId(), user.getId());
         return false;
     }
 
     private boolean isOwner(Classroom classroom, User user) {
-        return classroom.getCreatedBy() != null && classroom.getCreatedBy().getId().equals(user.getId());
+        return classroom.getLecturer() != null && classroom.getLecturer().getId().equals(user.getId());
+    }
+
+    private User findLecturer(String lecturerId) {
+        if (lecturerId == null || lecturerId.isBlank()) return null;
+        try {
+            return userRepository.findById(Long.parseLong(lecturerId))
+                    .filter(User::isLecturer)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giảng viên được chọn"));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Mã giảng viên không hợp lệ");
+        }
     }
 
     private User currentUser(HttpServletRequest req) {
@@ -491,8 +520,8 @@ public class ClassroomController {
             throw new IllegalArgumentException("Vui lòng nhập mã sinh viên (MSSV)");
         }
         studentId = studentId.trim().toUpperCase();
-        if (!studentId.matches("^[A-Z][0-9]{2}[A-Z]{4}[0-9]{3}$")) {
-            throw new IllegalArgumentException("Mã sinh viên không đúng định dạng (VD: B20DCCN001)");
+        if (!studentId.matches("^[A-Za-z0-9._-]{3,32}$")) {
+            throw new IllegalArgumentException("Mã sinh viên chỉ gồm chữ, số, dấu chấm, gạch ngang (3-32 ký tự)");
         }
         if (fullName == null || fullName.isBlank()) {
             fullName = studentId;
@@ -500,23 +529,73 @@ public class ClassroomController {
             fullName = fullName.trim();
         }
 
+        String defaultPassword = studentId.length() >= 8 ? studentId : (studentId + "12345678").substring(0, 8);
         User studentUser = userRepository.findByUsernameIgnoreCase(studentId).orElse(null);
         if (studentUser == null) {
-            studentUser = userRepository.save(User.student(studentId, fullName));
-        } else if (!fullName.equals(studentId) && (studentUser.getFullName() == null || studentUser.getFullName().equals(studentId))) {
-            studentUser.setFullName(fullName);
-            userRepository.save(studentUser);
+            studentUser = User.student(studentId, fullName);
+            studentUser.setPasswordHash(securityService.hashPassword(defaultPassword));
+            studentUser.setInitialPassword(defaultPassword);
+            studentUser = userRepository.save(studentUser);
+        } else {
+            if (studentUser.getPasswordHash() == null) {
+                studentUser.setPasswordHash(securityService.hashPassword(defaultPassword));
+                studentUser.setInitialPassword(defaultPassword);
+            }
+            if (!fullName.equals(studentId) && (studentUser.getFullName() == null || studentUser.getFullName().equals(studentId))) {
+                studentUser.setFullName(fullName);
+            }
+            studentUser = userRepository.save(studentUser);
         }
 
         if (classroomStudentRepository.existsByClassroomIdAndUserId(classroom.getId(), studentUser.getId())) {
             throw new IllegalArgumentException("Sinh viên " + studentId + " đã có trong lớp này rồi");
         }
 
-        List<Classroom> otherClasses = classroomRepository.findByStudentUserId(studentUser.getId());
-        if (!otherClasses.isEmpty()) {
-            throw new IllegalArgumentException("Sinh viên " + studentId + " hiện đã thuộc lớp '" + otherClasses.get(0).getName() + "'. Mỗi sinh viên chỉ được thuộc 1 lớp.");
+        ClassroomStudent cs = new ClassroomStudent(classroom, studentUser, Instant.now());
+        cs.setImportedPassword(studentUser.getInitialPassword() != null ? studentUser.getInitialPassword() : defaultPassword);
+        return classroomStudentRepository.save(cs);
+    }
+
+    @PostMapping("/{id}/students/{userId}/reset-password")
+    @Transactional
+    public ResponseEntity<?> resetStudentPassword(
+            @PathVariable Long id,
+            @PathVariable Long userId,
+            @RequestBody(required = false) Map<String, String> body,
+            HttpServletRequest req) {
+        User caller = currentUser(req);
+        if (caller == null) return unauthorized();
+        Classroom classroom = classroomRepository.findById(id).orElse(null);
+        if (classroom == null) return ResponseEntity.notFound().build();
+        if (!canManageClassroom(classroom, caller)) return forbidden();
+
+        User student = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng #" + userId));
+        if (student.isAdmin() || student.isLecturer()) {
+            return forbidden();
+        }
+        if (!classroomStudentRepository.existsByClassroomIdAndUserId(id, userId)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Sinh viên không thuộc lớp này"));
         }
 
-        return classroomStudentRepository.save(new ClassroomStudent(classroom, studentUser, Instant.now()));
+        String newPassword = body != null ? body.get("password") : null;
+        if (newPassword == null || newPassword.isBlank()) {
+            newPassword = student.getUsername().length() >= 8 ? student.getUsername() : (student.getUsername() + "12345678").substring(0, 8);
+        } else if (newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Mật khẩu phải có ít nhất 8 ký tự"));
+        }
+
+        final String finalPassword = newPassword;
+        student.setPasswordHash(securityService.hashPassword(finalPassword));
+        student.setInitialPassword(finalPassword);
+        userRepository.save(student);
+
+        classroomStudentRepository.findById(new ClassroomStudent.Id(id, userId))
+                .ifPresent(cs -> {
+                    cs.setImportedPassword(finalPassword);
+                    classroomStudentRepository.save(cs);
+                });
+
+        return ResponseEntity.ok(Map.of("message", "Đã đặt lại mật khẩu thành công", "password", finalPassword));
     }
 }

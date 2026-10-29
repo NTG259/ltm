@@ -19,7 +19,7 @@ const HISTORY_COLOR = {
 
 export default function SubmissionDetailPage() {
   const { id } = useParams()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isLecturer } = useAuth()
   const { sub: s, error } = useLiveSubmission(id)
   const { message } = App.useApp()
   const navigate = useNavigate()
@@ -27,7 +27,7 @@ export default function SubmissionDetailPage() {
   if (error)
     return <Result status="404" title="Không tìm thấy bài nộp" extra={<Button onClick={() => navigate(-1)}>Quay lại</Button>} />
   if (!s) return <Spin style={{ display: 'block', margin: 80 }} />
-  if (!isAdmin && s.userId !== user.id) return <Result status="403" title="Bạn không có quyền xem bài nộp này" />
+  if (!isAdmin && !isLecturer && s.userId !== user.id) return <Result status="403" title="Bạn không có quyền xem bài nộp này" />
 
   const download = () => {
     const url = URL.createObjectURL(new Blob([s.sourceCode], { type: 'text/x-c++src' }))
@@ -45,16 +45,18 @@ export default function SubmissionDetailPage() {
       .forEach((l, i) => /windows\.h|system\s*\(|fork\s*\(|exec|popen|unistd|socket\.h/.test(l) && marked.push(i + 1))
   }
 
+  const returnPath = isAdmin ? '/admin/submissions' : isLecturer ? '/teacher/submissions' : '/submissions'
+
   return (
     <div className="page">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <Space size={12}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(isAdmin ? '/admin/submissions' : '/submissions')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(returnPath)}>
             Quay lại danh sách bài nộp
           </Button>
           <Breadcrumb
             items={[
-              { title: <Link to={isAdmin ? '/admin/submissions' : '/submissions'}>Danh sách bài nộp</Link> },
+              { title: <Link to={returnPath}>Danh sách bài nộp</Link> },
               { title: <span className="mono">#{s.id}</span> },
             ]}
           />

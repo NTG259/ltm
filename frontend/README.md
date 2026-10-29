@@ -8,13 +8,13 @@ Stack: **React 19 + Vite + Ant Design 6 + React Router (HashRouter)**. Design to
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173 – mặc định dùng Master giả lập (mock)
+npm run dev        # http://localhost:5173 – mặc định gọi backend thật
 npm run build      # xuất ra dist/ để Master phục vụ ở cổng 8000
 ```
 
 | Biến môi trường | Mặc định | Ý nghĩa |
 | --- | --- | --- |
-| `VITE_USE_MOCK` | `true` | `false` để gọi Master thật |
+| `VITE_USE_MOCK` | `false` | Chỉ đặt `true` khi kiểm thử giao diện bằng dữ liệu giả lập |
 | `VITE_API_BASE` | `/api` | Base URL REST (khi dev, Vite proxy `/api` → `127.0.0.1:8000`) |
 | `VITE_WS_URL` | `ws://<host>:8001` | Endpoint WebSocket RFC 6455 |
 
@@ -31,11 +31,13 @@ Mật khẩu admin là `admin123`. Trong trang làm bài, menu **Mã mẫu** n�
 | `#/problems/:id` | Thí sinh | Đề bài, editor C++ (Tab, Ctrl+Enter), tải tệp `.cpp`, tiến trình chấm realtime, test case + diff |
 | `#/submissions` | Thí sinh | Lịch sử bài nộp (cập nhật realtime) |
 | `#/submissions/:id` | Thí sinh/Admin | Chi tiết: kết quả, từng test, log CE, cảnh báo SEC, mã nguồn, dòng thời gian (cả Failover) |
-| `#/leaderboard` | Tất cả | Bảng xếp hạng, tự làm mới khi có bài chấm xong |
+| `#/leaderboard` | Sinh viên/Admin | Xếp hạng AC và Submit theo lớp; admin xem thêm xếp hạng bài tập |
+| `#/teacher/leaderboard` | Giảng viên | Xếp hạng sinh viên và bài tập trong lớp mình phụ trách |
 | `#/contests` | Thí sinh | Danh sách kỳ thi (đang / sắp / đã diễn ra), đăng ký |
 | `#/contests/:id` | Tất cả | Trang kỳ thi: đồng hồ, đề bài A/B/C…, bảng xếp hạng ICPC, bài nộp, thể lệ |
 | `#/contests/:id/problems/:label` | Thí sinh | Làm bài trong kỳ thi (nộp kèm `contestId`) |
 | `#/admin` | Admin | Giám sát Worker (Heartbeat, bận/rảnh, độ trễ), hàng đợi FIFO, nhật ký Master, giả lập sự cố |
+| `#/admin/overview` | Admin | Tổng quan cụm Judge, bài nộp, verdict và hoạt động gần đây |
 | `#/admin/problems` | Admin | CRUD đề bài + ví dụ + bộ test chấm |
 | `#/admin/submissions` | Admin | Tra cứu, lọc toàn bộ bài nộp |
 | `#/admin/contests` | Admin | Tạo / sửa / xoá kỳ thi, chọn bộ đề và lịch thi |
@@ -52,7 +54,12 @@ Mọi request (trừ login) gửi header `Authorization: Bearer <token>`. Lỗi 
 | POST | `/api/submissions` | `{problemId, language:"cpp17", sourceCode, contestId?}` | `Submission` (status `IN_QUEUE`) |
 | GET | `/api/submissions` | `?userId=&problemId=&verdict=&contestId=` | `Submission[]` (không kèm `sourceCode/tests/history`) |
 | GET | `/api/submissions/:id` | – | `Submission` đầy đủ |
-| GET | `/api/leaderboard` | – | `{problems:[{id,title}], rows:[{rank,userId,userName,solved,score,attempts,cells:{[problemId]:{best,tries,solved}}}]}` |
+| GET | `/api/leaderboard/classrooms` | – | Lớp có thể xem theo vai trò |
+| GET | `/api/leaderboard/students` | `?classroomId=` | `{rows:[{rank,userId,userName,solved,attempts}],updatedAt}` |
+| GET | `/api/leaderboard/problems` | `?classroomId=` | `{rows:[{problemId,title,submissions,attemptedUsers,acceptedUsers,acceptanceRate}],updatedAt}`; chỉ admin/giảng viên |
+| GET | `/api/leaderboard/problems/:id/details` | `?classroomId=` | Danh sách sinh viên đã nộp bài; chỉ admin/giảng viên |
+| GET/POST | `/api/admin/lecturers` | Tạo hoặc liệt kê tài khoản giảng viên |
+| GET/POST/DELETE | `/api/admin/lecturers/classrooms/:classroomId[/:lecturerId]` | Xem, phân công hoặc bỏ phân công giảng viên |
 | GET | `/api/contests` | – | `Contest[]` |
 | GET | `/api/contests/:id` | – | `Contest` (`problems` rỗng với thí sinh khi chưa bắt đầu) |
 | POST | `/api/contests/:id/register` | – | `Contest` |
@@ -61,6 +68,8 @@ Mọi request (trừ login) gửi header `Authorization: Bearer <token>`. Lỗi 
 | GET | `/api/admin/overview` | – | `{workers: Worker[], queue: number[], logs: Log[], submissions: number}` |
 | POST/PUT/DELETE | `/api/admin/problems[/:id]` | `Problem` | `Problem` |
 | POST | `/api/admin/workers/:id/disconnect` | – | `204` |
+
+Bảng sinh viên xếp theo số bài AC giảm dần, số lượt nộp đến AC đầu tiên tăng dần, rồi thời điểm AC cuối cùng tăng dần. Bằng cả ba tiêu chí thì đồng hạng. Sinh viên và giảng viên chỉ xem được lớp có quyền truy cập; admin có thể xem toàn hệ thống.
 
 ```ts
 Problem    { id, title, difficulty:'easy'|'medium'|'hard', tags[], timeLimitMs, memoryLimitMb,

@@ -9,6 +9,8 @@ import com.cplusplus.backend.domain.user.Role;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.master.service.JudgeMasterService;
 import com.cplusplus.backend.repository.ClassroomStudentRepository;
+import com.cplusplus.backend.repository.ClassroomRepository;
+import com.cplusplus.backend.repository.ClassroomContestRepository;
 import com.cplusplus.backend.repository.ContestProblemRepository;
 import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
@@ -31,6 +33,8 @@ import java.util.stream.Collectors;
 public class MonitorController {
 
     private final ClassroomStudentRepository classroomStudentRepository;
+    private final ClassroomRepository classroomRepository;
+    private final ClassroomContestRepository classroomContestRepository;
     private final ContestRepository contestRepository;
     private final ContestProblemRepository contestProblemRepository;
     private final SubmissionRepository submissionRepository;
@@ -38,11 +42,15 @@ public class MonitorController {
 
     public MonitorController(
             ClassroomStudentRepository classroomStudentRepository,
+            ClassroomRepository classroomRepository,
+            ClassroomContestRepository classroomContestRepository,
             ContestRepository contestRepository,
             ContestProblemRepository contestProblemRepository,
             SubmissionRepository submissionRepository,
             JudgeMasterService judgeMasterService) {
         this.classroomStudentRepository = classroomStudentRepository;
+        this.classroomRepository = classroomRepository;
+        this.classroomContestRepository = classroomContestRepository;
         this.contestRepository = contestRepository;
         this.contestProblemRepository = contestProblemRepository;
         this.submissionRepository = submissionRepository;
@@ -52,7 +60,7 @@ public class MonitorController {
     /** Snapshot online/offline của sinh viên trong lớp. */
     @GetMapping("/{id}/presence")
     public List<Map<String, Object>> getPresence(@PathVariable Long id, HttpServletRequest req) {
-        requireAdmin(req);
+        requireClassroomManager(req, id, null);
         List<ClassroomStudent> students = classroomStudentRepository.findAllWithUserByClassroomId(id);
         Set<Long> onlineIds = judgeMasterService.getOnlineUserIds();
 
@@ -70,7 +78,7 @@ public class MonitorController {
     @GetMapping("/{cid}/contests/{kid}/monitor")
     public List<Map<String, Object>> getContestMonitor(
             @PathVariable Long cid, @PathVariable Long kid, HttpServletRequest req) {
-        requireAdmin(req);
+        requireClassroomManager(req, cid, kid);
 
         List<ClassroomStudent> students = classroomStudentRepository.findAllWithUserByClassroomId(cid);
         Set<Long> studentIds = students.stream()
@@ -165,10 +173,16 @@ public class MonitorController {
         }).toList();
     }
 
-    private void requireAdmin(HttpServletRequest req) {
+    private void requireClassroomManager(HttpServletRequest req, Long classroomId, Long contestId) {
         User caller = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        if (caller == null || caller.getRole() != Role.ADMIN) {
+        if (caller == null || (caller.getRole() != Role.ADMIN && caller.getRole() != Role.LECTURER)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        if (caller.getRole() == Role.LECTURER) {
+            boolean isAssigned = classroomRepository.isLecturerAssigned(classroomId, caller.getId());
+            if (!isAssigned || (contestId != null && !classroomContestRepository.existsByClassroomIdAndContestId(classroomId, contestId))) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+            }
         }
     }
 }

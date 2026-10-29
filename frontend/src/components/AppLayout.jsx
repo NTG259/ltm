@@ -1,10 +1,12 @@
 import { Avatar, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   BookOutlined,
+  CloudServerOutlined,
   CodeOutlined,
   DashboardOutlined,
   DatabaseOutlined,
   LogoutOutlined,
+  KeyOutlined,
   OrderedListOutlined,
   ProfileOutlined,
   FlagOutlined,
@@ -41,7 +43,9 @@ export default function AppLayout() {
   const items = [
     ...(isAdmin
       ? [
-          { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát</Link> },
+          { key: '/admin/overview', icon: <DashboardOutlined />, label: <Link to="/admin/overview">Tổng quan</Link> },
+          { key: '/admin', icon: <CloudServerOutlined />, label: <Link to="/admin">Giám sát</Link> },
+          { key: '/admin/lecturers', icon: <UsergroupAddOutlined />, label: <Link to="/admin/lecturers">Giảng viên</Link> },
           { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
@@ -167,14 +171,19 @@ export default function AppLayout() {
                   ),
                 },
                 { type: 'divider' },
+                ...(!isAdmin ? [{
+                  key: 'change-password',
+                  icon: <KeyOutlined />,
+                  label: 'Đổi mật khẩu',
+                  onClick: () => navigate('/change-password'),
+                }] : []),
                 {
                   key: 'logout',
                   icon: <LogoutOutlined />,
                   danger: true,
                   label: 'Đăng xuất',
                   onClick: async () => {
-                    await logout()
-                    navigate('/login')
+                    if (await logout()) navigate('/login')
                   },
                 },
               ],

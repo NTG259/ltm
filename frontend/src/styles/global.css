@@ -446,6 +446,39 @@ html, body {
 .admin-page-head__icon { display: inline-flex; margin-right: 10px; color: var(--primary); vertical-align: -0.08em; }
 .admin-page-head__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
+.admin-overview__section { margin-top: 28px; }
+.admin-overview__section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px 20px; flex-wrap: wrap; margin-bottom: 12px; }
+.admin-overview__section-head h2 { margin: 0; font-size: 1.08rem; font-weight: 700; }
+.admin-overview__section-head > div { display: grid; gap: 2px; }
+.admin-overview__notice { margin-bottom: 12px; }
+.admin-overview__extra-stats { margin-top: -4px; }
+.admin-overview__snapshot-note { display: block; margin: -8px 0 12px; font-size: 12px; }
+.admin-overview__cluster-card .ant-card-body { min-height: 99px; }
+.admin-overview__cluster-state { margin: 4px 0; font-size: 17px; font-weight: 700; color: var(--text); }
+.admin-overview__panel { height: 100%; }
+.admin-overview__trend { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; height: 210px; }
+.admin-overview__trend-day { display: flex; flex-direction: column; align-items: center; min-width: 0; gap: 5px; font-size: 11px; color: var(--text-2); }
+.admin-overview__trend-day strong { font-size: 12px; color: var(--text); }
+.admin-overview__trend-track { display: flex; flex-direction: column; justify-content: flex-end; width: 100%; flex: 1; border-radius: 5px; background: var(--inset); overflow: hidden; }
+.admin-overview__trend-track > div { min-height: 0; background: var(--primary); border-radius: 5px 5px 0 0; }
+.admin-overview__verdicts { display: grid; gap: 4px; }
+.admin-overview__verdict-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) 28px; align-items: center; gap: 10px; min-height: 25px; font-family: var(--mono); font-size: 12px; }
+.admin-overview__verdict-row .ant-progress { margin: 0; }
+.admin-overview__verdict-row strong { text-align: right; }
+.admin-overview__list { display: grid; }
+.admin-overview__activity-row, .admin-overview__log-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.admin-overview__activity-row:last-child, .admin-overview__log-row:last-child { border-bottom: 0; }
+.admin-overview__activity-row > div, .admin-overview__log-row > div { min-width: 0; overflow-wrap: anywhere; }
+.admin-overview__activity-row .muted, .admin-overview__log-row .muted { display: block; font-size: 12px; margin-top: 3px; }
+.admin-overview__log-row { justify-content: flex-start; }
+.admin-overview__log-row .ant-tag { flex: none; }
+.admin-overview__log-note { display: block; margin-top: 12px; font-size: 12px; }
+.admin-overview__actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.admin-overview__actions a { display: flex; align-items: center; min-height: 62px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-weight: 600; }
+.admin-overview__actions a:hover { border-color: var(--primary); }
+@media (max-width: 900px) { .admin-overview__actions { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .admin-overview__actions { grid-template-columns: 1fr; } .admin-overview__trend { gap: 4px; } }
+
 /* ---------- Header ---------- */
 .brand {
   display: flex;

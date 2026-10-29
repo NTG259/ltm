@@ -4,8 +4,6 @@ import com.cplusplus.backend.domain.contest.Contest;
 import com.cplusplus.backend.domain.plagiarism.PlagiarismMatch;
 import com.cplusplus.backend.domain.plagiarism.PlagiarismReport;
 import com.cplusplus.backend.domain.submission.Submission;
-import com.cplusplus.backend.domain.worker.LogLevel;
-import com.cplusplus.backend.master.service.JudgeMasterService;
 import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.repository.PlagiarismMatchRepository;
 import com.cplusplus.backend.repository.PlagiarismReportRepository;
@@ -15,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class PlagiarismService {
@@ -24,7 +21,6 @@ public class PlagiarismService {
     private final SubmissionRepository submissionRepository;
     private final PlagiarismReportRepository reportRepository;
     private final PlagiarismMatchRepository matchRepository;
-    private final JudgeMasterService judgeMasterService;
     private final PlagiarismAsyncWorker asyncWorker;
 
     public PlagiarismService(
@@ -32,13 +28,11 @@ public class PlagiarismService {
             SubmissionRepository submissionRepository,
             PlagiarismReportRepository reportRepository,
             PlagiarismMatchRepository matchRepository,
-            JudgeMasterService judgeMasterService,
             PlagiarismAsyncWorker asyncWorker) {
         this.contestRepository = contestRepository;
         this.submissionRepository = submissionRepository;
         this.reportRepository = reportRepository;
         this.matchRepository = matchRepository;
-        this.judgeMasterService = judgeMasterService;
         this.asyncWorker = asyncWorker;
     }
 

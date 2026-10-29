@@ -56,9 +56,17 @@ public class CourseController {
         User user = currentUser(req);
         if (user == null) return unauthorized();
 
-        List<Course> list = user.isAdmin()
-                ? courseRepository.findAllByOrderByCreatedAtDesc()
-                : courseRepository.findByPublishedTrueOrderByCreatedAtDesc();
+        List<Course> list;
+        if (user.isAdmin()) {
+            list = courseRepository.findAllByOrderByCreatedAtDesc();
+        } else if (user.isLecturer()) {
+            list = courseRepository.findAllByOrderByCreatedAtDesc().stream()
+                    .filter(course -> course.getCreatedBy() == null || course.getCreatedBy().isAdmin()
+                            || course.getCreatedBy().getId().equals(user.getId()))
+                    .toList();
+        } else {
+            list = courseRepository.findByPublishedTrueOrderByCreatedAtDesc();
+        }
 
         return ResponseEntity.ok(list.stream().map(DtoMapper::toCourseMap).toList());
     }
@@ -74,7 +82,7 @@ public class CourseController {
         }
 
         Course course = opt.get();
-        if (!user.isAdmin() && !course.isPublished()) {
+        if (!user.isAdmin() && !course.isPublished() && !isCourseOwner(course, user)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Khóa học chưa được công khai"));
         }
 
@@ -105,7 +113,7 @@ public class CourseController {
     public ResponseEntity<?> createCourse(@RequestBody Map<String, Object> body, HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
+        if (!user.isAdmin() && !user.isLecturer()) return forbidden();
 
         String title = (String) body.get("title");
         if (title == null || title.isBlank()) {
@@ -113,9 +121,10 @@ public class CourseController {
         }
 
         String description = (String) body.get("description");
-        Boolean published = body.get("published") instanceof Boolean b ? b : false;
+        Boolean published = user.isAdmin() && body.get("published") instanceof Boolean b ? b : false;
 
         Course course = new Course(title.trim(), description, published);
+        course.setCreatedBy(user);
         Course saved = courseRepository.save(course);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(DtoMapper.toCourseMap(saved));
@@ -128,14 +137,13 @@ public class CourseController {
                                           HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
         Optional<Course> opt = courseRepository.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy khóa học"));
         }
 
         Course course = opt.get();
+        if (!canManageCourse(course, user)) return forbidden();
         if (body.containsKey("title")) {
             String title = (String) body.get("title");
             if (title != null && !title.isBlank()) {
@@ -145,7 +153,8 @@ public class CourseController {
         if (body.containsKey("description")) {
             course.setDescription((String) body.get("description"));
         }
-        if (body.containsKey("published") && body.get("published") instanceof Boolean b) {
+        if (body.containsKey("published") && body.get("published") instanceof Boolean b
+                && (user.isAdmin() || isCourseOwner(course, user))) {
             course.setPublished(b);
         }
 
@@ -158,11 +167,11 @@ public class CourseController {
     public ResponseEntity<?> deleteCourse(@PathVariable Long id, HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
-        if (!courseRepository.existsById(id)) {
+        Course course = courseRepository.findById(id).orElse(null);
+        if (course == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy khóa học"));
         }
+        if (!canManageCourse(course, user)) return forbidden();
 
         courseRepository.deleteById(id);
         return ResponseEntity.noContent().build();
@@ -179,14 +188,13 @@ public class CourseController {
                                      HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
         Optional<Course> opt = courseRepository.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy khóa học"));
         }
 
         Course course = opt.get();
+        if (!canManageCourse(course, user)) return forbidden();
         String title = (String) body.get("title");
         if (title == null || title.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Tiêu đề chủ đề không được để trống"));
@@ -213,14 +221,13 @@ public class CourseController {
                                         HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
         Optional<CourseUnit> opt = courseUnitRepository.findByIdAndCourseId(uid, id);
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
         }
 
         CourseUnit unit = opt.get();
+        if (!canManageCourse(unit.getCourse(), user)) return forbidden();
         if (body.containsKey("title")) {
             String title = (String) body.get("title");
             if (title != null && !title.isBlank()) {
@@ -242,13 +249,12 @@ public class CourseController {
                                         HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
         Optional<CourseUnit> opt = courseUnitRepository.findByIdAndCourseId(uid, id);
         if (opt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
         }
 
+        if (!canManageCourse(opt.get().getCourse(), user)) return forbidden();
         courseUnitRepository.delete(opt.get());
         return ResponseEntity.noContent().build();
     }
@@ -260,8 +266,9 @@ public class CourseController {
                                           HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
+        Course course = courseRepository.findById(id).orElse(null);
+        if (course == null) return ResponseEntity.notFound().build();
+        if (!canManageCourse(course, user)) return forbidden();
         if (!courseRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy khóa học"));
         }
@@ -322,7 +329,7 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Khóa học chưa được công khai"));
         }
 
-        if (courseProgressService.isUnitLocked(user, unit)) {
+        if (!isCourseOwner(unit.getCourse(), user) && courseProgressService.isUnitLocked(user, unit)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Bạn cần hoàn thành chủ đề trước để mở khóa chủ đề này"));
         }
 
@@ -341,14 +348,13 @@ public class CourseController {
                                           HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
         Optional<CourseUnit> unitOpt = courseUnitRepository.findById(unitId);
         if (unitOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
         }
 
         CourseUnit unit = unitOpt.get();
+        if (!canManageCourse(unit.getCourse(), user)) return forbidden();
         String theory = body.get("theoryContent") != null ? body.get("theoryContent").toString() : "";
         String sampleCode = body.get("sampleCode") != null ? body.get("sampleCode").toString() : "";
         String sampleInput = body.get("sampleInput") != null ? body.get("sampleInput").toString() : "";
@@ -397,13 +403,12 @@ public class CourseController {
                                                HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
         Optional<CourseUnit> unitOpt = courseUnitRepository.findById(unitId);
         if (unitOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
         }
 
+        if (!canManageCourse(unitOpt.get().getCourse(), user)) return forbidden();
         Object pVal = body.get("problemId");
         if (pVal == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Thiếu problemId"));
@@ -434,8 +439,9 @@ public class CourseController {
                                                HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdmin()) return forbidden();
-
+        CourseUnit unit = courseUnitRepository.findById(unitId).orElse(null);
+        if (unit == null) return ResponseEntity.notFound().build();
+        if (!canManageCourse(unit.getCourse(), user)) return forbidden();
         unitProblemRepository.deleteByUnitIdAndProblemId(unitId, problemId);
         return ResponseEntity.ok(Map.of("success", true));
     }
@@ -480,6 +486,15 @@ public class CourseController {
 
     private static User currentUser(HttpServletRequest req) {
         return (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+    }
+
+    private static boolean isCourseOwner(Course course, User user) {
+        return user.isLecturer() && course.getCreatedBy() != null
+                && course.getCreatedBy().getId().equals(user.getId());
+    }
+
+    private static boolean canManageCourse(Course course, User user) {
+        return user.isAdmin() || isCourseOwner(course, user);
     }
 
     private static ResponseEntity<?> unauthorized() {

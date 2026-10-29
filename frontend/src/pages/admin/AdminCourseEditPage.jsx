@@ -39,7 +39,7 @@ import { useFetch } from '../../lib/hooks'
 import MarkdownViewer from '../../components/MarkdownViewer'
 import CodeEditor from '../../components/CodeEditor'
 
-export default function AdminCourseEditPage() {
+export default function AdminCourseEditPage({ teacher = false }) {
   const { id } = useParams()
   const { message } = App.useApp()
   const { data: course, loading, reload: refetch } = useFetch(() => api.getCourse(id), [id])
@@ -145,7 +145,7 @@ export default function AdminCourseEditPage() {
       const [resLesson, resProblems, resAll] = await Promise.all([
         api.getLesson(unit.id),
         api.getUnitProblems(unit.id),
-        api.listProblems(),
+        teacher ? api.teacherContestProblems() : api.listProblems(),
       ])
       setTheoryContent(resLesson.theoryContent || '')
       setSampleCode(resLesson.sampleCode || '')
@@ -284,8 +284,8 @@ export default function AdminCourseEditPage() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/admin">Bảng điều khiển</Link> },
-          { title: <Link to="/admin/courses">Quản lý Khóa học</Link> },
+          { title: <Link to={teacher ? '/teacher/classrooms' : '/admin'}>{teacher ? 'Khu vực giảng viên' : 'Bảng điều khiển'}</Link> },
+          { title: <Link to={teacher ? '/teacher/courses' : '/admin/courses'}>{teacher ? 'Khóa học của tôi' : 'Quản lý Khóa học'}</Link> },
           { title: course?.title || 'Chi tiết khóa học' },
         ]}
       />

@@ -32,6 +32,11 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     /** Trang quản trị: mọi đề chưa xóa. */
     List<Problem> findByDeletedAtIsNullOrderById();
 
+    List<Problem> findByCreatedByIdAndDeletedAtIsNullOrderById(Long createdById);
+
+    @EntityGraph(attributePaths = "testCases")
+    Optional<Problem> findByIdAndCreatedById(Long id, Long createdById);
+
     Optional<Problem> findByIdAndDeletedAtIsNull(Long id);
 
     /** Đề kèm toàn bộ test – dùng khi đóng gói OP_TASK_ASSIGN hoặc admin sửa đề. */

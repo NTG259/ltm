@@ -1,7 +1,7 @@
 # CodeJudge – Run & Deployment Guide (Docker)
 
 > **CodeJudge** là hệ thống chấm bài lập trình C++ phân tán thời gian thực theo mô hình **Master – Multi-Worker**, sử dụng hàng đợi Redis Streams, giao thức TCP nhị phân điều phối Worker và WebSocket RFC 6455 cập nhật tiến trình trực tiếp trên trình duyệt.
-> 
+>
 > **Toàn bộ hệ thống đã được đóng gói hoàn chỉnh bằng Docker Compose.** Bạn chỉ cần cài đặt **Docker Desktop** là có thể khởi động ngay toàn bộ 6 dịch vụ (Database, Redis, Master Backend, Frontend Nginx, go-judge Sandbox, và đàn Worker) mà không cần cài đặt thêm Java, Node.js, Python hay MinGW trên máy chủ.
 
 ---
@@ -104,6 +104,7 @@ docker compose up -d --scale worker=8
   docker compose down
   ```
 * **Dừng và dọn sạch toàn bộ dữ liệu (Reset sạch sẽ database và Redis volume):**
+
   ```powershell
   docker compose down -v
   ```

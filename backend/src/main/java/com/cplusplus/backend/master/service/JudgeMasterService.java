@@ -769,6 +769,21 @@ public class JudgeMasterService {
         }
     }
 
+    public int removeDisconnectedWorkers() {
+        List<String> disconnectedIds = judgeWorkerRepository.findAllByOrderById().stream()
+                .filter(worker -> {
+                    WorkerSession session = activeWorkers.get(worker.getId());
+                    return session == null || session.isClosed();
+                })
+                .map(JudgeWorker::getId)
+                .toList();
+        if (disconnectedIds.isEmpty()) return 0;
+
+        transactionTemplate.executeWithoutResult(status -> judgeWorkerRepository.deleteAllByIdInBatch(disconnectedIds));
+        broadcastWorkerUpdate();
+        return disconnectedIds.size();
+    }
+
     private void checkHeartbeats() {
         long now = System.currentTimeMillis();
         for (WorkerSession session : activeWorkers.values()) {

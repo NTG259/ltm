@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || '/api'
+﻿const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8001`
 const TOKEN_KEY = 'cj.token'
 const USER_KEY = 'cj.user'
@@ -16,7 +16,7 @@ function storageSet(key, value) {
     if (value == null) localStorage.removeItem(key)
     else localStorage.setItem(key, value)
   } catch {
-    /* bỏ qua khi trình duyệt chặn storage */
+    /* bá» qua khi trÃ¬nh duyá»‡t cháº·n storage */
   }
 }
 
@@ -53,6 +53,7 @@ async function http(method, path, body) {
 export const api = {
   login: (payload) => http('POST', '/auth/login', payload),
   logout: () => http('DELETE', '/auth/logout'),
+  changePassword: (payload) => http('POST', '/auth/change-password', payload),
   onlineCount: () => http('GET', '/stats/online'),
   listProblems: () => http('GET', '/problems'),
   searchProblems: ({ q = '', difficulty = '', page = 1, size = 20 } = {}) => {
@@ -72,7 +73,13 @@ export const api = {
     return http('GET', `/submissions?${params}`)
   },
   getSubmission: (id) => http('GET', `/submissions/${id}`),
-  leaderboard: (classroomId) => http('GET', classroomId ? `/leaderboard?classroomId=${classroomId}` : '/leaderboard'),
+  leaderboardClassrooms: () => http('GET', '/leaderboard/classrooms'),
+  leaderboardStudents: ({ classroomId }) => http('GET', `/leaderboard/students${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  leaderboardProblems: ({ classroomId }) => http('GET', `/leaderboard/problems${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  leaderboardProblemDetails: (problemId, { classroomId }) => http('GET', `/leaderboard/problems/${problemId}/details${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  listClassroomLecturers: (id) => http('GET', `/admin/lecturers/classrooms/${id}`),
+  assignClassroomLecturer: (classroomId, lecturerId) => http('POST', `/admin/lecturers/classrooms/${classroomId}/${lecturerId}`),
+  unassignClassroomLecturer: (classroomId, lecturerId) => http('DELETE', `/admin/lecturers/classrooms/${classroomId}/${lecturerId}`),
   listContests: () => http('GET', '/contests'),
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),
@@ -85,6 +92,37 @@ export const api = {
   compareSubmissions: (id, subA, subB) => http('GET', `/contests/${id}/plagiarism/compare?subA=${subA}&subB=${subB}`),
   saveContest: (data) => (data.id ? http('PUT', `/admin/contests/${data.id}`, data) : http('POST', '/admin/contests', data)),
   deleteContest: (id) => http('DELETE', `/admin/contests/${id}`),
+  teacherListProblems: () => http('GET', '/teacher/problems'),
+  teacherGetProblem: (id) => http('GET', `/teacher/problems/${id}`),
+  teacherSaveProblem: (data) => data.id
+    ? http('PUT', `/teacher/problems/${data.id}`, data)
+    : http('POST', '/teacher/problems', data),
+  teacherDeleteProblem: (id) => http('DELETE', `/teacher/problems/${id}`),
+  teacherListContests: () => http('GET', '/teacher/contests'),
+  teacherAvailableContests: () => http('GET', '/teacher/library/contests'),
+  teacherContestProblems: () => http('GET', '/teacher/contests/problems'),
+  teacherSaveContest: (data) => data.id
+    ? http('PUT', `/teacher/contests/${data.id}`, data)
+    : http('POST', '/teacher/contests', data),
+  teacherDeleteContest: (id) => http('DELETE', `/teacher/contests/${id}`),
+  listLecturers: () => http('GET', '/admin/lecturers'),
+  createLecturer: (data) => http('POST', '/admin/lecturers', data),
+  deleteLecturers: (ids) => http('DELETE', '/admin/lecturers', { ids }),
+  resetLecturerPassword: (id, password) => http('POST', `/admin/lecturers/${id}/reset-password`, { password }),
+  importLecturers: (file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/admin/lecturers/import`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
   adminOverview: () => http('GET', '/admin/overview'),
   saveProblem: (data) => (data.id ? http('PUT', `/admin/problems/${data.id}`, data) : http('POST', '/admin/problems', data)),
   toggleProblemVisibility: (id, visible) => http('PATCH', `/admin/problems/${id}/visibility`, { publicVisible: visible }),
@@ -118,9 +156,10 @@ export const api = {
     })
   },
   killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
-  reviveWorker: () => Promise.reject(new Error('Hãy khởi động lại tiến trình judge_worker.py')),
+  reviveWorker: () => Promise.reject(new Error('HÃ£y khá»Ÿi Ä‘á»™ng láº¡i tiáº¿n trÃ¬nh judge_worker.py')),
+  removeDisconnectedWorkers: () => http('DELETE', '/admin/workers/disconnected'),
   adminLogs: (level) => http('GET', level ? `/admin/logs?level=${level}` : '/admin/logs'),
-  // ---- Lớp học ----
+  // ---- Lá»›p há»c ----
   listClassrooms: () => http('GET', '/classrooms'),
   getClassroom: (id) => http('GET', `/classrooms/${id}`),
   createClassroom: (data) => http('POST', '/classrooms', data),
@@ -133,7 +172,7 @@ export const api = {
     } catch (err) {
       const isMethodNotAllowed = err.message && (err.message.includes('405') || err.message.includes('POST') || err.message.includes('404'))
       if (isMethodNotAllowed) {
-        let csvLines = 'MSSV, Họ tên\n'
+        let csvLines = 'MSSV, Há» tÃªn\n'
         if (Array.isArray(payload.students) && payload.students.length > 0) {
           payload.students.forEach((s) => {
             const sid = (s.studentId || s.username || '').trim().toUpperCase()
@@ -151,10 +190,10 @@ export const api = {
         const res = await api.importClassroomStudents(id, file)
 
         if (res.imported > 0) return { success: true, ...res }
-        if (res.alreadyEnrolled > 0) throw new Error('Sinh viên này đã có trong lớp rồi', { cause: err })
-        if (res.skippedInOtherClass > 0) throw new Error('Sinh viên này hiện đã thuộc lớp khác (mỗi sinh viên chỉ được ở 1 lớp)', { cause: err })
-        if (res.skippedInvalid > 0) throw new Error('Mã sinh viên không đúng định dạng (VD: B20DCCN001)', { cause: err })
-        throw new Error('Không thể thêm sinh viên vào lớp', { cause: err })
+        if (res.alreadyEnrolled > 0) throw new Error('Sinh viÃªn nÃ y Ä‘Ã£ cÃ³ trong lá»›p rá»“i', { cause: err })
+        if (res.skippedInOtherClass > 0) throw new Error('Sinh viÃªn nÃ y hiá»‡n Ä‘Ã£ thuá»™c lá»›p khÃ¡c (má»—i sinh viÃªn chá»‰ Ä‘Æ°á»£c á»Ÿ 1 lá»›p)', { cause: err })
+        if (res.skippedInvalid > 0) throw new Error('MÃ£ sinh viÃªn khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng (VD: B20DCCN001)', { cause: err })
+        throw new Error('KhÃ´ng thá»ƒ thÃªm sinh viÃªn vÃ o lá»›p', { cause: err })
       }
       throw err
     }
@@ -174,6 +213,7 @@ export const api = {
     })
   },
   removeClassroomStudent: (classroomId, userId) => http('DELETE', `/classrooms/${classroomId}/students/${userId}`),
+  resetClassroomStudentPassword: (classroomId, userId, password) => http('POST', `/classrooms/${classroomId}/students/${userId}/reset-password`, { password }),
   resetStudentPassword: (userId, password) => http('POST', `/admin/students/${userId}/reset-password`, { password }),
   listClassroomContests: (id) => http('GET', `/classrooms/${id}/contests`),
   assignClassroomContest: (id, contestId) => http('POST', `/classrooms/${id}/contests`, { contestId }),
@@ -200,7 +240,7 @@ export const api = {
   // ---- Monitor ----
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),
   getContestMonitor: (cid, kid) => http('GET', `/classrooms/${cid}/contests/${kid}/monitor`),
-  // ---- Khóa học (Curriculum) ----
+  // ---- KhÃ³a há»c (Curriculum) ----
   listCourses: () => http('GET', '/courses'),
   getCourse: (id) => http('GET', `/courses/${id}`),
   createCourse: (data) => http('POST', '/courses', data),
@@ -219,7 +259,7 @@ export const api = {
   toggleUnitProgress: (unitId) => http('POST', `/courses/units/${unitId}/toggle-progress`),
 }
 
-// ---------- WebSocket (RFC 6455, cổng 8001) ----------
+// ---------- WebSocket (RFC 6455, cá»•ng 8001) ----------
 const wsListeners = new Set()
 const statusListeners = new Set()
 let ws = null
@@ -263,7 +303,7 @@ function connect() {
       const msg = JSON.parse(e.data)
       wsListeners.forEach((fn) => fn(msg))
     } catch {
-      /* bỏ qua frame không phải JSON */
+      /* bá» qua frame khÃ´ng pháº£i JSON */
     }
   }
   ws.onerror = () => {

@@ -10,7 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
-import org.springframework.http.ContentDisposition;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -58,6 +58,7 @@ public class CourseUnitFileController {
 
         CourseUnit unit = courseUnitRepository.findById(unitId).orElse(null);
         if (unit == null) return ResponseEntity.notFound().build();
+        if (!canManageCourse(unit, user)) return forbidden();
 
         if (file.isEmpty()) return badRequest("File không được để trống");
         if (file.getSize() > MAX_FILE_SIZE) return badRequest("File vượt quá giới hạn 20 MB");
@@ -135,6 +136,7 @@ public class CourseUnitFileController {
         CourseUnitFile fileRecord = courseUnitFileRepository.findById(fileId).orElse(null);
         if (fileRecord == null || !fileRecord.getUnit().getId().equals(unitId))
             return ResponseEntity.notFound().build();
+        if (!canManageCourse(fileRecord.getUnit(), user)) return forbidden();
 
         // Xoá file vật lý
         Path filePath = uploadDir.resolve(fileRecord.getFileKey()).normalize();
@@ -148,6 +150,11 @@ public class CourseUnitFileController {
 
     private User currentUser(HttpServletRequest req) {
         return (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+    }
+
+    private boolean canManageCourse(CourseUnit unit, User user) {
+        return user.isAdmin() || (user.isLecturer() && unit.getCourse().getCreatedBy() != null
+                && unit.getCourse().getCreatedBy().getId().equals(user.getId()));
     }
 
     private ResponseEntity<Map<String, String>> unauthorized() {

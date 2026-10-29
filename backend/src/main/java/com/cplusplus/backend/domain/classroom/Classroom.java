@@ -36,6 +36,10 @@ public class Classroom {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lecturer_id")
+    private User lecturer;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -66,6 +70,10 @@ public class Classroom {
     public void setSemester(String semester) { this.semester = semester; }
 
     public User getCreatedBy() { return createdBy; }
+
+    public User getLecturer() { return lecturer; }
+
+    public void setLecturer(User lecturer) { this.lecturer = lecturer; }
 
     public Instant getCreatedAt() { return createdAt; }
 

@@ -31,18 +31,41 @@ public class ContestController {
     private final ContestViolationRepository contestViolationRepository;
     private final JudgeMasterService judgeMasterService;
     private final PlagiarismService plagiarismService;
+    private final com.cplusplus.backend.repository.ClassroomRepository classroomRepository;
+    private final com.cplusplus.backend.repository.ClassroomContestRepository classroomContestRepository;
 
     public ContestController(
             ContestRepository contestRepository,
             ContestParticipantRepository contestParticipantRepository,
             ContestViolationRepository contestViolationRepository,
             JudgeMasterService judgeMasterService,
-            PlagiarismService plagiarismService) {
+            PlagiarismService plagiarismService,
+            com.cplusplus.backend.repository.ClassroomRepository classroomRepository,
+            com.cplusplus.backend.repository.ClassroomContestRepository classroomContestRepository) {
         this.contestRepository = contestRepository;
         this.contestParticipantRepository = contestParticipantRepository;
         this.contestViolationRepository = contestViolationRepository;
         this.judgeMasterService = judgeMasterService;
         this.plagiarismService = plagiarismService;
+        this.classroomRepository = classroomRepository;
+        this.classroomContestRepository = classroomContestRepository;
+    }
+
+    private boolean isContestManager(Contest contest, User user) {
+        if (user == null) return false;
+        if (user.isAdmin()) return true;
+        if (user.isLecturer()) {
+            if (contest.getCreatedBy() != null && contest.getCreatedBy().getId().equals(user.getId())) {
+                return true;
+            }
+            var assigned = classroomContestRepository.findByContestId(contest.getId());
+            for (var cc : assigned) {
+                if (classroomRepository.isLecturerAssigned(cc.getId().getClassroomId(), user.getId())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public record ViolationRequest(String violationType, String details) {}
@@ -52,7 +75,9 @@ public class ContestController {
         User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         List<Contest> list = contestRepository.findAllByOrderByStartAtDesc();
 
-        List<Map<String, Object>> result = list.stream().map(c -> toContestMap(c, currentUser)).toList();
+        List<Map<String, Object>> result = list.stream()
+                .filter(c -> canViewContest(c, currentUser))
+                .map(c -> toContestMap(c, currentUser)).toList();
         return ResponseEntity.ok(result);
     }
 
@@ -62,6 +87,7 @@ public class ContestController {
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(toContestMap(contest, currentUser));
     }
 
@@ -77,6 +103,7 @@ public class ContestController {
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
         contest.register(currentUser, Instant.now());
         contestRepository.save(contest);
 
@@ -95,6 +122,9 @@ public class ContestController {
         Contest contest = contestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        if (contest.getCreatedBy() != null && contest.getCreatedBy().isLecturer()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Ká»³ thi nÃ y Ä‘Æ°á»£c gÃ¡n theo lá»›p, khÃ´ng thá»ƒ há»§y Ä‘Äƒng kÃ½"));
+        }
         if (contest.phaseAt(Instant.now()) != com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
             return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể hủy đăng ký khi kỳ thi chưa bắt đầu"));
         }
@@ -106,10 +136,12 @@ public class ContestController {
     }
 
     @GetMapping("/{id}/standings")
-    public ResponseEntity<?> getStandings(@PathVariable Long id) {
+    public ResponseEntity<?> getStandings(@PathVariable Long id, HttpServletRequest req) {
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
         List<String> labels = contest.getProblems().stream().map(ContestProblem::getLabel).toList();
         List<ContestRepository.StandingRow> rows = contestRepository.findStandings(id);
         List<ContestRepository.StandingCell> cells = contestRepository.findStandingCells(id);
@@ -142,6 +174,14 @@ public class ContestController {
                 "penaltyPerWrong", 20,
                 "rows", standingRows
         ));
+    }
+
+    private boolean canViewContest(Contest contest, User user) {
+        User owner = contest.getCreatedBy();
+        if (owner == null || owner.isAdmin()) return true;
+        if (user == null) return false;
+        if (user.isAdmin() || owner.getId().equals(user.getId())) return true;
+        return contestRepository.isRegistered(contest.getId(), user.getId());
     }
 
     private Map<String, Object> toContestMap(Contest c, User user) {
@@ -215,7 +255,9 @@ public class ContestController {
             throw new IllegalArgumentException("Không tìm thấy kỳ thi #" + id);
         }
 
-        boolean isAdmin = currentUser.isAdmin();
+        Contest contest = contestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+        boolean isManager = isContestManager(contest, currentUser);
 
         List<ContestParticipant> participants = contestParticipantRepository.findAllWithUserByContestId(id);
         List<ContestViolation> recentViolations = contestViolationRepository.findAllByContestIdWithUser(id);
@@ -235,7 +277,7 @@ public class ContestController {
 
         List<Map<String, Object>> participantList = new ArrayList<>();
         for (ContestParticipant p : participants) {
-            if (!isAdmin && !p.getUser().getId().equals(currentUser.getId())) {
+            if (!isManager && !p.getUser().getId().equals(currentUser.getId())) {
                 continue;
             }
             Map<String, Object> map = new LinkedHashMap<>();
@@ -250,7 +292,7 @@ public class ContestController {
             participantList.add(map);
         }
 
-        List<Map<String, Object>> recentViolationList = isAdmin
+        List<Map<String, Object>> recentViolationList = isManager
                 ? recentViolations.stream().limit(50).map(v -> {
                     Map<String, Object> vm = new LinkedHashMap<>();
                     vm.put("id", v.getId());
@@ -276,9 +318,11 @@ public class ContestController {
     @PostMapping("/{id}/plagiarism/run")
     public ResponseEntity<?> runPlagiarismCheck(@PathVariable Long id, HttpServletRequest servletReq) {
         User currentUser = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        if (currentUser == null || !currentUser.isAdmin()) {
+        Contest contest = contestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+        if (!isContestManager(contest, currentUser)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Chỉ quản trị viên mới có quyền quét đạo văn"));
+                    .body(Map.of("message", "Chỉ giảng viên phụ trách hoặc quản trị viên mới có quyền quét đạo văn"));
         }
         // Tạo report RUNNING ngay lập tức, trả về frontend — không chặn HTTP thread
         plagiarismService.runPlagiarismCheck(id);
@@ -288,9 +332,11 @@ public class ContestController {
     @GetMapping("/{id}/plagiarism/status")
     public ResponseEntity<?> getPlagiarismStatus(@PathVariable Long id, HttpServletRequest servletReq) {
         User currentUser = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        if (currentUser == null || !currentUser.isAdmin()) {
+        Contest contest = contestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+        if (!isContestManager(contest, currentUser)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Chỉ quản trị viên mới có quyền xem báo cáo đạo văn"));
+                    .body(Map.of("message", "Chỉ giảng viên phụ trách hoặc quản trị viên mới có quyền xem báo cáo đạo văn"));
         }
 
         return ResponseEntity.ok(plagiarismService.getLatestReportDto(id));
@@ -303,9 +349,11 @@ public class ContestController {
             @RequestParam Long subB,
             HttpServletRequest servletReq) {
         User currentUser = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        if (currentUser == null || !currentUser.isAdmin()) {
+        Contest contest = contestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+        if (!isContestManager(contest, currentUser)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Chỉ quản trị viên mới có quyền so sánh mã nguồn"));
+                    .body(Map.of("message", "Chỉ giảng viên phụ trách hoặc quản trị viên mới có quyền so sánh mã nguồn"));
         }
 
         return ResponseEntity.ok(plagiarismService.compareSubmissions(subA, subB));

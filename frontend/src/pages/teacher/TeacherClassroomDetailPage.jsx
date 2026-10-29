@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import {
   App, Button, Empty, Modal, Select, Space, Spin, Table, Tag, Tabs,
-  Typography, Upload, Popconfirm,
+  Typography, Upload, Popconfirm, Input,
 } from 'antd'
 import {
   ArrowLeftOutlined, PlusOutlined, TrophyOutlined,
-  FilePdfOutlined, UploadOutlined, DeleteOutlined, PlayCircleOutlined,
+  FilePdfOutlined, UploadOutlined, DeleteOutlined, PlayCircleOutlined, KeyOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
@@ -24,6 +24,10 @@ function StudentsTab({ classroomId }) {
   const { data: students, loading, reload: refresh } = useFetch(
     () => api.listClassroomStudents(classroomId), [classroomId]
   )
+  const [resetModalOpen, setResetModalOpen] = useState(false)
+  const [resetTarget, setResetTarget] = useState(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   const handleImport = async (file) => {
     try {
@@ -46,9 +50,37 @@ function StudentsTab({ classroomId }) {
     }
   }
 
+  const handleResetPassword = async () => {
+    if (!resetTarget) return
+    setResetting(true)
+    try {
+      await api.resetClassroomStudentPassword(classroomId, resetTarget.userId, newPassword)
+      message.success(`Đã đặt lại mật khẩu cho ${resetTarget.username}`)
+      setResetModalOpen(false)
+      setResetTarget(null)
+      setNewPassword('')
+      refresh()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  const openReset = (student) => {
+    setResetTarget(student)
+    setNewPassword(student.username.length >= 8 ? student.username : (student.username + '12345678').substring(0, 8))
+    setResetModalOpen(true)
+  }
+
   const columns = [
     { title: 'MSSV', dataIndex: 'username', className: 'mono' },
     { title: 'Họ tên', dataIndex: 'fullName' },
+    {
+      title: 'Mật khẩu ban đầu',
+      dataIndex: 'importedPassword',
+      render: (v) => v ? <span className="mono" style={{ color: 'var(--primary)' }}>{v}</span> : '—',
+    },
     {
       title: 'Ngày thêm',
       dataIndex: 'joinedAt',
@@ -56,11 +88,16 @@ function StudentsTab({ classroomId }) {
     },
     {
       title: '',
-      width: 80,
+      width: 140,
       render: (_, r) => (
-        <Popconfirm title="Xoá sinh viên này?" onConfirm={() => handleRemove(r.userId)}>
-          <Button size="small" danger icon={<DeleteOutlined />} />
-        </Popconfirm>
+        <Space size="small">
+          <Button size="small" icon={<KeyOutlined />} onClick={() => openReset(r)} title="Đặt lại mật khẩu">
+            Reset
+          </Button>
+          <Popconfirm title="Xoá sinh viên này khỏi lớp?" onConfirm={() => handleRemove(r.userId)}>
+            <Button size="small" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
@@ -77,6 +114,25 @@ function StudentsTab({ classroomId }) {
       ) : (
         <Table rowKey="userId" columns={columns} dataSource={students || []} loading={loading} pagination={false} size="small" />
       )}
+
+      <Modal
+        title={`Đặt lại mật khẩu: ${resetTarget?.username} (${resetTarget?.fullName})`}
+        open={resetModalOpen}
+        onOk={handleResetPassword}
+        onCancel={() => setResetModalOpen(false)}
+        confirmLoading={resetting}
+        okText="Đặt lại mật khẩu"
+        cancelText="Hủy"
+      >
+        <div style={{ marginTop: 12, marginBottom: 8, fontSize: 13, color: 'var(--text-2)' }}>
+          Nhập mật khẩu mới (tối thiểu 8 ký tự):
+        </div>
+        <Input.Password
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="Mật khẩu mới"
+        />
+      </Modal>
     </div>
   )
 }
@@ -84,9 +140,32 @@ function StudentsTab({ classroomId }) {
 // ── Tab Kỳ thi ────────────────────────────────────────────────────────────
 function ContestsTab({ classroomId }) {
   const now = useNow(30000)
-  const { data: contests, loading } = useFetch(
+  const { message } = App.useApp()
+  const { data: contests, loading, reload } = useFetch(
     () => api.listClassroomContests(classroomId), [classroomId]
   )
+  const { data: available } = useFetch(() => api.teacherAvailableContests(), [])
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [selectedContest, setSelectedContest] = useState(null)
+  const [assigning, setAssigning] = useState(false)
+  const assignedIds = new Set((contests || []).map((contest) => contest.contestId))
+  const availableToAssign = (available || []).filter((contest) => !assignedIds.has(contest.id))
+
+  const assign = async () => {
+    if (!selectedContest) return
+    setAssigning(true)
+    try {
+      await api.assignClassroomContest(classroomId, selectedContest)
+      message.success('Đã gán kỳ thi vào lớp')
+      setAssignOpen(false)
+      setSelectedContest(null)
+      reload()
+    } catch (error) {
+      message.error(error.message)
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   const columns = [
     {
@@ -101,15 +180,35 @@ function ContestsTab({ classroomId }) {
     { title: 'Bắt đầu', dataIndex: 'startAt', width: 170, render: (v) => formatDateTime(v) },
     { title: 'Kết thúc', dataIndex: 'endAt', width: 170, render: (v) => formatDateTime(v) },
     { title: 'Trạng thái', width: 140, render: (_, r) => phaseTag(r, now) },
+    {
+      title: '',
+      width: 120,
+      render: (_, r) => (
+        <Link to={`/teacher/classrooms/${classroomId}/contests/${r.contestId}/monitor`}>
+          <Button size="small" type="primary" ghost icon={<TrophyOutlined />}>
+            Giám sát
+          </Button>
+        </Link>
+      ),
+    },
   ]
 
   return (
     <div style={{ padding: 20 }}>
+      <Button icon={<PlusOutlined />} onClick={() => setAssignOpen(true)} disabled={!availableToAssign.length} style={{ marginBottom: 12 }}>
+        Gán kỳ thi có sẵn
+      </Button>
       {!loading && (!contests || contests.length === 0) ? (
         <Empty description="Lớp này chưa có kỳ thi nào." />
       ) : (
         <Table rowKey="contestId" columns={columns} dataSource={contests || []} loading={loading} pagination={false} size="small" />
       )}
+      <Modal open={assignOpen} title="Gán kỳ thi có sẵn" onOk={assign} onCancel={() => setAssignOpen(false)}
+        confirmLoading={assigning} okText="Gán vào lớp" cancelText="Hủy">
+        <Select style={{ width: '100%', marginTop: 12 }} value={selectedContest} onChange={setSelectedContest}
+          placeholder="Chọn kỳ thi do admin hoặc bạn tạo"
+          options={availableToAssign.map((contest) => ({ value: contest.id, label: contest.title }))} />
+      </Modal>
     </div>
   )
 }
@@ -126,6 +225,10 @@ function CourseTab({ classroomId }) {
     () => api.getClassroomCourse(classroomId).catch(() => null), [classroomId]
   )
   const { data: allCourses } = useFetch(() => api.listCourses(), [])
+  const { data: allProblems } = useFetch(() => api.listProblems(), [])
+  const [problemModalOpen, setProblemModalOpen] = useState(false)
+  const [selectedProblemId, setSelectedProblemId] = useState(null)
+  const [addingProblem, setAddingProblem] = useState(false)
 
   const units = courseData?.units || []
   const activeUnit = selectedUnit != null
@@ -173,6 +276,32 @@ function CourseTab({ classroomId }) {
     try {
       await api.deleteUnitFile(unitId, fileId)
       message.success('Đã xoá file')
+      refresh()
+    } catch (e) {
+      message.error(e.message)
+    }
+  }
+
+  const handleAssignProblem = async () => {
+    if (!activeUnit || !selectedProblemId) return
+    setAddingProblem(true)
+    try {
+      await api.assignUnitProblem(activeUnit.id, selectedProblemId)
+      message.success('Đã thêm bài tập vào chương')
+      setProblemModalOpen(false)
+      setSelectedProblemId(null)
+      refresh()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setAddingProblem(false)
+    }
+  }
+
+  const handleRemoveProblem = async (unitId, problemId) => {
+    try {
+      await api.removeUnitProblem(unitId, problemId)
+      message.success('Đã gỡ bài tập khỏi chương')
       refresh()
     } catch (e) {
       message.error(e.message)
@@ -302,15 +431,42 @@ function CourseTab({ classroomId }) {
                     <Tag color={p.difficulty === 'EASY' ? 'green' : p.difficulty === 'MEDIUM' ? 'orange' : 'red'}>
                       {p.difficulty}
                     </Tag>
-                    <Button size="small" danger icon={<DeleteOutlined />} />
+                    <Popconfirm title="Gỡ bài tập này khỏi chương?" onConfirm={() => handleRemoveProblem(activeUnit.id, p.id)}>
+                      <Button size="small" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
                   </div>
                 ))}
               </div>
             )}
             <Space>
-              <Button icon={<PlusOutlined />}>Chọn bài tập có sẵn</Button>
-              <Button icon={<PlusOutlined />}>Tạo bài tập mới</Button>
+              <Button icon={<PlusOutlined />} onClick={() => setProblemModalOpen(true)}>Chọn bài tập có sẵn</Button>
             </Space>
+
+            <Modal
+              title="Thêm bài tập vào chương"
+              open={problemModalOpen}
+              onOk={handleAssignProblem}
+              onCancel={() => setProblemModalOpen(false)}
+              confirmLoading={addingProblem}
+              okText="Gắn vào chương"
+              cancelText="Hủy"
+            >
+              <div style={{ marginBottom: 8, fontSize: 13, color: 'var(--text-2)' }}>
+                Chọn bài tập từ kho chung để đưa vào chương học:
+              </div>
+              <Select
+                style={{ width: '100%' }}
+                placeholder="Chọn bài tập"
+                value={selectedProblemId}
+                onChange={setSelectedProblemId}
+                showSearch
+                optionFilterProp="label"
+                options={(allProblems || []).map((p) => ({
+                  value: p.id,
+                  label: `#${p.id} ${p.title} (${p.difficulty})`,
+                }))}
+              />
+            </Modal>
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -4,6 +4,7 @@ import com.cplusplus.backend.domain.problem.Problem;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.repository.ProblemRepository;
+import com.cplusplus.backend.repository.ContestProblemRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
@@ -22,9 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProblemController {
 
     private final ProblemRepository problemRepository;
+    private final ContestProblemRepository contestProblemRepository;
 
-    public ProblemController(ProblemRepository problemRepository) {
+    public ProblemController(ProblemRepository problemRepository, ContestProblemRepository contestProblemRepository) {
         this.problemRepository = problemRepository;
+        this.contestProblemRepository = contestProblemRepository;
     }
 
     @GetMapping
@@ -80,6 +83,13 @@ public class ProblemController {
         Problem problem = problemRepository.findWithTestCases(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
 
-        return ResponseEntity.ok(DtoMapper.toProblemMap(problem, isAdmin));
+        boolean owner = currentUser != null && problem.getCreatedBy() != null
+                && problem.getCreatedBy().getId().equals(currentUser.getId());
+        boolean participant = currentUser != null
+                && contestProblemRepository.isUsedByParticipatingContest(id, currentUser.getId());
+        if (!problem.isPublicVisible() && !isAdmin && !owner && !participant) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(DtoMapper.toProblemMap(problem, isAdmin || owner));
     }
 }
