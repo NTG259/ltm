@@ -13,12 +13,14 @@ export default function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
+    if (!window.dispatchEvent(new Event('cj:before-logout', { cancelable: true }))) return false
     try {
       await api.logout()
     } finally {
       storeSession(null)
       setSession(null)
     }
+    return true
   }, [])
 
   const value = useMemo(

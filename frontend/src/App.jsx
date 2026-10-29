@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { App as AntApp, ConfigProvider, Spin } from 'antd'
 import viVN from 'antd/locale/vi_VN'
-import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { createHashRouter, RouterProvider, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AuthProvider from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import { buildTheme, ThemeModeContext } from './theme'
@@ -180,6 +180,8 @@ function AppRoutes() {
   )
 }
 
+const router = createHashRouter([{ path: '*', element: <AppRoutes /> }])
+
 export default function App() {
   const [mode, setMode] = useState(readTheme)
 
@@ -207,9 +209,7 @@ export default function App() {
         <AntApp>
           <div className="app-root" data-theme={mode}>
             <AuthProvider>
-              <HashRouter>
-                <AppRoutes />
-              </HashRouter>
+              <RouterProvider router={router} />
             </AuthProvider>
           </div>
         </AntApp>

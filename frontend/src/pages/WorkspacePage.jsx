@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import {
   App,
@@ -28,7 +28,7 @@ import {
   SafetyCertificateOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useLiveSubmission, useNow, useSocket } from '../lib/hooks'
@@ -198,6 +198,64 @@ export function Workspace({ id, contest, label }) {
   const [testResult, setTestResult] = useState(null)
   const { data: availableLanguages } = useFetch(() => api.languages(), [])
   const { sub: active } = useLiveSubmission(activeId)
+  const now = useNow(1000)
+  const leaving = useRef(false)
+  const examActive = !!contest && user.role === 'student' && now >= contest.startAt && now < contest.endAt
+  const blocker = useBlocker(({ nextLocation }) =>
+    examActive && !leaving.current &&
+    !contest.problems.some((p) => nextLocation.pathname === `/contests/${contest.id}/problems/${p.label}`),
+  )
+
+  useEffect(() => {
+    if (!examActive) return
+    const warn = (event) => {
+      if (leaving.current) return
+      try {
+        localStorage.setItem(draftKey(id, user.id), code)
+      } catch { /* Vẫn cảnh báo nếu bộ nhớ trình duyệt đầy. */ }
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    const preventLogout = (event) => {
+      if (leaving.current) return
+      event.preventDefault()
+      message.warning('Hãy bấm “Hoàn thành” trước khi đăng xuất.')
+    }
+    window.addEventListener('beforeunload', warn)
+    window.addEventListener('cj:before-logout', preventLogout)
+    return () => {
+      window.removeEventListener('beforeunload', warn)
+      window.removeEventListener('cj:before-logout', preventLogout)
+    }
+  }, [examActive, code, id, user.id, message])
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return
+    const dialog = modal.warning({
+      title: 'Bạn đang làm bài thi',
+      content: 'Hãy bấm “Hoàn thành” trong phòng thi trước khi rời trang. Chuyển tab hoặc ứng dụng khác sẽ được ghi nhận là vi phạm.',
+      okText: 'Tiếp tục làm bài',
+      onOk: () => blocker.reset(),
+    })
+    return () => dialog.destroy()
+  }, [blocker, modal])
+
+  const finishExam = () => modal.confirm({
+    title: 'Hoàn thành và rời phòng thi?',
+    content: 'Kết quả được tính từ những bài đã nộp. Mã đang soạn chỉ được lưu nháp, hãy nộp bài trước khi hoàn thành.',
+    okText: 'Hoàn thành',
+    cancelText: 'Tiếp tục làm bài',
+    onOk: () => {
+      try {
+        localStorage.setItem(draftKey(id, user.id), code)
+      } catch {
+        message.error('Không lưu được bản nháp. Hãy nộp bài trước khi hoàn thành.')
+        return Promise.reject(new Error('Không lưu được bản nháp'))
+      }
+      leaving.current = true
+      navigate(`/contests/${contest.id}`)
+    },
+  })
 
   const activeInput = customInput ?? (problem?.samples?.[0]?.input || '')
 
@@ -259,7 +317,7 @@ export function Workspace({ id, contest, label }) {
   const { violationCount } = useProctoring({
     contest,
     user,
-    enabled: !!contest && !user?.role?.includes('admin'),
+    enabled: examActive,
     onViolation: handleViolation,
   })
 
@@ -385,6 +443,7 @@ export function Workspace({ id, contest, label }) {
           </>
         )}
         <span style={{ flex: 1 }} />
+        {examActive && <Button type="primary" onClick={finishExam} disabled={submitting || (active && active.status !== 'FINISHED')}>Hoàn thành</Button>}
         {contest && (
           <Space size={8}>
             {violationCount > 0 ? (

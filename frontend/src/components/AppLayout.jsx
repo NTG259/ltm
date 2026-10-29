@@ -176,8 +176,7 @@ export default function AppLayout() {
                   danger: true,
                   label: 'Đăng xuất',
                   onClick: async () => {
-                    await logout()
-                    navigate('/login')
+                    if (await logout()) navigate('/login')
                   },
                 },
               ],
