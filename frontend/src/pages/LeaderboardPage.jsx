@@ -1,9 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, Card, Empty, Input, Select, Space, Table, Tabs, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Empty, Input, Select, Space, Table, Tabs, Tag, Typography } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useSocket } from '../lib/hooks'
+import { downloadCsv } from '../lib/exportCsv'
 
 const SORT_OPTIONS = [
   { value: 'submissions', label: 'Nhiều lượt nộp nhất' },
@@ -36,8 +38,8 @@ function ProblemDetails({ problemId, query }) {
 }
 
 export default function LeaderboardPage() {
-  const { user, isAdmin } = useAuth()
-  const isStaff = isAdmin || user?.role === 'lecturer'
+  const { user, isAdmin, isLecturer } = useAuth()
+  const isStaff = isAdmin || isLecturer
   const classes = useFetch(() => api.leaderboardClassrooms(), [])
   const [selectedClassroomId, setSelectedClassroomId] = useState('all')
   const [tab, setTab] = useState('students')
@@ -88,7 +90,6 @@ export default function LeaderboardPage() {
   const studentColumns = [
     { title: '#', dataIndex: 'rank', width: 60, align: 'center', render: (v) => <b>{v}</b> },
     { title: 'Sinh viên', width: 230, render: (_, r) => <div><b>{r.userName}</b>{r.userId === user?.id && <Tag color="blue" style={{ marginLeft: 8 }}>Bạn</Tag>}<div className="mono muted" style={{ fontSize: 12 }}>{r.userId}</div></div> },
-    ...(isAdmin && classroomId == null ? [{ title: 'Lớp', dataIndex: 'classroomName', render: (v) => v || 'Chưa xếp lớp' }] : []),
     { title: 'AC', dataIndex: 'solved', width: 100, align: 'center', render: (v) => <b style={{ color: '#10b981' }}>{v}</b> },
     { title: 'Submit', dataIndex: 'attempts', width: 100, align: 'center' },
   ]
@@ -132,6 +133,22 @@ export default function LeaderboardPage() {
             style={{ width: 230 }}
           />
           {isStaff && tab === 'problems' && <Select aria-label="Tiêu chí xếp hạng bài" value={sortMode} onChange={setSortMode} options={SORT_OPTIONS} style={{ minWidth: 270 }} />}
+          <Button icon={<DownloadOutlined />} disabled={tab === 'students' ? !studentRows.length : !problemRows.length}
+            onClick={() => {
+              const label = (classes.data || []).find((c) => c.id === classroomId)?.name || 'tat-ca'
+              const safeLabel = label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9-]+/g, '-').toLowerCase()
+              if (tab === 'students') downloadCsv(studentRows, [
+                { key: 'rank', label: 'Hạng' }, { key: 'userId', label: 'MSSV' },
+                { key: 'userName', label: 'Họ tên' }, { key: 'solved', label: 'AC' },
+                { key: 'attempts', label: 'Submit' },
+              ], `bang-xep-hang-sinh-vien-${safeLabel}.csv`)
+              else downloadCsv(problemRows, [
+                { key: 'rank', label: 'Hạng' }, { key: 'problemId', label: 'Mã bài' },
+                { key: 'title', label: 'Bài tập' }, { key: 'submissions', label: 'Lượt nộp' },
+                { key: 'attemptedUsers', label: 'Người đã thử' }, { key: 'acceptedUsers', label: 'Người AC' },
+                { key: 'acceptanceRate', label: 'Tỷ lệ AC (%)' },
+              ], `bang-xep-hang-bai-tap-${safeLabel}.csv`)
+            }}>Xuất CSV</Button>
         </Space>
       </Card>
 

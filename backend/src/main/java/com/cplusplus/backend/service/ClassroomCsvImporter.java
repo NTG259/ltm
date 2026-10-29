@@ -100,7 +100,9 @@ public class ClassroomCsvImporter {
                     continue;
                 }
 
-                classroomStudentRepository.save(new ClassroomStudent(classroom, user, Instant.now()));
+                ClassroomStudent enrollment = new ClassroomStudent(classroom, user, Instant.now());
+                enrollment.setImportedPassword(password);
+                classroomStudentRepository.save(enrollment);
                 imported++;
             }
         } catch (IOException e) {

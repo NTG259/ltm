@@ -1,5 +1,4 @@
-// Lớp truy cập dữ liệu. Mặc định dùng mock (giả lập Master trong trình duyệt);
-// đặt VITE_USE_MOCK=false để gọi Master Server thật qua HTTP :8000 / WebSocket :8001.
+// Lớp truy cập dữ liệu. Mặc định gọi API thật; chỉ bật mock khi đặt VITE_USE_MOCK=true.
 import { engine } from './mock/engine.js'
 
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -233,6 +232,12 @@ const mockApi = {
       if (payload.password !== ADMIN_PASSWORD) throw new Error('Sai mật khẩu quản trị')
       return delay({ token: 'mock-admin-token', user: { id: 'admin', name: 'Quản trị viên', role: 'admin' } })
     }
+    // Lecturer accounts: GV001..GV999 with password "gv123456"
+    if (/^GV\d{3}$/i.test(username)) {
+      if (payload.password !== 'gv123456') throw new Error('Tài khoản hoặc mật khẩu không chính xác')
+      const gvId = username.toUpperCase()
+      return delay({ token: `mock-${gvId}`, user: { id: gvId, name: `Giảng viên ${gvId}`, role: 'lecturer' } })
+    }
     if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(username)) throw new Error('Tài khoản hoặc mật khẩu không chính xác')
     const studentId = username.toUpperCase()
     const accounts = getMockAccounts()
@@ -244,11 +249,24 @@ const mockApi = {
       user,
     })
   },
+  logout: () => delay(null),
+  onlineCount: () => delay({ count: engine.submissions().length % 5 }),
   listProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
+  searchProblems: ({ q = '', difficulty = '', page = 1, size = 20 } = {}) => {
+    const all = problemStats(engine.problems(), engine.submissions())
+    const filtered = all.filter(
+      (p) =>
+        (!q || `#${p.id} ${p.title}`.toLowerCase().includes(q.toLowerCase())) &&
+        (!difficulty || p.difficulty === difficulty),
+    )
+    const start = (page - 1) * size
+    return delay({ total: filtered.length, problems: filtered.slice(start, start + size) })
+  },
   getProblem: (id) => {
     const p = engine.problems().find((x) => x.id === Number(id))
     return p ? delay(p) : Promise.reject(new Error('Không tìm thấy đề bài'))
   },
+  languages: () => delay([{ code: 'cpp17', label: 'C++17' }]),
   submit: (payload, user) => delay(engine.submit({ ...payload, user }), 120),
   runTest: (payload) =>
     delay({
@@ -261,16 +279,20 @@ const mockApi = {
       compileLog: null,
       securityMessage: null,
     }, 300),
-  listSubmissions: ({ userId, problemId, verdict, contestId } = {}) =>
-    delay(
-      engine
-        .submissions()
-        .filter((s) => (!userId || s.userId === userId) && (!problemId || s.problemId === Number(problemId)))
-        .filter((s) => !contestId || s.contestId === Number(contestId))
-        .filter((s) => !verdict || s.verdict === verdict)
-        // eslint-disable-next-line no-unused-vars
-        .map(({ sourceCode, tests, history, ...rest }) => rest),
-    ),
+  listSubmissions: ({ userId, problemId, verdict, contestId, page, size = 50 } = {}) => {
+    const all = engine
+      .submissions()
+      .filter((s) => (!userId || s.userId === userId) && (!problemId || s.problemId === Number(problemId)))
+      .filter((s) => !contestId || s.contestId === Number(contestId))
+      .filter((s) => !verdict || s.verdict === verdict)
+      // eslint-disable-next-line no-unused-vars
+      .map(({ sourceCode, tests, history, ...rest }) => rest)
+    if (page != null) {
+      const start = page * size
+      return delay({ total: all.length, submissions: all.slice(start, start + size) })
+    }
+    return delay(all)
+  },
   getSubmission: (id) => {
     const s = engine.submission(id)
     return s ? delay(s) : Promise.reject(new Error('Không tìm thấy bài nộp'))
@@ -283,16 +305,18 @@ const mockApi = {
   },
   getContest: async (id, user) => delay(contestView(findContest(id), user, engine.submissions())),
   registerContest: async (id, user) => delay(contestView(engine.registerContest(id, user), user, engine.submissions())),
+  unregisterContest: async () => delay(null),
   contestStandings: async (id) => delay(icpcStandings(findContest(id), engine.submissions())),
   saveContest: (data) => delay(engine.saveContest(data)),
   deleteContest: (id) => delay(engine.deleteContest(id)),
   reportViolation: () => delay({ success: true, violationCount: 1 }),
   getProctorStatus: (id) => delay({ contestId: id, participants: [], recentViolations: [] }),
-  runPlagiarismCheck: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
-  getPlagiarismStatus: (id) => delay({ hasReport: true, contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
+  runPlagiarismCheck: (id) => delay({ hasReport: true, status: 'RUNNING', contestId: id, submissionCount: 0, suspiciousCount: 0, highRiskCount: 0, totalMatches: 0, matches: [] }, 300),
+  getPlagiarismStatus: (id) => delay({ hasReport: true, status: 'COMPLETED', contestId: id, submissionCount: 2, suspiciousCount: 0, highRiskCount: 1, totalMatches: 1, matches: [] }),
   compareSubmissions: () => delay({ similarityScore: 95.0, verdictLevel: 'HIGH_RISK', submissionA: { id: 1, username: 'A', sourceCode: '// code A' }, submissionB: { id: 2, username: 'B', sourceCode: '// code B' } }),
   // ---- Lớp học (mock stub) ----
   listClassrooms: () => delay([]),
+  getClassroom: (id) => delay({ id, name: 'Lớp mẫu', semester: '2024-2025', contests: [] }),
   createClassroom: (data) => delay({ id: Date.now(), ...data, createdAt: Date.now() }),
   updateClassroom: (_id, data) => delay(data),
   deleteClassroom: () => delay(null),
@@ -333,14 +357,63 @@ const mockApi = {
     return delay({ imported, created, alreadyEnrolled: 0, skippedInOtherClass: 0, skippedInvalid, skippedExisting })
   },
   removeClassroomStudent: () => delay(null),
+  resetStudentPassword: () => delay({ message: 'Đã đặt lại mật khẩu thành công' }),
   listClassroomContests: () => delay([]),
   assignClassroomContest: (_id, contestId) => delay({ contestId, title: '(mock)' }),
   unassignClassroomContest: () => delay(null),
+  // ---- Classroom course ----
+  getClassroomCourse: (classroomId) => {
+    const key = `cj.classroom_course.${classroomId}`
+    const raw = localStorage.getItem(key)
+    if (!raw) return Promise.reject(new Error('Chưa gán khóa học'))
+    try {
+      const saved = JSON.parse(raw)
+      return mockApi.getCourse(saved.courseId).then((course) => ({ ...course, courseId: course.id }))
+    } catch {
+      return Promise.reject(new Error('Chưa gán khóa học'))
+    }
+  },
+  assignClassroomCourse: (classroomId, courseId) => {
+    localStorage.setItem(`cj.classroom_course.${classroomId}`, JSON.stringify({ courseId }))
+    return delay({ classroomId, courseId })
+  },
+  unassignClassroomCourse: (classroomId) => {
+    localStorage.removeItem(`cj.classroom_course.${classroomId}`)
+    return delay(null)
+  },
+  uploadUnitFile: (_unitId, file) => delay({ id: Date.now(), filename: file.name, fileSize: file.size }),
+  deleteUnitFile: () => delay(null),
   // ---- Admin ----
   adminOverview: () =>
-    delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length }),
+    delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length, throughput: [] }),
+  adminLogs: (level) =>
+    delay((engine.logs()).filter((l) => !level || l.level === level)),
   saveProblem: (data) => delay(engine.saveProblem(data)),
+  toggleProblemVisibility: (id, visible) => delay({ publicVisible: visible }),
   deleteProblem: (id) => delay(engine.deleteProblem(id)),
+  uploadProblemTestCasesZip: (problemId, file) =>
+    delay({
+      success: true,
+      message: `Đã nạp thành công bộ test từ file ${file.name}`,
+      importedCount: 5,
+      totalTestCount: 5,
+      testKeys: ['1', '2', '3', '4', '5'],
+      unpairedInputs: [],
+      unpairedOutputs: [],
+    }),
+  parseProblemTestCasesZip: (file) =>
+    delay({
+      success: true,
+      message: `Giải nén thành công từ ${file.name}`,
+      count: 3,
+      tests: [
+        { key: '1', input: '1 2\n', output: '3\n' },
+        { key: '2', input: '5 7\n', output: '12\n' },
+        { key: '3', input: '100 200\n', output: '300\n' },
+      ],
+      unpairedInputs: [],
+      unpairedOutputs: [],
+    }),
   killWorker: (id) => delay(engine.killWorker(id), 50),
   reviveWorker: (id) => delay(engine.reviveWorker(id), 50),
   // ---- Khóa học (Curriculum mock) ----
@@ -538,16 +611,30 @@ const mockApi = {
 
 const realApi = {
   login: (payload) => http('POST', '/auth/login', payload),
+  logout: () => http('DELETE', '/auth/logout'),
+  onlineCount: () => http('GET', '/stats/online'),
   listProblems: () => http('GET', '/problems'),
+  searchProblems: ({ q = '', difficulty = '', page = 1, size = 20 } = {}) => {
+    const params = new URLSearchParams({ page, size })
+    if (q) params.set('q', q)
+    if (difficulty) params.set('difficulty', difficulty)
+    return http('GET', `/problems?${params}`)
+  },
   getProblem: (id) => http('GET', `/problems/${id}`),
+  languages: () => http('GET', '/submissions/languages'),
   submit: (payload) => http('POST', '/submissions', payload),
   runTest: (payload) => http('POST', '/submissions/run', payload),
-  listSubmissions: (q = {}) => http('GET', `/submissions?${new URLSearchParams(Object.entries(q).filter(([, v]) => v))}`),
+  listSubmissions: (q = {}) => {
+    const params = new URLSearchParams(
+      Object.entries(q).filter(([k, v]) => v != null && v !== '' && (k === 'page' ? true : v))
+    )
+    return http('GET', `/submissions?${params}`)
+  },
   getSubmission: (id) => http('GET', `/submissions/${id}`),
   leaderboardClassrooms: () => http('GET', '/leaderboard/classrooms'),
-  leaderboardStudents: (q = {}) => http('GET', `/leaderboard/students?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null))}`),
-  leaderboardProblems: (q = {}) => http('GET', `/leaderboard/problems?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null))}`),
-  leaderboardProblemDetails: (id, q = {}) => http('GET', `/leaderboard/problems/${id}/details?${new URLSearchParams(Object.entries(q).filter(([, v]) => v != null))}`),
+  leaderboardStudents: ({ classroomId }) => http('GET', `/leaderboard/students${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  leaderboardProblems: ({ classroomId }) => http('GET', `/leaderboard/problems${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
+  leaderboardProblemDetails: (problemId, { classroomId }) => http('GET', `/leaderboard/problems/${problemId}/details${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
   listLecturers: () => http('GET', '/admin/lecturers'),
   createLecturer: (data) => http('POST', '/admin/lecturers', data),
   listClassroomLecturers: (id) => http('GET', `/admin/lecturers/classrooms/${id}`),
@@ -556,6 +643,7 @@ const realApi = {
   listContests: () => http('GET', '/contests'),
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),
+  unregisterContest: (id) => http('DELETE', `/contests/${id}/register`),
   contestStandings: (id) => http('GET', `/contests/${id}/standings`),
   reportViolation: (id, data) => http('POST', `/contests/${id}/proctor/violation`, data),
   getProctorStatus: (id) => http('GET', `/contests/${id}/proctor/status`),
@@ -566,11 +654,42 @@ const realApi = {
   deleteContest: (id) => http('DELETE', `/admin/contests/${id}`),
   adminOverview: () => http('GET', '/admin/overview'),
   saveProblem: (data) => (data.id ? http('PUT', `/admin/problems/${data.id}`, data) : http('POST', '/admin/problems', data)),
+  toggleProblemVisibility: (id, visible) => http('PATCH', `/admin/problems/${id}/visibility`, { publicVisible: visible }),
   deleteProblem: (id) => http('DELETE', `/admin/problems/${id}`),
+  uploadProblemTestCasesZip: (problemId, file, keepSamples = true) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/admin/problems/${problemId}/testcases/zip?keepSamples=${keepSamples}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
+  parseProblemTestCasesZip: (file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/admin/problems/parse-zip`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
   killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
   reviveWorker: () => Promise.reject(new Error('Hãy khởi động lại tiến trình judge_worker.py')),
+  adminLogs: (level) => http('GET', level ? `/admin/logs?level=${level}` : '/admin/logs'),
   // ---- Lớp học ----
   listClassrooms: () => http('GET', '/classrooms'),
+  getClassroom: (id) => http('GET', `/classrooms/${id}`),
   createClassroom: (data) => http('POST', '/classrooms', data),
   updateClassroom: (id, data) => http('PUT', `/classrooms/${id}`, data),
   deleteClassroom: (id) => http('DELETE', `/classrooms/${id}`),
@@ -631,9 +750,29 @@ const realApi = {
     })
   },
   removeClassroomStudent: (classroomId, userId) => http('DELETE', `/classrooms/${classroomId}/students/${userId}`),
+  resetStudentPassword: (userId, password) => http('POST', `/admin/students/${userId}/reset-password`, { password }),
   listClassroomContests: (id) => http('GET', `/classrooms/${id}/contests`),
   assignClassroomContest: (id, contestId) => http('POST', `/classrooms/${id}/contests`, { contestId }),
   unassignClassroomContest: (classroomId, contestId) => http('DELETE', `/classrooms/${classroomId}/contests/${contestId}`),
+  // ---- Classroom course ----
+  getClassroomCourse: (classroomId) => http('GET', `/classrooms/${classroomId}/course`),
+  assignClassroomCourse: (classroomId, courseId) => http('PUT', `/classrooms/${classroomId}/course/${courseId}`),
+  unassignClassroomCourse: (classroomId) => http('DELETE', `/classrooms/${classroomId}/course`),
+  uploadUnitFile: (unitId, file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/courses/units/${unitId}/files`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
+  deleteUnitFile: (unitId, fileId) => http('DELETE', `/courses/units/${unitId}/files/${fileId}`),
   // ---- Monitor ----
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),
   getContestMonitor: (cid, kid) => http('GET', `/classrooms/${cid}/contests/${kid}/monitor`),
@@ -662,18 +801,36 @@ export const api = USE_MOCK ? mockApi : realApi
 const wsListeners = new Set()
 const statusListeners = new Set()
 let ws = null
-let wsStatus = USE_MOCK ? 'mock' : 'connecting'
+let wsStatus = USE_MOCK ? 'mock' : 'disconnected'
 let retry = 0
+let retryTimer = null
 
 function setStatus(s) {
   wsStatus = s
   statusListeners.forEach((fn) => fn(s))
 }
 
+function scheduleReconnect() {
+  if (retryTimer) return
+  const delay = Math.min(30000, 1000 * 2 ** retry++)
+  setStatus('reconnecting')
+  retryTimer = setTimeout(() => {
+    retryTimer = null
+    connect()
+  }, delay)
+}
+
 function connect() {
-  if (USE_MOCK || ws) return
+  if (USE_MOCK) return
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return
+  if (ws) { ws.onclose = null; ws.onerror = null; ws.close(); ws = null }
   setStatus('connecting')
-  ws = new WebSocket(WS_URL)
+  try {
+    ws = new WebSocket(WS_URL)
+  } catch {
+    scheduleReconnect()
+    return
+  }
   ws.onopen = () => {
     retry = 0
     setStatus('open')
@@ -688,11 +845,28 @@ function connect() {
       /* bỏ qua frame không phải JSON */
     }
   }
+  ws.onerror = () => {
+    // onclose will always follow onerror; just mark closed proactively
+    ws = null
+    scheduleReconnect()
+  }
   ws.onclose = () => {
     ws = null
-    setStatus('closed')
-    setTimeout(connect, Math.min(10000, 1000 * 2 ** retry++))
+    scheduleReconnect()
   }
+}
+
+// Reconnect when the user returns to the tab after a long absence
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !USE_MOCK) {
+      if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+        if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+        retry = 0
+        connect()
+      }
+    }
+  })
 }
 
 export function subscribe(fn) {

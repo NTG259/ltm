@@ -111,7 +111,11 @@ public class Contest {
     }
 
     public ContestParticipant register(User user, Instant now) {
-        if (phaseAt(now) == ContestPhase.ENDED) {
+        ContestPhase phase = phaseAt(now);
+        if (phase == ContestPhase.RUNNING) {
+            throw new IllegalStateException("Kỳ thi đã bắt đầu, không thể đăng ký");
+        }
+        if (phase == ContestPhase.ENDED) {
             throw new IllegalStateException("Kỳ thi đã kết thúc");
         }
         return participants.stream()

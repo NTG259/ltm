@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.cplusplus.backend.domain.classroom.Classroom;
+import com.cplusplus.backend.domain.classroom.ClassroomStudent;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.repository.ClassroomStudentRepository;
 import com.cplusplus.backend.repository.UserRepository;
@@ -29,7 +30,7 @@ class ClassroomCsvImporterTest {
     @Mock Classroom classroom;
 
     @Test
-    void importsStudentPasswordAsHashInsteadOfPlaintext() {
+    void hashesLoginPasswordAndRetainsImportedPasswordForAdmin() {
         MockMultipartFile csv = new MockMultipartFile(
                 "file", "accounts.csv", "text/csv",
                 "mssv,password\nB20DCCN001,TestPass2026!\n".getBytes(StandardCharsets.UTF_8));
@@ -46,6 +47,9 @@ class ClassroomCsvImporterTest {
         assertThat(user.getValue().getUsername()).isEqualTo("B20DCCN001");
         assertThat(user.getValue().getPasswordHash()).isEqualTo("bcrypt-hash");
         assertThat(user.getValue().getPasswordHash()).isNotEqualTo("TestPass2026!");
+        ArgumentCaptor<ClassroomStudent> enrollment = ArgumentCaptor.forClass(ClassroomStudent.class);
+        verify(classroomStudents).save(enrollment.capture());
+        assertThat(enrollment.getValue().getImportedPassword()).isEqualTo("TestPass2026!");
     }
 
     @Test

@@ -2,6 +2,11 @@ spring:
   application:
     name: backend
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   # Mặc định trỏ tới PostgreSQL của compose.yaml (cổng 5433 trên máy);
   # ghi đè bằng biến môi trường khi triển khai.
   datasource:
@@ -10,6 +15,7 @@ spring:
     password: ${DB_PASSWORD:npg_JFQV3Eyr0iaN}
 
     hikari:
+      maximum-pool-size: 30
       max-lifetime: 300000
       idle-timeout: 120000
       connection-timeout: 30000
@@ -40,6 +46,9 @@ spring:
           max-active: 8
           max-idle: 4
           min-idle: 1
+
+app:
+  upload-dir: ${UPLOAD_DIR:./uploads/course-files}
 
 # Master Server: HTTP REST :8000 (WebSocket :8001 và TCP Worker :9000 sẽ do các server riêng mở).
 server:

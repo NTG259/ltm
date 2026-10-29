@@ -32,8 +32,7 @@ export default function CourseDetailPage() {
   const { isAdmin } = useAuth()
   const { mode } = useThemeMode()
   const isDark = mode === 'dark'
-  const { data: course, loading } = useFetch(() => api.getCourse(id), [id])
-  const { data: progress, reload: reloadProgress } = useFetch(() => api.getCourseProgress(id), [id])
+  const { data: course, loading, reload: reloadCourse } = useFetch(() => api.getCourse(id), [id])
 
   // Cache tiến độ vào localStorage để hiển thị tức thì không bị chớp 0%
   const cacheKey = `cj.cache_progress_${id}`
@@ -46,26 +45,25 @@ export default function CourseDetailPage() {
     }
   }, [cacheKey])
 
-  // Ưu tiên dữ liệu mới nhất: progress API riêng -> course.progress đi kèm -> cached progress
-  const activeProgress = progress || course?.progress || cachedProgress
+  // Dùng progress nhúng trong getCourse — không cần gọi API riêng nữa
+  const activeProgress = course?.progress || cachedProgress
 
   // Lưu lại cache khi có dữ liệu mới từ server
   useEffect(() => {
-    const p = progress || course?.progress
-    if (p) {
+    if (course?.progress) {
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(p))
+        localStorage.setItem(cacheKey, JSON.stringify(course.progress))
       } catch {
         /* bỏ qua khi trình duyệt chặn storage */
       }
     }
-  }, [progress, course?.progress, cacheKey])
+  }, [course?.progress, cacheKey])
 
   const toggleComplete = async (unitId) => {
     try {
       await api.toggleUnitProgress(unitId)
       message.success('Đã cập nhật tiến độ học tập!')
-      reloadProgress()
+      reloadCourse()
     } catch (e) {
       message.error(e.message || 'Lỗi khi cập nhật tiến độ')
     }
@@ -78,33 +76,16 @@ export default function CourseDetailPage() {
 
   return (
     <div className="page">
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <Breadcrumb
           items={[
             { title: <Link to="/courses">Khóa học</Link> },
             { title: course?.title || 'Chi tiết khóa học' },
           ]}
         />
-      </div>
-
-      <div className="page-head">
-        <Space size={12} align="center">
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/courses')}>
-            Danh sách khóa học
-          </Button>
-          <h1 style={{ margin: 0 }}>{course?.title || 'Khóa học C++'}</h1>
-        </Space>
-
-        {units.length > 0 && (isAdmin || course?.published) && (
-          <Button
-            type="primary"
-            icon={<RocketOutlined />}
-            size="large"
-            onClick={() => navigate(`/courses/${id}/learn`)}
-          >
-            {completedCount === 0 ? 'Bắt đầu học ngay' : 'Tiếp tục bài học'}
-          </Button>
-        )}
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/courses')}>
+          Danh sách khóa học
+        </Button>
       </div>
 
       {loading ? (
@@ -178,16 +159,17 @@ export default function CourseDetailPage() {
                     </Tag>
                   )}
                 </div>
-                <Typography.Title
-                  level={2}
+                <h1
                   style={{
                     color: isDark ? '#ffffff' : 'var(--text)',
-                    margin: '4px 0 10px 0',
+                    margin: '6px 0 12px 0',
                     fontWeight: 800,
+                    fontSize: 26,
+                    lineHeight: 1.3,
                   }}
                 >
                   {course.title}
-                </Typography.Title>
+                </h1>
                 <Typography.Paragraph
                   style={{
                     color: isDark ? '#cbd5e1' : 'var(--text-2)',
@@ -251,21 +233,9 @@ export default function CourseDetailPage() {
           {/* Danh sách chủ đề */}
           <Card
             title={
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16 }}>
-                  <UnorderedListOutlined style={{ color: 'var(--primary)' }} />
-                  <span style={{ fontWeight: 700 }}>Nội dung lộ trình học ({units.length} chủ đề)</span>
-                </div>
-                {units.length > 0 && (
-                  <Button
-                    type="link"
-                    icon={<RocketOutlined />}
-                    onClick={() => navigate(`/courses/${id}/learn`)}
-                    style={{ fontWeight: 600 }}
-                  >
-                    Vào không gian học tập &rarr;
-                  </Button>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 16 }}>
+                <UnorderedListOutlined style={{ color: 'var(--primary)' }} />
+                <span style={{ fontWeight: 700 }}>Nội dung lộ trình học ({units.length} chủ đề)</span>
               </div>
             }
             style={{ borderRadius: 14 }}
@@ -285,7 +255,7 @@ export default function CourseDetailPage() {
                     <List.Item
                       className={isDone ? 'unit-item-completed' : ''}
                       style={{
-                        padding: '18px 24px',
+                        padding: '14px 24px',
                         borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
@@ -317,56 +287,50 @@ export default function CourseDetailPage() {
                         </Button>,
                       ]}
                     >
-                      <List.Item.Meta
-                        avatar={
-                          <div
-                            className={isDone ? 'badge-completed-solid' : ''}
-                            style={{
-                              width: 42,
-                              height: 42,
-                              borderRadius: '50%',
-                              background: isDone ? '#16a34a' : 'var(--inset)',
-                              color: isDone ? '#ffffff' : 'var(--text-2)',
-                              border: isDone ? '2px solid #22c55e' : '1px solid var(--border)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              fontSize: 16,
-                            }}
-                          >
-                            {isDone ? <CheckCircleFilled style={{ fontSize: 22 }} /> : index + 1}
-                          </div>
-                        }
-                        title={
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 16, fontWeight: 700, color: isDone ? '#15803d' : 'var(--text)' }}>
-                              {unit.title}
-                            </span>
-                            {isDone && (
-                              <Tag
-                                color="success"
-                                style={{
-                                  fontWeight: 700,
-                                  fontSize: 12,
-                                  borderRadius: 999,
-                                  background: '#16a34a',
-                                  color: '#ffffff',
-                                  border: 'none',
-                                  padding: '1px 10px',
-                                }}
-                              >
-                                ✓ ĐÃ HOÀN THÀNH
-                              </Tag>
-                            )}
-                          </div>
-                        }
-                        description={
-                          <span style={{ color: isDone ? '#166534' : 'var(--text-2)', fontSize: 13.5 }}>
-                            Bấm vào để mở không gian học tập: lý thuyết, code ví dụ và bài tập thực hành.
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
+                        <div
+                          className={isDone ? 'badge-completed-solid' : ''}
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: '50%',
+                            background: isDone ? '#16a34a' : 'var(--inset)',
+                            color: isDone ? '#ffffff' : 'var(--text-2)',
+                            border: isDone ? '2px solid #22c55e' : '1px solid var(--border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: 15,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isDone ? <CheckCircleFilled style={{ fontSize: 20 }} /> : index + 1}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: isDone ? '#15803d' : 'var(--text)', lineHeight: 1.3 }}>
+                            {unit.title}
                           </span>
-                        }
-                      />
+                          {isDone && (
+                            <Tag
+                              color="success"
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 11,
+                                borderRadius: 999,
+                                background: '#16a34a',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '1px 8px',
+                                margin: 0,
+                                lineHeight: '18px',
+                              }}
+                            >
+                              ✓ ĐÃ HOÀN THÀNH
+                            </Tag>
+                          )}
+                        </div>
+                      </div>
                     </List.Item>
                   )
                 }}

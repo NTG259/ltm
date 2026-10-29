@@ -1,4 +1,6 @@
-import { Card, Empty, Table, Tag, Typography } from 'antd'
+import { Button, Card, Empty, Space, Table, Tag, Typography } from 'antd'
+import { ArrowRightOutlined } from '@ant-design/icons'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useFetch } from '../lib/hooks'
 
@@ -20,22 +22,52 @@ export default function MyClassroomsPage() {
   }
 
   const columns = [
-    { title: 'Tên lớp', dataIndex: 'name', key: 'name' },
-    { title: 'Kỳ học', dataIndex: 'semester', key: 'semester', render: (v) => v ? <Tag>{v}</Tag> : '—' },
-    { title: 'Ngày tạo', dataIndex: 'createdAt', key: 'createdAt', render: (v) => new Date(v).toLocaleDateString('vi-VN') },
+    {
+      title: 'Tên lớp',
+      dataIndex: 'name',
+      render: (name, r) => (
+        <Link to={`/classrooms/${r.id}`} style={{ fontWeight: 600 }}>
+          {name}
+        </Link>
+      ),
+    },
+    {
+      title: 'Kỳ học',
+      dataIndex: 'semester',
+      render: (v) => v ? <Tag>{v}</Tag> : '—',
+    },
+    {
+      title: 'Ngày tạo',
+      dataIndex: 'createdAt',
+      render: (v) => new Date(v).toLocaleDateString('vi-VN'),
+    },
+    {
+      title: '',
+      width: 130,
+      render: (_, r) => (
+        <Link to={`/classrooms/${r.id}`}>
+          <Button size="small" icon={<ArrowRightOutlined />}>Xem kỳ thi</Button>
+        </Link>
+      ),
+    },
   ]
 
   return (
     <div style={{ maxWidth: 800, margin: '32px auto', padding: '0 16px' }}>
       <Typography.Title level={3}>Lớp học của tôi</Typography.Title>
       <Card>
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={classrooms || []}
-          loading={loading}
-          pagination={false}
-        />
+        <Space direction="vertical" style={{ width: '100%' }} size={0}>
+          <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+            Bấm vào tên lớp hoặc "Xem kỳ thi" để xem danh sách kỳ thi trong lớp.
+          </Typography.Text>
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={classrooms || []}
+            loading={loading}
+            pagination={false}
+          />
+        </Space>
       </Card>
     </div>
   )

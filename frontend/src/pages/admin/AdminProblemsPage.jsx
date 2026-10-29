@@ -1,24 +1,38 @@
 import { useState } from 'react'
 import {
+  Alert,
   App,
   Button,
   Card,
+  Checkbox,
   Col,
   Drawer,
   Form,
   Input,
   InputNumber,
+  Modal,
   Popconfirm,
   Row,
   Select,
   Space,
+  Switch,
   Table,
   Tabs,
   Tag,
   Tooltip,
   Typography,
+  Upload,
 } from 'antd'
-import { DeleteOutlined, EditOutlined, MinusCircleOutlined, PlusOutlined, ProfileOutlined } from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  FileZipOutlined,
+  InboxOutlined,
+  MinusCircleOutlined,
+  PlusOutlined,
+  ProfileOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
@@ -27,9 +41,16 @@ import { DIFFICULTIES } from '../../lib/verdicts'
 import { percent } from '../../lib/format'
 
 const DIFF_COLOR = { easy: 'green', medium: 'gold', hard: 'red' }
+const CHECKER_OPTIONS = [
+  { value: 'lines', label: 'Lines (so từng dòng, bỏ trailing whitespace)' },
+  { value: 'tokens', label: 'Tokens (so từng token, bỏ khoảng trắng)' },
+  { value: 'exact', label: 'Exact (so chính xác từng ký tự)' },
+]
+
 const EMPTY = {
   title: '',
   difficulty: 'easy',
+  checker: 'lines',
   tags: [],
   timeLimitMs: 1000,
   memoryLimitMb: 256,
@@ -114,6 +135,7 @@ function IoList({ name, label, addText }) {
 function ProblemDrawer({ open, problem, onClose, onSaved }) {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [uploadingZip, setUploadingZip] = useState(false)
   const { message } = App.useApp()
 
   const save = async () => {
@@ -159,19 +181,24 @@ function ProblemDrawer({ open, problem, onClose, onSaved }) {
                     <Input />
                   </Form.Item>
                   <Row gutter={12}>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={6}>
                       <Form.Item name="difficulty" label="Độ khó">
                         <Select options={Object.entries(DIFFICULTIES).map(([k, v]) => ({ value: k, label: v.label }))} />
                       </Form.Item>
                     </Col>
-                    <Col xs={12} sm={8}>
+                    <Col xs={12} sm={6}>
                       <Form.Item name="timeLimitMs" label="Giới hạn thời gian (ms)" rules={[{ required: true }]}>
                         <InputNumber min={100} max={10000} step={100} style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
-                    <Col xs={12} sm={8}>
+                    <Col xs={12} sm={6}>
                       <Form.Item name="memoryLimitMb" label="Giới hạn bộ nhớ (MB)" rules={[{ required: true }]}>
                         <InputNumber min={16} max={1024} step={16} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={6}>
+                      <Form.Item name="checker" label="Checker">
+                        <Select options={CHECKER_OPTIONS} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -216,6 +243,59 @@ function ProblemDrawer({ open, problem, onClose, onSaved }) {
                   <Typography.Paragraph type="secondary">
                     Worker chấm lần lượt từng test qua stdin/stdout. Đầu ra được so sánh sau khi chuẩn hoá khoảng trắng cuối dòng.
                   </Typography.Paragraph>
+
+                  <Card
+                    size="small"
+                    style={{
+                      marginBottom: 16,
+                      background: 'rgba(56, 189, 248, 0.04)',
+                      borderColor: 'rgba(56, 189, 248, 0.2)',
+                    }}
+                  >
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Space align="center" style={{ justifyContent: 'space-between', width: '100%', flexWrap: 'wrap' }}>
+                        <Space>
+                          <FileZipOutlined style={{ fontSize: 18, color: '#38bdf8' }} />
+                          <Typography.Text strong>Nhập hàng loạt từ file ZIP</Typography.Text>
+                        </Space>
+                        <Upload
+                          accept=".zip"
+                          showUploadList={false}
+                          beforeUpload={async (file) => {
+                            try {
+                              setUploadingZip(true)
+                              const res = await api.parseProblemTestCasesZip(file)
+                              if (res.tests?.length) {
+                                const currentTests = form.getFieldValue('tests') || []
+                                const hasContent = currentTests.some((t) => t.input || t.output)
+                                const newTests = hasContent ? [...currentTests, ...res.tests] : res.tests
+                                form.setFieldsValue({ tests: newTests })
+                                message.success(`Đã nạp thành công ${res.tests.length} testcase từ ${file.name}`)
+                                if (res.unpairedInputs?.length) {
+                                  message.warning(`Có ${res.unpairedInputs.length} file input thiếu output tương ứng`)
+                                }
+                              } else {
+                                message.warning('Không tìm thấy testcase hợp lệ trong file ZIP')
+                              }
+                            } catch (err) {
+                              message.error(err.message || 'Lỗi khi đọc file ZIP')
+                            } finally {
+                              setUploadingZip(false)
+                            }
+                            return false
+                          }}
+                        >
+                          <Button icon={<UploadOutlined />} loading={uploadingZip}>
+                            Chọn file ZIP (.zip)
+                          </Button>
+                        </Upload>
+                      </Space>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        Hỗ trợ các cặp file: <code>1.in / 1.out</code>, <code>test01.inp / test01.out</code>, thư mục <code>input/</code> và <code>output/</code>,...
+                      </Typography.Text>
+                    </Space>
+                  </Card>
+
                   <IoList name="tests" label="Test" addText="Thêm test case" />
                 </>
               ),
@@ -227,10 +307,98 @@ function ProblemDrawer({ open, problem, onClose, onSaved }) {
   )
 }
 
+function QuickZipModal({ open, problem, onClose, onUploaded }) {
+  const [fileList, setFileList] = useState([])
+  const [keepSamples, setKeepSamples] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const { message } = App.useApp()
+
+  const handleUpload = async () => {
+    if (!fileList.length) {
+      message.warning('Vui lòng chọn file .zip')
+      return
+    }
+    setUploading(true)
+    try {
+      const res = await api.uploadProblemTestCasesZip(problem.id, fileList[0], keepSamples)
+      message.success(res.message || `Đã nhập thành công ${res.importedCount} test case!`)
+      if (res.unpairedInputs?.length) {
+        message.warning(`Có ${res.unpairedInputs.length} file input thiếu output tương ứng`)
+      }
+      onUploaded()
+      onClose()
+    } catch (err) {
+      message.error(err.message || 'Lỗi khi tải lên file ZIP')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      title={
+        <Space>
+          <FileZipOutlined style={{ color: '#38bdf8' }} />
+          <span>Nhập bộ test từ file ZIP – #{problem?.id} {problem?.title}</span>
+        </Space>
+      }
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          Đóng
+        </Button>,
+        <Button key="submit" type="primary" loading={uploading} onClick={handleUpload}>
+          Bắt đầu nhập test
+        </Button>,
+      ]}
+      destroyOnHidden
+    >
+      <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
+        <Alert
+          type="info"
+          showIcon
+          message="Định dạng file ZIP hợp lệ"
+          description={
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+              <li>Cặp file theo số thứ tự: <code>1.in / 1.out</code>, <code>2.inp / 2.out</code>, <code>test03.in / test03.ans</code></li>
+              <li>Thư mục riêng: <code>input/1.txt</code> và <code>output/1.txt</code></li>
+              <li>Thư mục từng test: <code>test01/input.txt</code> và <code>test01/output.txt</code></li>
+            </ul>
+          }
+        />
+
+        <Checkbox checked={keepSamples} onChange={(e) => setKeepSamples(e.target.checked)}>
+          Giữ lại các test ví dụ (Sample tests) hiện có của đề
+        </Checkbox>
+
+        <Upload.Dragger
+          accept=".zip"
+          maxCount={1}
+          fileList={fileList}
+          beforeUpload={(file) => {
+            setFileList([file])
+            return false
+          }}
+          onRemove={() => setFileList([])}
+          style={{ padding: '16px 0' }}
+        >
+          <p className="ant-upload-drag-icon">
+            <InboxOutlined style={{ color: '#38bdf8', fontSize: 36 }} />
+          </p>
+          <p className="ant-upload-text">Kéo thả file .zip vào đây hoặc bấm để chọn</p>
+          <p className="ant-upload-hint">Dung lượng tối đa 50 MB, hỗ trợ tối đa 500 testcases</p>
+        </Upload.Dragger>
+      </Space>
+    </Modal>
+  )
+}
+
 export default function AdminProblemsPage() {
   const { message } = App.useApp()
   const list = useFetch(() => api.listProblems(), [])
   const [editing, setEditing] = useState(null)
+  const [zipModalProblem, setZipModalProblem] = useState(null)
 
   const openEdit = async (id) => {
     try {
@@ -245,20 +413,24 @@ export default function AdminProblemsPage() {
     list.reload()
   }
 
+  const toggleVisibility = async (id, visible) => {
+    try {
+      await api.toggleProblemVisibility(id, visible)
+      list.reload()
+    } catch (e) {
+      message.error(e.message)
+    }
+  }
+
   return (
     <div className="page">
       <AdminPageHeader
         title="Ngân hàng đề bài"
         description="Thêm, sửa, xoá đề bài và bộ test case dùng để chấm."
         actions={
-          <Space wrap>
-            <Link to="/admin/submissions">
-              <Button icon={<ProfileOutlined />}>Xem bài nộp sinh viên</Button>
-            </Link>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
-              Thêm đề bài
-            </Button>
-          </Space>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
+            Thêm đề bài
+          </Button>
         }
       />
       <Card styles={{ body: { padding: 0 } }}>
@@ -302,6 +474,17 @@ export default function AdminProblemsPage() {
             },
             { title: 'Số test', dataIndex: 'testCount', width: 80, align: 'center' },
             {
+              title: 'Công khai',
+              dataIndex: 'publicVisible',
+              width: 90,
+              align: 'center',
+              render: (val, p) => (
+                <Tooltip title={val ? 'Đang công khai — bấm để ẩn' : 'Đang ẩn — bấm để công khai'}>
+                  <Switch size="small" checked={val} onChange={(v) => toggleVisibility(p.id, v)} />
+                </Tooltip>
+              ),
+            },
+            {
               title: 'Bài nộp (AC)',
               width: 140,
               render: (_, p) => (
@@ -326,6 +509,14 @@ export default function AdminProblemsPage() {
                     <Link to={`/admin/submissions?problemId=${p.id}`}>
                       <Button size="small" icon={<ProfileOutlined />} aria-label="Xem bài nộp" />
                     </Link>
+                  </Tooltip>
+                  <Tooltip title="Nhập bộ test từ file ZIP">
+                    <Button
+                      size="small"
+                      icon={<FileZipOutlined />}
+                      onClick={() => setZipModalProblem(p)}
+                      aria-label="Upload ZIP"
+                    />
                   </Tooltip>
                   <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(p.id)} aria-label="Sửa" />
                   <Popconfirm
@@ -353,6 +544,12 @@ export default function AdminProblemsPage() {
           setEditing(null)
           list.reload()
         }}
+      />
+      <QuickZipModal
+        open={!!zipModalProblem}
+        problem={zipModalProblem}
+        onClose={() => setZipModalProblem(null)}
+        onUploaded={() => list.reload()}
       />
     </div>
   )

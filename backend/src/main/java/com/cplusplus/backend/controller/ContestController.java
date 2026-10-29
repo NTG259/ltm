@@ -83,6 +83,28 @@ public class ContestController {
         return ResponseEntity.ok(toContestMap(contest, currentUser));
     }
 
+    @DeleteMapping("/{id}/register")
+    @Transactional
+    public ResponseEntity<?> unregisterContest(@PathVariable Long id, HttpServletRequest req) {
+        User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Vui lòng đăng nhập"));
+        }
+
+        Contest contest = contestRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
+
+        if (contest.phaseAt(Instant.now()) != com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể hủy đăng ký khi kỳ thi chưa bắt đầu"));
+        }
+
+        contestParticipantRepository.findByContestIdAndUserId(id, currentUser.getId())
+                .ifPresent(contestParticipantRepository::delete);
+
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}/standings")
     public ResponseEntity<?> getStandings(@PathVariable Long id) {
         Contest contest = contestRepository.findWithProblems(id)
@@ -252,14 +274,13 @@ public class ContestController {
     }
 
     @PostMapping("/{id}/plagiarism/run")
-    @Transactional
     public ResponseEntity<?> runPlagiarismCheck(@PathVariable Long id, HttpServletRequest servletReq) {
         User currentUser = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         if (currentUser == null || !currentUser.isAdmin()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Chỉ quản trị viên mới có quyền quét đạo văn"));
         }
-
+        // Tạo report RUNNING ngay lập tức, trả về frontend — không chặn HTTP thread
         plagiarismService.runPlagiarismCheck(id);
         return ResponseEntity.ok(plagiarismService.getLatestReportDto(id));
     }

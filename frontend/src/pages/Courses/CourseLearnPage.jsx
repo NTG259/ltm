@@ -28,6 +28,7 @@ import {
   CodeOutlined,
   CopyOutlined,
   LeftOutlined,
+  LockOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   ReadOutlined,
@@ -45,7 +46,8 @@ import CodeEditor from '../../components/CodeEditor'
 import VerdictTag from '../../components/VerdictTag'
 import { formatMemory, formatTime } from '../../lib/format'
 
-const SAMPLE_LESSONS = {
+// eslint-disable-next-line no-unused-vars
+const _SAMPLE_LESSONS_REMOVED = {
   io: {
     theory: `### 1. Luồng nhập xuất cơ bản trong C++
 C++ sử dụng thư viện \`<iostream>\` để xử lý việc nhập dữ liệu từ bàn phím và in kết quả ra màn hình.
@@ -147,14 +149,6 @@ int main() {
   },
 }
 
-function getFallbackLesson(title = '') {
-  const t = title.toLowerCase()
-  if (t.includes('nhập xuất') || t.includes('cin') || t.includes('cout')) return SAMPLE_LESSONS.io
-  if (t.includes('rẽ nhánh') || t.includes('if') || t.includes('switch')) return SAMPLE_LESSONS.branches
-  if (t.includes('lặp') || t.includes('for') || t.includes('while')) return SAMPLE_LESSONS.loop
-  return SAMPLE_LESSONS.default
-}
-
 export default function CourseLearnPage() {
   const { courseId, unitId } = useParams()
   const navigate = useNavigate()
@@ -230,12 +224,13 @@ export default function CourseLearnPage() {
     if (units.length === 0) return null
     if (unitId) {
       const found = units.find((u) => String(u.id) === String(unitId))
-      if (found) return found
+      // Don't navigate to a locked unit; fall through to find unlocked one
+      if (found && !(found.locked && !isAdmin)) return found
     }
-    // Nếu không có unitId trên URL, tìm bài đầu tiên chưa hoàn thành
-    const firstUnfinished = units.find((u) => !completedSet.has(u.id))
-    return firstUnfinished || units[0]
-  }, [units, unitId, completedSet])
+    // Nếu không có unitId trên URL (hoặc unit bị khóa), tìm bài đầu tiên chưa hoàn thành và chưa bị khóa
+    const firstAccessible = units.find((u) => !completedSet.has(u.id) && !(u.locked && !isAdmin))
+    return firstAccessible || units[0]
+  }, [units, unitId, completedSet, isAdmin])
 
   // Index của unit hiện tại
   const currentIndex = useMemo(() => {
@@ -261,23 +256,17 @@ export default function CourseLearnPage() {
       return Promise.all([
         api.getLesson(unitIdKey),
         api.getUnitProblems(unitIdKey),
-      ]).then(([resLesson, resProblems]) => {
-        const fallback = getFallbackLesson(currentUnit?.title)
-        return {
-          theoryContent: resLesson?.theoryContent || fallback.theory,
-          sampleCode: resLesson?.sampleCode || fallback.code,
-          sampleInput: resLesson?.sampleInput || fallback.input,
-          problems: resProblems || [],
-        }
-      }).catch(() => {
-        const fallback = getFallbackLesson(currentUnit?.title)
-        return {
-          theoryContent: fallback.theory,
-          sampleCode: fallback.code,
-          sampleInput: fallback.input,
-          problems: [],
-        }
-      })
+      ]).then(([resLesson, resProblems]) => ({
+        theoryContent: resLesson?.theoryContent || '',
+        sampleCode: resLesson?.sampleCode || '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code của bạn ở đây\n    return 0;\n}',
+        sampleInput: resLesson?.sampleInput || '',
+        problems: resProblems || [],
+      })).catch(() => ({
+        theoryContent: '',
+        sampleCode: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code của bạn ở đây\n    return 0;\n}',
+        sampleInput: '',
+        problems: [],
+      }))
     },
     [unitIdKey]
   )
@@ -301,6 +290,10 @@ export default function CourseLearnPage() {
   const [updatingProgress, setUpdatingProgress] = useState(false)
 
   const handleSelectUnit = (targetUnit) => {
+    if (targetUnit.locked && !isAdmin) {
+      message.warning('Hãy hoàn thành chủ đề trước để mở khóa chủ đề này.')
+      return
+    }
     setEditedCode(null)
     setEditedInput(null)
     setRunResult(null)
@@ -526,6 +519,7 @@ export default function CourseLearnPage() {
                 renderItem={(unit, index) => {
                   const isDone = completedSet.has(unit.id)
                   const isActive = currentUnit && unit.id === currentUnit.id
+                  const isLocked = !isAdmin && unit.locked === true
                   return (
                     <div
                       key={unit.id}
@@ -533,10 +527,11 @@ export default function CourseLearnPage() {
                       className={isDone && !isActive ? 'unit-item-completed' : ''}
                       style={{
                         padding: '12px 16px',
-                        cursor: 'pointer',
+                        cursor: isLocked ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 12,
+                        opacity: isLocked ? 0.55 : 1,
                         background: isActive
                           ? 'var(--primary-soft)'
                           : isDone
@@ -546,6 +541,8 @@ export default function CourseLearnPage() {
                           ? '4px solid var(--primary)'
                           : isDone
                           ? '4px solid #16a34a'
+                          : isLocked
+                          ? '4px solid var(--border)'
                           : '4px solid transparent',
                         borderBottom: '1px solid var(--border)',
                         transition: 'all 0.15s ease',
@@ -569,7 +566,7 @@ export default function CourseLearnPage() {
                           boxShadow: isDone ? '0 2px 6px rgba(22, 163, 74, 0.4)' : undefined,
                         }}
                       >
-                        {isDone ? <CheckCircleFilled style={{ fontSize: 15 }} /> : index + 1}
+                        {isDone ? <CheckCircleFilled style={{ fontSize: 15 }} /> : isLocked ? <LockOutlined style={{ fontSize: 13 }} /> : index + 1}
                       </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -594,6 +591,11 @@ export default function CourseLearnPage() {
                         {isDone && !isActive && (
                           <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, fontWeight: 700 }}>
                             ✓ Đã hoàn thành
+                          </div>
+                        )}
+                        {isLocked && (
+                          <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
+                            Hoàn thành bài trước để mở khóa
                           </div>
                         )}
                       </div>
@@ -694,7 +696,19 @@ export default function CourseLearnPage() {
                       }}
                       styles={{ body: { padding: '28px 36px' } }}
                     >
-                      <MarkdownViewer content={lessonData?.theoryContent || ''} />
+                      {lessonData?.theoryContent ? (
+                        <MarkdownViewer content={lessonData.theoryContent} />
+                      ) : (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={
+                            <span>
+                              Nội dung lý thuyết đang được cập nhật.
+                              {isAdmin && <><br /><Typography.Text type="secondary" style={{ fontSize: 12 }}>Nhấn <b>Chỉnh sửa khóa học</b> để thêm lý thuyết cho chủ đề này.</Typography.Text></>}
+                            </span>
+                          }
+                        />
+                      )}
                     </Card>
                   )}
 

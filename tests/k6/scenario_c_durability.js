@@ -70,7 +70,7 @@ export default function () {
   console.log("Resuming — polling for verdicts...");
 
   // Poll all submissions for up to 5 minutes
-  const terminal = new Set(["AC", "WA", "TLE", "MLE", "RTE", "CE", "SEC", "FAILED"]);
+  const terminal = new Set(["AC", "WA", "TLE", "MLE", "RTE", "CE", "SEC", "FAILED", "FINISHED"]);
   const results = {};
 
   for (let attempt = 0; attempt < 90; attempt++) {
@@ -81,10 +81,9 @@ export default function () {
       const poll = http.get(`${BASE}/api/submissions/${id}`, { headers });
       if (poll.status === 200) {
         const s = poll.json();
-        const st = s.status || s.verdict || "";
-        if (terminal.has(st)) {
-          results[id] = st;
-          console.log(`Submission ${id}: ${st}`);
+        if (terminal.has(s.status) || terminal.has(s.verdict)) {
+          results[id] = s.verdict || s.status;
+          console.log(`Submission ${id}: ${results[id]}`);
         } else {
           allDone = false;
         }

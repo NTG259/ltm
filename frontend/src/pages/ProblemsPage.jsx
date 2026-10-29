@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Button, Card, Input, Progress, Segmented, Select, Space, Table, Tag, Tooltip } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
@@ -11,11 +11,33 @@ import { percent } from '../lib/format'
 export default function ProblemsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const problems = useFetch(() => api.listProblems(), [])
-  const mine = useFetch(() => api.listSubmissions({ userId: user.id }), [user.id])
   const [query, setQuery] = useState('')
-  const [difficulty, setDifficulty] = useState('all')
+  const [difficulty, setDifficulty] = useState('')
   const [tag, setTag] = useState(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
+
+  const debounceRef = useRef(null)
+  const [debouncedQ, setDebouncedQ] = useState('')
+
+  const handleQueryChange = (e) => {
+    const val = e.target.value
+    setQuery(val)
+    setPage(1)
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedQ(val), 300)
+  }
+
+  const handleDifficultyChange = (val) => {
+    setDifficulty(val === 'all' ? '' : val)
+    setPage(1)
+  }
+
+  const problems = useFetch(
+    () => api.searchProblems({ q: debouncedQ, difficulty, page, size: PAGE_SIZE }),
+    [debouncedQ, difficulty, page],
+  )
+  const mine = useFetch(() => api.listSubmissions({ userId: user.id }), [user.id])
 
   const myStatus = useMemo(() => {
     const map = {}
@@ -26,12 +48,11 @@ export default function ProblemsPage() {
     return map
   }, [mine.data])
 
-  const tags = useMemo(() => [...new Set((problems.data || []).flatMap((p) => p.tags))], [problems.data])
-  const rows = (problems.data || []).filter(
-    (p) =>
-      (difficulty === 'all' || p.difficulty === difficulty) &&
-      (!tag || p.tags.includes(tag)) &&
-      (!query || `#${p.id} ${p.title}`.toLowerCase().includes(query.toLowerCase())),
+  const rows = (problems.data?.problems || []).filter((p) => !tag || (p.tags || []).includes(tag))
+  const total = problems.data?.total ?? 0
+  const tags = useMemo(
+    () => [...new Set((problems.data?.problems || []).flatMap((p) => p.tags || []))],
+    [problems.data],
   )
   const solved = Object.values(myStatus).filter((v) => v === 'solved').length
 
@@ -57,10 +78,10 @@ export default function ProblemsPage() {
           >
             <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Đã giải</span>
             <b style={{ color: 'var(--text)', fontSize: 14, fontFamily: 'var(--mono)' }}>
-              {solved}/{problems.data?.length ?? 0}
+              {solved}/{total || '…'}
             </b>
             <Progress
-              percent={problems.data?.length ? Math.round((solved / problems.data.length) * 100) : 0}
+              percent={total ? Math.round((solved / total) * 100) : 0}
               size={[64, 6]}
               showInfo={false}
               strokeColor="#10b981"
@@ -76,12 +97,12 @@ export default function ProblemsPage() {
             prefix={<SearchOutlined />}
             placeholder="Tìm theo tên hoặc mã bài (#1)…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={handleQueryChange}
             style={{ width: 300 }}
           />
           <Segmented
-            value={difficulty}
-            onChange={setDifficulty}
+            value={difficulty || 'all'}
+            onChange={handleDifficultyChange}
             options={[
               { value: 'all', label: 'Tất cả' },
               ...Object.entries(DIFFICULTIES).map(([k, v]) => ({ value: k, label: v.label })),
@@ -103,7 +124,14 @@ export default function ProblemsPage() {
           rowKey="id"
           loading={problems.loading}
           dataSource={rows}
-          pagination={false}
+          pagination={{
+            current: page,
+            pageSize: PAGE_SIZE,
+            total,
+            onChange: (p) => setPage(p),
+            showSizeChanger: false,
+            showTotal: (t) => `${t} bài`,
+          }}
           scroll={{ x: 760 }}
           rowClassName={(p) => {
             if (myStatus[p.id] === 'solved') return 'row-problem-solved'

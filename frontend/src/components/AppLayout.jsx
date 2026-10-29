@@ -1,37 +1,42 @@
-import { Avatar, Button, Dropdown, Layout, Menu, Space, Tag, Tooltip, Typography } from 'antd'
+import { Avatar, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
 import {
   BookOutlined,
-  DashboardOutlined,
   CloudServerOutlined,
+  CodeOutlined,
+  DashboardOutlined,
   DatabaseOutlined,
   LogoutOutlined,
+  OrderedListOutlined,
   ProfileOutlined,
   FlagOutlined,
   TeamOutlined,
   TrophyOutlined,
   UserOutlined,
+  UsergroupAddOutlined,
   SunOutlined,
   MoonOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
-import { useSocketStatus } from '../lib/hooks'
-import { USE_MOCK } from '../api'
+import { useOnlineCount, useSocketStatus } from '../lib/hooks'
 import CyberBackground from './CyberBackground'
 
 const SOCKET_LABEL = {
   mock: { status: 'processing', text: 'Mock Master', tip: 'Đang dùng Master giả lập trong trình duyệt (VITE_USE_MOCK)' },
   open: { status: 'success', text: 'WS :8001', tip: 'Đã kết nối WebSocket RFC 6455 tới Master' },
   connecting: { status: 'warning', text: 'Đang kết nối…', tip: 'Đang kết nối WebSocket tới Master :8001' },
+  reconnecting: { status: 'warning', text: 'Đang thử lại…', tip: 'WebSocket bị ngắt – đang tự động kết nối lại' },
+  disconnected: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket chưa kết nối' },
   closed: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket bị ngắt – tự động thử lại' },
 }
 
 export default function AppLayout() {
   const { user, isAdmin, logout } = useAuth()
-  const isLecturer = user?.role === 'lecturer'
   const { mode, toggle } = useThemeMode()
-  const socket = SOCKET_LABEL[useSocketStatus()] || SOCKET_LABEL.connecting
+  const socketStatus = useSocketStatus()
+  const socket = SOCKET_LABEL[socketStatus] || SOCKET_LABEL.connecting
+  const onlineCount = useOnlineCount()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -40,21 +45,19 @@ export default function AppLayout() {
       ? [
           { key: '/admin', icon: <CloudServerOutlined />, label: <Link to="/admin">Giám sát</Link> },
           { key: '/admin/overview', icon: <DashboardOutlined />, label: <Link to="/admin/overview">Tổng quan</Link> },
-          { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp sinh viên</Link> },
+          { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
           { key: '/admin/courses', icon: <BookOutlined />, label: <Link to="/admin/courses">Khóa học</Link> },
           { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
         ]
-      : isLecturer ? [] : [
-          { key: '/courses', label: <Link to="/courses">Khóa học</Link> },
-          { key: '/playground', label: <Link to="/playground">Chạy thử</Link> },
-          { key: '/problems', label: <Link to="/problems">Bài tập</Link> },
-          { key: '/contests', label: <Link to="/contests">Kỳ thi</Link> },
-          { key: '/submissions', label: <Link to="/submissions">Bài nộp</Link> },
-          { key: '/my-classrooms', label: <Link to="/my-classrooms">Lớp học</Link> },
+      : [
+          { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
+          { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
+          { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp</Link> },
+          { key: '/my-classrooms', icon: <TeamOutlined />, label: <Link to="/my-classrooms">Lớp học</Link> },
         ]),
-    ...(isAdmin ? [{ key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> }] : [{ key: '/leaderboard', label: <Link to="/leaderboard">Xếp hạng</Link> }]),
+    { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> },
   ]
   const selected =
     items
@@ -81,7 +84,7 @@ export default function AppLayout() {
 
   return (
     <Layout className={isAdmin ? 'admin-layout' : 'student-layout'} style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
-      {isAdmin && <CyberBackground mode={mode} />}
+      <CyberBackground mode={mode} />
       <Layout.Header
         className="app-header"
         style={{
@@ -96,20 +99,21 @@ export default function AppLayout() {
           zIndex: 100,
         }}
       >
-        <Link to={isAdmin ? '/admin' : isLecturer ? '/leaderboard' : '/problems'} className="brand">
+        <Link to={isAdmin ? '/admin' : '/problems'} className="brand">
+          <span className="brand-logo">
+            <CodeOutlined />
+          </span>
           <span>
             Code<b>Judge</b>
           </span>
-          {isAdmin && (
-            <Tag color="purple" style={{ marginInlineStart: 4, borderRadius: 999, fontWeight: 600 }}>
-              Admin
-            </Tag>
-          )}
-          {isLecturer && <Tag color="blue" style={{ marginInlineStart: 4, borderRadius: 999 }}>Giảng viên</Tag>}
         </Link>
         <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
         <Space size={8} align="center" style={{ lineHeight: 1 }}>
-          {isAdmin && <Tooltip title={socket.tip}>
+          {isAdmin && <Tooltip title={
+            (socketStatus === 'open' || socketStatus === 'mock') && onlineCount != null
+              ? `${onlineCount} sinh viên đang online`
+              : socket.tip
+          }>
             <div className="header-status-pill">
               <span
                 style={{
@@ -128,7 +132,14 @@ export default function AppLayout() {
                       : 'none',
                 }}
               />
-              <span>{socket.text}</span>
+              {(socketStatus === 'open' || socketStatus === 'mock') && onlineCount != null ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <UsergroupAddOutlined style={{ fontSize: 12 }} />
+                  {onlineCount}
+                </span>
+              ) : (
+                <span>{socket.text}</span>
+              )}
             </div>
           </Tooltip>}
 
@@ -165,8 +176,8 @@ export default function AppLayout() {
                   icon: <LogoutOutlined />,
                   danger: true,
                   label: 'Đăng xuất',
-                  onClick: () => {
-                    logout()
+                  onClick: async () => {
+                    await logout()
                     navigate('/login')
                   },
                 },
@@ -209,12 +220,6 @@ export default function AppLayout() {
       <Layout.Content style={{ background: 'transparent', position: 'relative', zIndex: 1 }}>
         <Outlet />
       </Layout.Content>
-      {isAdmin && !location.pathname.match(/^\/(problems\/\d+|contests\/\d+\/problems\/|courses\/\d+\/learn)/) && (
-        <Layout.Footer style={{ textAlign: 'center', padding: '14px 20px', fontSize: 12, color: 'var(--text-2)' }}>
-          CodeJudge – Hệ thống chấm bài C++ phân tán · Master HTTP :8082 · WebSocket :8001 · Worker TCP :9000
-          {USE_MOCK && ' · Chế độ mock'}
-        </Layout.Footer>
-      )}
     </Layout>
   )
 }

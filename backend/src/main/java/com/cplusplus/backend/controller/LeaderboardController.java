@@ -32,8 +32,9 @@ public class LeaderboardController {
         String sql = """
                 SELECT c.id, c.name, c.semester FROM classrooms c
                 WHERE :isAdmin
-                   OR (:isLecturer AND EXISTS (SELECT 1 FROM classroom_lecturers cl
-                                               WHERE cl.classroom_id = c.id AND cl.user_id = :userId))
+                   OR (:isLecturer AND (c.created_by = :userId OR EXISTS (
+                        SELECT 1 FROM classroom_lecturers cl
+                        WHERE cl.classroom_id = c.id AND cl.user_id = :userId)))
                    OR (:isStudent AND EXISTS (SELECT 1 FROM classroom_students cs
                                               WHERE cs.classroom_id = c.id AND cs.user_id = :userId))
                 ORDER BY c.name, c.id
@@ -56,27 +57,25 @@ public class LeaderboardController {
         var params = parameters(classroomId);
         String sql = """
                 WITH eligible AS (
-                    SELECT u.id, u.username, u.full_name, c.name AS classroom_name
+                    SELECT DISTINCT u.id, u.username, u.full_name
                     FROM users u
-                    LEFT JOIN classroom_students cs ON cs.user_id = u.id
-                    LEFT JOIN classrooms c ON c.id = cs.classroom_id
                     WHERE u.role = 'STUDENT'
-                """ + (classroomId == null ? "" : " AND cs.classroom_id = :classroomId\n") + """
+                """ + (classroomId == null ? "" : " AND EXISTS (SELECT 1 FROM classroom_students cs WHERE cs.user_id = u.id AND cs.classroom_id = :classroomId)\n") + """
                 ), scoped AS (
                 """ + scopedSubmissions(classroomId) + """
                 ), first_ac AS (
-                    SELECT user_id, problem_id, min(created_at) AS ac_at
-                    FROM scoped WHERE verdict = 'AC' GROUP BY user_id, problem_id
+                    SELECT DISTINCT ON (user_id, problem_id) user_id, problem_id, created_at AS ac_at, id AS ac_id
+                    FROM scoped WHERE verdict = 'AC' ORDER BY user_id, problem_id, created_at, id
                 ), per_problem AS (
                     SELECT s.user_id, s.problem_id, fa.ac_at,
-                           count(*) FILTER (WHERE fa.ac_at IS NOT NULL AND s.created_at <= fa.ac_at) AS tries
+                           count(*) FILTER (WHERE fa.ac_at IS NOT NULL AND (s.created_at, s.id) <= (fa.ac_at, fa.ac_id)) AS tries
                     FROM scoped s LEFT JOIN first_ac fa ON fa.user_id = s.user_id AND fa.problem_id = s.problem_id
                     GROUP BY s.user_id, s.problem_id, fa.ac_at
                 ), totals AS (
                     SELECT user_id, count(ac_at) AS solved, sum(tries) AS attempts, max(ac_at) AS completed_at
                     FROM per_problem GROUP BY user_id
                 ), ranked AS (
-                    SELECT e.id, e.username, e.full_name, e.classroom_name,
+                    SELECT e.id, e.username, e.full_name,
                            coalesce(t.solved, 0) AS solved, coalesce(t.attempts, 0) AS attempts,
                            rank() OVER (ORDER BY coalesce(t.solved, 0) DESC,
                                                   coalesce(t.attempts, 0) ASC,
@@ -89,7 +88,6 @@ public class LeaderboardController {
             result.put("rank", rs.getLong("rank"));
             result.put("userId", rs.getString("username"));
             result.put("userName", rs.getString("full_name"));
-            result.put("classroomName", rs.getString("classroom_name"));
             result.put("solved", rs.getLong("solved"));
             result.put("attempts", rs.getLong("attempts"));
             return result;
@@ -161,7 +159,7 @@ public class LeaderboardController {
 
     private String scopedSubmissions(Long classroomId) {
         StringBuilder sql = new StringBuilder("""
-                SELECT s.user_id, s.problem_id, s.verdict, s.created_at
+                SELECT s.id, s.user_id, s.problem_id, s.verdict, s.created_at
                 FROM submissions s
                 JOIN users u ON u.id = s.user_id AND u.role = 'STUDENT'
                 JOIN problems p ON p.id = s.problem_id AND p.is_public = true AND p.deleted_at IS NULL
@@ -194,10 +192,16 @@ public class LeaderboardController {
             if (!Boolean.TRUE.equals(exists)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp");
             return;
         }
-        String table = user.isLecturer() ? "classroom_lecturers" : "classroom_students";
-        Boolean permitted = jdbc.getJdbcTemplate().queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM " + table + " WHERE classroom_id = ? AND user_id = ?)",
-                Boolean.class, classroomId, user.getId());
+        String sql = user.isLecturer()
+                ? """
+                  SELECT EXISTS (SELECT 1 FROM classrooms c WHERE c.id = ? AND
+                    (c.created_by = ? OR EXISTS (SELECT 1 FROM classroom_lecturers cl
+                     WHERE cl.classroom_id = c.id AND cl.user_id = ?)))
+                  """
+                : "SELECT EXISTS (SELECT 1 FROM classroom_students WHERE classroom_id = ? AND user_id = ?)";
+        Boolean permitted = user.isLecturer()
+                ? jdbc.getJdbcTemplate().queryForObject(sql, Boolean.class, classroomId, user.getId(), user.getId())
+                : jdbc.getJdbcTemplate().queryForObject(sql, Boolean.class, classroomId, user.getId());
         if (!Boolean.TRUE.equals(permitted)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không thuộc lớp này");
     }
 }

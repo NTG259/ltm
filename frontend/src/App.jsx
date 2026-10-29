@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { App as AntApp, ConfigProvider, Spin } from 'antd'
 import viVN from 'antd/locale/vi_VN'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
@@ -6,6 +6,7 @@ import AuthProvider from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import { buildTheme, ThemeModeContext } from './theme'
 import AppLayout from './components/AppLayout'
+import TeacherLayout from './components/TeacherLayout'
 import LoginPage from './pages/LoginPage'
 
 const ProblemsPage = lazy(() => import('./pages/ProblemsPage'))
@@ -25,12 +26,14 @@ const AdminClassroomDetailPage = lazy(() => import('./pages/admin/AdminClassroom
 const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroomMonitorPage'))
 const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
 const MyClassroomsPage = lazy(() => import('./pages/MyClassroomsPage'))
+const MyClassroomDetailPage = lazy(() => import('./pages/MyClassroomDetailPage'))
 const CourseListPage = lazy(() => import('./pages/Courses/CourseListPage'))
 const CourseDetailPage = lazy(() => import('./pages/Courses/CourseDetailPage'))
 const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
 const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
 const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
-const PlaygroundPage = lazy(() => import('./pages/PlaygroundPage'))
+const TeacherClassroomsPage = lazy(() => import('./pages/teacher/TeacherClassroomsPage'))
+const TeacherClassroomDetailPage = lazy(() => import('./pages/teacher/TeacherClassroomDetailPage'))
 
 const THEME_KEY = 'cj.theme'
 
@@ -42,17 +45,18 @@ function readTheme() {
   }
 }
 
-function RequireAuth({ admin, children }) {
-  const { user, isAdmin } = useAuth()
+function RequireAuth({ admin, lecturer, children }) {
+  const { user, isAdmin, isLecturer } = useAuth()
   const location = useLocation()
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (admin && !isAdmin) return <Navigate to="/problems" replace />
+  if (lecturer && !isLecturer && !isAdmin) return <Navigate to="/problems" replace />
   return children
 }
 
 function AppRoutes() {
-  const { user, isAdmin } = useAuth()
-  const home = !user ? '/login' : isAdmin ? '/admin' : user.role === 'lecturer' ? '/leaderboard' : '/problems'
+  const { user, isAdmin, isLecturer } = useAuth()
+  const home = !user ? '/login' : isAdmin ? '/admin' : isLecturer ? '/teacher/classrooms' : '/problems'
   return (
     <Suspense fallback={<Spin style={{ display: 'block', margin: 80 }} />}>
       <Routes>
@@ -68,8 +72,7 @@ function AppRoutes() {
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
           <Route path="/courses/:courseId/learn/:unitId" element={<CourseLearnPage />} />
-          <Route path="/playground" element={<PlaygroundPage />} />
-          <Route path="/problems" element={<ProblemsPage />} />
+<Route path="/problems" element={<ProblemsPage />} />
           <Route path="/problems/:id" element={<WorkspacePage />} />
           <Route path="/submissions" element={<SubmissionsPage />} />
           <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
@@ -78,6 +81,7 @@ function AppRoutes() {
           <Route path="/contests/:id" element={<ContestDetailPage />} />
           <Route path="/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
           <Route path="/my-classrooms" element={<MyClassroomsPage />} />
+          <Route path="/classrooms/:id" element={<MyClassroomDetailPage />} />
           <Route
             path="/admin"
             element={
@@ -167,6 +171,18 @@ function AppRoutes() {
             }
           />
         </Route>
+        {/* Teacher routes */}
+        <Route
+          element={
+            <RequireAuth lecturer>
+              <TeacherLayout />
+            </RequireAuth>
+          }
+        >
+          <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
+          <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
+          <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />
+        </Route>
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>
     </Suspense>
@@ -175,6 +191,12 @@ function AppRoutes() {
 
 export default function App() {
   const [mode, setMode] = useState(readTheme)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode)
+    document.body.setAttribute('data-theme', mode)
+  }, [mode])
+
   const toggle = useCallback(() => {
     setMode((m) => {
       const next = m === 'dark' ? 'light' : 'dark'

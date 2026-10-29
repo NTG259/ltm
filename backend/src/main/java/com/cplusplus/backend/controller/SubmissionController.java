@@ -1,5 +1,6 @@
 package com.cplusplus.backend.controller;
 
+import com.cplusplus.backend.domain.submission.Language;
 import com.cplusplus.backend.domain.submission.Submission;
 import com.cplusplus.backend.domain.submission.Verdict;
 import com.cplusplus.backend.domain.user.User;
@@ -29,15 +30,29 @@ public class SubmissionController {
     }
 
     public record SubmitRequest(Long problemId, String language, String sourceCode, Long contestId) {}
-    public record RunTestRequest(Long problemId, String sourceCode, String input, String expectedOutput) {}
+    public record RunTestRequest(Long problemId, String language, String sourceCode, String input, String expectedOutput) {}
+
+    @GetMapping("/languages")
+    public ResponseEntity<List<Map<String, String>>> getLanguages() {
+        List<Map<String, String>> langs = Arrays.stream(Language.values())
+                .map(l -> Map.of("code", l.code(), "label", l.label()))
+                .toList();
+        return ResponseEntity.ok(langs);
+    }
 
     @PostMapping("/run")
-    public ResponseEntity<?> runTest(@RequestBody RunTestRequest req) {
+    public ResponseEntity<?> runTest(@RequestBody RunTestRequest req, HttpServletRequest servletReq) {
+        User user = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Vui lòng đăng nhập để chạy thử"));
+        }
         if (req.sourceCode() == null || req.sourceCode().isBlank()) {
             throw new IllegalArgumentException("Mã nguồn không được để trống");
         }
         Map<String, Object> result = judgeMasterService.runCustomTest(
                 req.problemId(),
+                req.language(),
                 req.sourceCode(),
                 req.input(),
                 req.expectedOutput()
@@ -72,13 +87,13 @@ public class SubmissionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listSubmissions(
+    public ResponseEntity<?> listSubmissions(
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) Long problemId,
             @RequestParam(required = false) Long contestId,
             @RequestParam(required = false) String verdict,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(defaultValue = "50") int size) {
 
         Verdict v = null;
         if (verdict != null && !verdict.isBlank()) {
@@ -87,16 +102,14 @@ public class SubmissionController {
             } catch (Exception ignored) {}
         }
 
-        Pageable pageable = PageRequest.of(page, Math.min(size, 200));
-        List<SubmissionRepository.Summary> summaries = submissionRepository.search(
-                (userId != null && !userId.isBlank()) ? userId : null,
-                problemId,
-                contestId,
-                v,
-                pageable
-        );
+        int pageNum = page != null ? page : 0;
+        Pageable pageable = PageRequest.of(pageNum, Math.min(size, 200));
+        String usernameFilter = (userId != null && !userId.isBlank()) ? userId : null;
 
-        List<Map<String, Object>> result = summaries.stream().map(s -> {
+        List<SubmissionRepository.Summary> summaries = submissionRepository.search(
+                usernameFilter, problemId, contestId, v, pageable);
+
+        List<Map<String, Object>> rows = summaries.stream().map(s -> {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("id", s.getId());
             map.put("problemId", s.getProblemId());
@@ -115,14 +128,28 @@ public class SubmissionController {
             return map;
         }).toList();
 
-        return ResponseEntity.ok(result);
+        // Khi page được chỉ định rõ → trả về { total, submissions } cho phân trang phía client
+        if (page != null) {
+            long total = submissionRepository.countSearch(usernameFilter, problemId, contestId, v);
+            return ResponseEntity.ok(Map.of("total", total, "submissions", rows));
+        }
+        return ResponseEntity.ok(rows);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getSubmission(@PathVariable Long id) {
+    public ResponseEntity<?> getSubmission(@PathVariable Long id, HttpServletRequest servletReq) {
+        User caller = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (caller == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Vui lòng đăng nhập"));
+        }
         Submission sub = submissionRepository.findDetailed(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài nộp #" + id));
 
+        if (!caller.isAdmin() && !sub.getUser().getId().equals(caller.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn không có quyền xem bài nộp này"));
+        }
         return ResponseEntity.ok(DtoMapper.toSubmissionMap(sub));
     }
 }

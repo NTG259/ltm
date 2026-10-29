@@ -128,6 +128,8 @@ public final class DtoMapper {
                 }
             }
         }
+        map.put("publicVisible", p.isPublicVisible());
+        map.put("checker", p.getChecker() != null ? p.getChecker().code() : "lines");
         map.put("samples", samples);
         map.put("testCount", p.getTestCases() != null ? p.getTestCases().size() : 0);
 
@@ -203,6 +205,7 @@ public final class DtoMapper {
         map.put("username", cs.getUser().getUsername());
         map.put("fullName", cs.getUser().getFullName());
         map.put("joinedAt", cs.getJoinedAt().toEpochMilli());
+        map.put("importedPassword", cs.getImportedPassword());
         return map;
     }
 

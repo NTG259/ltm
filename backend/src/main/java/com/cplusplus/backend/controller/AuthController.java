@@ -1,6 +1,7 @@
 package com.cplusplus.backend.controller;
 
 import com.cplusplus.backend.security.SecurityService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,15 @@ public class AuthController {
     }
 
     public record LoginRequest(String username, String password) {}
+
+    @DeleteMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            securityService.logout(authHeader.substring(7).trim());
+        }
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {

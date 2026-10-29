@@ -23,6 +23,7 @@ import {
   EyeOutlined,
   FileTextOutlined,
   IdcardOutlined,
+  KeyOutlined,
   ProfileOutlined,
   UploadOutlined,
   UserAddOutlined,
@@ -47,7 +48,10 @@ export default function AdminClassroomDetailPage() {
   )
   const { data: allContests } = useFetch(() => api.listContests(), [])
   const { data: lecturers, reload: reloadLecturers } = useFetch(() => api.listLecturers(), [])
-  const { data: assignedLecturers, reload: reloadAssignedLecturers } = useFetch(() => api.listClassroomLecturers(id), [id])
+  const { data: assignedLecturers, reload: reloadAssignedLecturers } = useFetch(
+    () => api.listClassroomLecturers(id),
+    [id],
+  )
   const [lecturerModalOpen, setLecturerModalOpen] = useState(false)
   const [selectedLecturer, setSelectedLecturer] = useState(null)
   const [lecturerBusy, setLecturerBusy] = useState(false)
@@ -56,6 +60,11 @@ export default function AdminClassroomDetailPage() {
   const [importing, setImporting] = useState(false)
   const [selectedContest, setSelectedContest] = useState(null)
   const [assigning, setAssigning] = useState(false)
+
+  // State cho Modal reset mật khẩu
+  const [resetTarget, setResetTarget] = useState(null) // { userId, username }
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   // State cho Modal thêm sinh viên thủ công
   const [addModalVisible, setAddModalVisible] = useState(false)
@@ -227,6 +236,25 @@ export default function AdminClassroomDetailPage() {
     }
   }
 
+  const handleResetPassword = async () => {
+    if (!resetTarget) return
+    if (!resetPassword || resetPassword.length < 8) {
+      message.warning('Mật khẩu phải có ít nhất 8 ký tự')
+      return
+    }
+    setResetting(true)
+    try {
+      await api.resetStudentPassword(resetTarget.userId, resetPassword)
+      message.success(`Đã đặt lại mật khẩu cho ${resetTarget.username}`)
+      setResetTarget(null)
+      setResetPassword('')
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setResetting(false)
+    }
+  }
+
   const studentColumns = [
     {
       title: 'MSSV',
@@ -241,6 +269,20 @@ export default function AdminClassroomDetailPage() {
     },
     { title: 'Họ tên', dataIndex: 'fullName', key: 'fullName' },
     {
+      title: 'Mật khẩu import',
+      dataIndex: 'importedPassword',
+      key: 'importedPassword',
+      width: 210,
+      render: (password) => password ? (
+        <Input.Password
+          value={password}
+          readOnly
+          autoComplete="off"
+          aria-label="Mật khẩu ban đầu từ CSV"
+        />
+      ) : <Typography.Text type="secondary">Chưa lưu</Typography.Text>,
+    },
+    {
       title: 'Ngày thêm',
       dataIndex: 'joinedAt',
       key: 'joinedAt',
@@ -249,13 +291,20 @@ export default function AdminClassroomDetailPage() {
     {
       title: 'Hành động',
       key: 'actions',
-      width: 110,
+      width: 140,
       render: (_, row) => (
         <Space size={6}>
           <Tooltip title={`Xem bài nộp của ${row.username}`}>
             <Link to={`/admin/submissions?student=${row.username}`}>
               <Button size="small" icon={<ProfileOutlined />} />
             </Link>
+          </Tooltip>
+          <Tooltip title="Đặt lại mật khẩu">
+            <Button
+              size="small"
+              icon={<KeyOutlined />}
+              onClick={() => { setResetTarget({ userId: row.userId, username: row.username }); setResetPassword('') }}
+            />
           </Tooltip>
           <Popconfirm
             title="Xóa khỏi lớp?"
@@ -361,13 +410,6 @@ export default function AdminClassroomDetailPage() {
                     Tổng số: <b>{(students || []).length}</b> sinh viên
                   </Typography.Text>
                 </div>
-                <Alert
-                  type="info"
-                  showIcon
-                  message="Định dạng file: mssv,password"
-                  description="Mật khẩu được mã hóa khi import và không thể xem lại. MSSV đã có mật khẩu sẽ không bị ghi đè."
-                  style={{ marginBottom: 16 }}
-                />
 
                 <Table
                   rowKey="userId"
@@ -420,43 +462,68 @@ export default function AdminClassroomDetailPage() {
           {
             key: 'lecturers',
             label: `Giảng viên (${(assignedLecturers || []).length})`,
-            children: <Card>
-              <Space wrap style={{ marginBottom: 16 }}>
-                <Select
-                  placeholder="Chọn giảng viên"
-                  style={{ minWidth: 260 }}
-                  value={selectedLecturer}
-                  onChange={setSelectedLecturer}
-                  showSearch
-                  optionFilterProp="label"
-                  options={(lecturers || [])
-                    .filter((lecturer) => !(assignedLecturers || []).some((assigned) => assigned.id === lecturer.id))
-                    .map((lecturer) => ({ value: lecturer.id, label: `${lecturer.fullName} (${lecturer.username})` }))}
+            children: (
+              <Card>
+                <Space wrap style={{ marginBottom: 16 }}>
+                  <Select
+                    placeholder="Chọn giảng viên"
+                    style={{ minWidth: 260 }}
+                    value={selectedLecturer}
+                    onChange={setSelectedLecturer}
+                    showSearch
+                    optionFilterProp="label"
+                    options={(lecturers || [])
+                      .filter((lecturer) => !(assignedLecturers || []).some((assigned) => assigned.id === lecturer.id))
+                      .map((lecturer) => ({ value: lecturer.id, label: `${lecturer.fullName} (${lecturer.username})` }))}
+                  />
+                  <Button type="primary" onClick={assignLecturer} disabled={!selectedLecturer} loading={lecturerBusy}>
+                    Phân công
+                  </Button>
+                  <Button onClick={() => setLecturerModalOpen(true)}>Tạo tài khoản giảng viên</Button>
+                </Space>
+                <Table
+                  rowKey="id"
+                  dataSource={assignedLecturers || []}
+                  pagination={false}
+                  columns={[
+                    { title: 'Tài khoản', dataIndex: 'username' },
+                    { title: 'Họ tên', dataIndex: 'fullName' },
+                    {
+                      title: '',
+                      render: (_, row) => (
+                        <Popconfirm title="Bỏ phân công giảng viên?" onConfirm={() => unassignLecturer(row.id)} okText="Bỏ" cancelText="Hủy">
+                          <Button danger size="small">Bỏ phân công</Button>
+                        </Popconfirm>
+                      ),
+                    },
+                  ]}
+                  locale={{ emptyText: 'Lớp chưa có giảng viên' }}
                 />
-                <Button type="primary" onClick={assignLecturer} disabled={!selectedLecturer} loading={lecturerBusy}>Phân công</Button>
-                <Button onClick={() => setLecturerModalOpen(true)}>Tạo tài khoản giảng viên</Button>
-              </Space>
-              <Table
-                rowKey="id"
-                dataSource={assignedLecturers || []}
-                pagination={false}
-                columns={[
-                  { title: 'Tài khoản', dataIndex: 'username' },
-                  { title: 'Họ tên', dataIndex: 'fullName' },
-                  { title: '', render: (_, row) => <Popconfirm title="Bỏ phân công giảng viên?" onConfirm={() => unassignLecturer(row.id)} okText="Bỏ" cancelText="Hủy"><Button danger size="small">Bỏ phân công</Button></Popconfirm> },
-                ]}
-                locale={{ emptyText: 'Lớp chưa có giảng viên' }}
-              />
-            </Card>,
+              </Card>
+            ),
           },
         ]}
       />
 
-      <Modal title="Tạo tài khoản giảng viên" open={lecturerModalOpen} onCancel={() => setLecturerModalOpen(false)} onOk={() => lecturerForm.submit()} confirmLoading={lecturerBusy} okText="Tạo tài khoản" destroyOnClose>
+      <Modal
+        title="Tạo tài khoản giảng viên"
+        open={lecturerModalOpen}
+        onCancel={() => setLecturerModalOpen(false)}
+        onOk={() => lecturerForm.submit()}
+        confirmLoading={lecturerBusy}
+        okText="Tạo tài khoản"
+        destroyOnClose
+      >
         <Form form={lecturerForm} layout="vertical" onFinish={createLecturer}>
-          <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, min: 3, message: 'Nhập tên đăng nhập từ 3 ký tự' }]}><Input autoComplete="off" /></Form.Item>
-          <Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: 'Nhập họ tên' }]}><Input /></Form.Item>
-          <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}><Input.Password autoComplete="new-password" /></Form.Item>
+          <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, min: 3, message: 'Nhập tên đăng nhập từ 3 ký tự' }]}>
+            <Input autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="fullName" label="Họ tên" rules={[{ required: true, message: 'Nhập họ tên' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="password" label="Mật khẩu" rules={[{ required: true, min: 8, message: 'Mật khẩu tối thiểu 8 ký tự' }]}>
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -618,6 +685,41 @@ export default function AdminClassroomDetailPage() {
               </Button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Modal reset mật khẩu sinh viên */}
+      <Modal
+        title={
+          <Space>
+            <KeyOutlined style={{ color: '#f59e0b' }} />
+            <span>Đặt lại mật khẩu</span>
+          </Space>
+        }
+        open={!!resetTarget}
+        onCancel={() => { setResetTarget(null); setResetPassword('') }}
+        onOk={handleResetPassword}
+        okText="Xác nhận"
+        cancelText="Hủy"
+        confirmLoading={resetting}
+        destroyOnClose
+        centered
+        width={400}
+      >
+        {resetTarget && (
+          <>
+            <Typography.Text>
+              Đặt mật khẩu mới cho sinh viên <strong>{resetTarget.username}</strong>:
+            </Typography.Text>
+            <Input.Password
+              style={{ marginTop: 12 }}
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              placeholder="Nhập mật khẩu mới (ít nhất 8 ký tự)"
+              autoFocus
+              onPressEnter={handleResetPassword}
+            />
+          </>
         )}
       </Modal>
     </div>

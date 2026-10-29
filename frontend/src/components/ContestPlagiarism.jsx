@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   App,
@@ -21,6 +21,7 @@ import {
   AlertOutlined,
   CodeOutlined,
   DiffOutlined,
+  LoadingOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
@@ -37,21 +38,49 @@ export default function ContestPlagiarism({ contestId }) {
   const [filterMode, setFilterMode] = useState('all') // 'all' | 'high_risk' | 'suspicious'
   const [search, setSearch] = useState('')
   const [compareModal, setCompareModal] = useState({ open: false, loading: false, data: null })
+  const pollRef = useRef(null)
 
   const { data, loading, reload, setData } = useFetch(
     () => api.getPlagiarismStatus(contestId),
     [contestId],
   )
 
+  const isRunning = data?.status === 'RUNNING'
+
+  // Auto-poll every 3s while backend is still processing
+  useEffect(() => {
+    if (isRunning) {
+      pollRef.current = setInterval(async () => {
+        try {
+          const res = await api.getPlagiarismStatus(contestId)
+          setData(res)
+          if (res.status !== 'RUNNING') {
+            clearInterval(pollRef.current)
+            setRunning(false)
+            if (res.status === 'COMPLETED') {
+              message.success(`Quét xong! Đã phân tích ${res.submissionCount} bài nộp, phát hiện ${res.totalMatches} cặp trùng lặp.`)
+            } else if (res.status === 'FAILED') {
+              message.error('Quét đạo văn thất bại. Vui lòng thử lại.')
+            }
+          }
+        } catch {}
+      }, 3000)
+    }
+    return () => clearInterval(pollRef.current)
+  }, [isRunning, contestId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleRunCheck = async () => {
     try {
       setRunning(true)
       const res = await api.runPlagiarismCheck(contestId)
       setData(res)
-      message.success(`Quét xong! Đã phân tích ${res.submissionCount} bài nộp, phát hiện ${res.totalMatches} cặp trùng lặp.`)
+      // If already completed (small contest), no need to poll
+      if (res.status !== 'RUNNING') {
+        setRunning(false)
+        message.success(`Quét xong! Đã phân tích ${res.submissionCount} bài nộp, phát hiện ${res.totalMatches} cặp trùng lặp.`)
+      }
     } catch (e) {
       message.error(e.message || 'Lỗi khi quét đạo văn')
-    } finally {
       setRunning(false)
     }
   }
@@ -95,6 +124,20 @@ export default function ContestPlagiarism({ contestId }) {
       <div style={{ textAlign: 'center', padding: 60 }}>
         <Spin size="large" />
         <div style={{ marginTop: 12, color: 'var(--muted)' }}>Đang tải báo cáo đạo văn…</div>
+      </div>
+    )
+  }
+
+  if (isRunning) {
+    return (
+      <div style={{ textAlign: 'center', padding: 60 }}>
+        <Spin indicator={<LoadingOutlined style={{ fontSize: 40 }} spin />} />
+        <div style={{ marginTop: 16, fontSize: 16, fontWeight: 600 }}>Đang phân tích bài nộp…</div>
+        <div style={{ marginTop: 8, color: 'var(--muted)' }}>
+          Thuật toán Winnowing đang so sánh mã nguồn theo từng cặp thí sinh.<br />
+          Trang sẽ tự cập nhật khi hoàn tất.
+        </div>
+        <Progress percent={99} status="active" showInfo={false} style={{ maxWidth: 400, margin: '24px auto 0' }} />
       </div>
     )
   }
@@ -264,7 +307,7 @@ export default function ContestPlagiarism({ contestId }) {
               onClick={handleRunCheck}
               loading={running}
             >
-              {running ? 'Đang phân tích...' : '🔍 Quét đạo văn ngay'}
+              {running ? 'Đang quét...' : 'Quét đạo văn'}
             </Button>
           </Space>
         }
@@ -297,7 +340,7 @@ export default function ContestPlagiarism({ contestId }) {
               <div>
                 <div>Chưa có bài nộp nào bị phát hiện sao chép hoặc chưa thực hiện quét.</div>
                 <div style={{ marginTop: 8 }}>
-                  Bấm nút <b>"🔍 Quét đạo văn ngay"</b> phía trên để chạy thuật toán phân tích.
+                  Bấm nút <b>"Quét đạo văn"</b> phía trên để chạy thuật toán phân tích.
                 </div>
               </div>
             }
