@@ -341,7 +341,7 @@ const mockApi = {
   teacherContestProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
   teacherSaveContest: (data) => delay(engine.saveContest(data)),
   teacherDeleteContest: (id) => delay(engine.deleteContest(id)),
-  listLecturers: () => delay(mockLecturers.map((l) => ({ id: l.id, staffId: l.staffId, fullName: l.fullName, initialPassword: l.initialPassword, classroomCount: l.classroomCount, createdAt: l.createdAt }))),
+  listLecturers: () => delay(mockLecturers.map((l) => ({ id: l.id, staffId: l.staffId, fullName: l.fullName, initialPassword: l.initialPassword, classroomCount: l.classroomCount || (l.classrooms || []).length, classrooms: l.classrooms || [], createdAt: l.createdAt }))),
   createLecturer: (data) => {
     const lecturer = { id: Date.now(), ...data, staffId: data.staffId.toUpperCase(), initialPassword: data.password, createdAt: Date.now() }
     mockLecturers.push(lecturer)

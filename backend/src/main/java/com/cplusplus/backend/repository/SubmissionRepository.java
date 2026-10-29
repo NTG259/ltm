@@ -3,6 +3,7 @@ package com.cplusplus.backend.repository;
 import com.cplusplus.backend.domain.submission.Submission;
 import com.cplusplus.backend.domain.submission.Verdict;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
@@ -157,4 +158,117 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             order by 1
             """, nativeQuery = true)
     List<ThroughputBucket> findThroughput(Instant since);
+
+    @Query("""
+            select s.id as id, p.id as problemId, p.title as problemTitle, s.contest.id as contestId,
+                   u.username as username, u.fullName as userFullName, cast(s.status as string) as status,
+                   s.verdict as verdict, s.score as score, s.timeMs as timeMs, s.memoryKb as memoryKb,
+                   s.worker.id as workerId, s.attempts as attempts, s.createdAt as createdAt
+            from Submission s join s.user u join s.problem p
+            where (:username is null or upper(u.username) = upper(cast(:username as string)))
+              and (:problemId is null or p.id = :problemId)
+              and (:contestId is null or s.contest.id = :contestId)
+              and (:verdict is null or s.verdict = :verdict)
+              and (
+                  (:hasClasses = true and (
+                      exists (select 1 from ClassroomStudent cs where cs.classroom.id in :classroomIds and cs.user.id = u.id)
+                      or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id in :classroomIds and cc.contest.id = s.contest.id))
+                  ))
+                  or (s.contest is not null and s.contest.createdBy.id = :lecturerId)
+              )
+            order by s.id desc
+            """)
+    List<Summary> searchByLecturer(String username, Long problemId, Long contestId, Verdict verdict,
+                                   boolean hasClasses, Collection<Long> classroomIds, Long lecturerId, Pageable page);
+
+    @Query("""
+            select count(s)
+            from Submission s join s.user u join s.problem p
+            where (:username is null or upper(u.username) = upper(cast(:username as string)))
+              and (:problemId is null or p.id = :problemId)
+              and (:contestId is null or s.contest.id = :contestId)
+              and (:verdict is null or s.verdict = :verdict)
+              and (
+                  (:hasClasses = true and (
+                      exists (select 1 from ClassroomStudent cs where cs.classroom.id in :classroomIds and cs.user.id = u.id)
+                      or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id in :classroomIds and cc.contest.id = s.contest.id))
+                  ))
+                  or (s.contest is not null and s.contest.createdBy.id = :lecturerId)
+              )
+            """)
+    long countSearchByLecturer(String username, Long problemId, Long contestId, Verdict verdict,
+                               boolean hasClasses, Collection<Long> classroomIds, Long lecturerId);
+
+    @Query("""
+            select s.id as id,
+                   p.id as problemId,
+                   p.title as problemTitle,
+                   s.contest.id as contestId,
+                   u.username as username,
+                   u.fullName as userFullName,
+                   cast(s.status as string) as status,
+                   s.verdict as verdict,
+                   s.score as score,
+                   s.timeMs as timeMs,
+                   s.memoryKb as memoryKb,
+                   s.worker.id as workerId,
+                   s.attempts as attempts,
+                   s.createdAt as createdAt
+            from Submission s join s.user u join s.problem p
+            where (:username is null or upper(u.username) = upper(cast(:username as string)))
+              and (:problemId is null or p.id = :problemId)
+              and (:contestId is null or s.contest.id = :contestId)
+              and (:verdict is null or s.verdict = :verdict)
+              and (
+                  exists (select 1 from ClassroomStudent cs where cs.classroom.id = :classroomId and cs.user.id = u.id)
+                  or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id = :classroomId and cc.contest.id = s.contest.id))
+              )
+            order by s.id desc
+            """)
+    List<Summary> searchByClassroom(String username, Long problemId, Long contestId, Verdict verdict,
+                                    Long classroomId, Pageable page);
+
+    @Query("""
+            select count(s)
+            from Submission s join s.user u join s.problem p
+            where (:username is null or upper(u.username) = upper(cast(:username as string)))
+              and (:problemId is null or p.id = :problemId)
+              and (:contestId is null or s.contest.id = :contestId)
+              and (:verdict is null or s.verdict = :verdict)
+              and (
+                  exists (select 1 from ClassroomStudent cs where cs.classroom.id = :classroomId and cs.user.id = u.id)
+                  or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id = :classroomId and cc.contest.id = s.contest.id))
+              )
+            """)
+    long countSearchByClassroom(String username, Long problemId, Long contestId, Verdict verdict,
+                                Long classroomId);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM submissions s
+                WHERE s.id = :submissionId
+                  AND (
+                      EXISTS (
+                          SELECT 1 FROM classroom_students cs
+                          JOIN classrooms c ON c.id = cs.classroom_id
+                          WHERE cs.user_id = s.user_id
+                            AND (c.created_by = :lecturerId OR c.lecturer_id = :lecturerId
+                                 OR EXISTS (SELECT 1 FROM classroom_lecturers cl WHERE cl.classroom_id = c.id AND cl.user_id = :lecturerId))
+                      )
+                      OR EXISTS (
+                          SELECT 1 FROM classroom_contests cc
+                          JOIN classrooms c ON c.id = cc.classroom_id
+                          WHERE cc.contest_id = s.contest_id
+                            AND (c.created_by = :lecturerId OR c.lecturer_id = :lecturerId
+                                 OR EXISTS (SELECT 1 FROM classroom_lecturers cl WHERE cl.classroom_id = c.id AND cl.user_id = :lecturerId))
+                      )
+                      OR EXISTS (
+                          SELECT 1 FROM contests ct
+                          WHERE ct.id = s.contest_id AND ct.created_by = :lecturerId
+                      )
+                  )
+            )
+            """, nativeQuery = true)
+    boolean isSubmissionVisibleToLecturer(Long submissionId, Long lecturerId);
+
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { App, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table } from 'antd'
+import { App, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd'
 import { DeleteOutlined, EditOutlined, TeamOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
@@ -61,7 +61,27 @@ export default function AdminClassroomsPage() {
   const columns = [
     { title: 'Tên lớp', dataIndex: 'name', key: 'name', render: (name, row) => <Link to={`/admin/classrooms/${row.id}`}>{name}</Link> },
     { title: 'Kỳ học', dataIndex: 'semester', key: 'semester', render: (value) => value || '—' },
-    { title: 'Giảng viên phụ trách', dataIndex: 'lecturerName', key: 'lecturer', render: (name, row) => name ? `${name} (${row.lecturerStaffId})` : 'Chưa phân công' },
+    {
+      title: 'Giảng viên phụ trách',
+      key: 'lecturer',
+      render: (_, row) => {
+        if (row.lecturers && row.lecturers.length > 0) {
+          return (
+            <Space wrap size={[0, 4]}>
+              {row.lecturers.map((l) => (
+                <Tag color="geekblue" key={l.id}>
+                  {l.fullName} ({l.username})
+                </Tag>
+              ))}
+            </Space>
+          )
+        }
+        if (row.lecturerName) {
+          return `${row.lecturerName} (${row.lecturerStaffId})`
+        }
+        return <span style={{ color: '#8c8c8c' }}>Chưa phân công</span>
+      },
+    },
     { title: 'Ngày tạo', dataIndex: 'createdAt', key: 'createdAt', render: (value) => new Date(value).toLocaleDateString('vi-VN') },
     {
       title: '', key: 'actions', width: 120,

@@ -14,9 +14,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 @Service
@@ -52,29 +52,44 @@ public class ClassroomCsvImporter {
                 return buildResult(0, 0, 0, 0, 0, 0);
             }
 
-            // Tìm cột MSSV và mật khẩu (case-insensitive, bỏ dấu cách).
-            String[] headers = headerLine.split(",");
-            int mssvIdx = -1, passwordIdx = -1;
-            for (int i = 0; i < headers.length; i++) {
-                String h = headers[i].replace("\uFEFF", "").trim().toLowerCase().replace(" ", "");
-                if (h.equals("mssv") || h.equals("studentid") || h.equals("masinhvien")) mssvIdx = i;
-                else if (h.equals("password") || h.equals("matkhau")) passwordIdx = i;
+            char delimiter = detectDelimiter(headerLine);
+            List<String> headers = parseRow(headerLine, delimiter);
+            int mssvIdx = -1, fullNameIdx = -1, passwordIdx = -1;
+
+            for (int i = 0; i < headers.size(); i++) {
+                String h = normalizeHeader(headers.get(i));
+                if (Set.of("mssv", "studentid", "masinhvien", "ma", "username").contains(h)) mssvIdx = i;
+                else if (Set.of("hoten", "hovaten", "fullname", "tensinhvien", "ten").contains(h)) fullNameIdx = i;
+                else if (Set.of("password", "matkhau", "pass").contains(h)) passwordIdx = i;
             }
-            if (mssvIdx < 0 || passwordIdx < 0) {
-                throw new IllegalArgumentException("CSV phải có hai cột: mssv,password");
+
+            if (mssvIdx < 0) {
+                throw new IllegalArgumentException("CSV phải có ít nhất cột: mssv (hoặc masinhvien)");
             }
 
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.isBlank()) continue;
-                String[] cols = line.split(",", -1);
-
-                String mssv = mssvIdx < cols.length ? cols[mssvIdx].trim().toUpperCase() : "";
-                String password = passwordIdx < cols.length ? cols[passwordIdx] : "";
-
-                if (!STUDENT_CODE.matcher(mssv).matches() || password.length() < 8) {
+                List<String> cols;
+                try {
+                    cols = parseRow(line, delimiter);
+                } catch (IllegalArgumentException e) {
                     skippedInvalid++;
                     continue;
+                }
+
+                String mssv = (mssvIdx < cols.size()) ? cols.get(mssvIdx).trim().toUpperCase(Locale.ROOT) : "";
+                String fullName = (fullNameIdx >= 0 && fullNameIdx < cols.size()) ? cols.get(fullNameIdx).trim() : "";
+                String password = (passwordIdx >= 0 && passwordIdx < cols.size()) ? cols.get(passwordIdx).trim() : "";
+
+                if (!STUDENT_CODE.matcher(mssv).matches()) {
+                    skippedInvalid++;
+                    continue;
+                }
+
+                // Nếu không cung cấp mật khẩu hoặc ngắn hơn 8 ký tự, tự sinh mật khẩu mặc định
+                if (password.length() < 8) {
+                    password = mssv.length() >= 8 ? mssv : String.format("%-8s", mssv).replace(' ', '0');
                 }
 
                 User user = userRepository.findByUsernameIgnoreCase(mssv).orElse(null);
@@ -84,14 +99,20 @@ public class ClassroomCsvImporter {
                 }
 
                 if (user == null) {
-                    user = User.student(mssv, mssv);
+                    String displayName = !fullName.isBlank() ? fullName : mssv;
+                    user = User.student(mssv, displayName);
                     user.setPasswordHash(securityService.hashPassword(password));
                     user.setInitialPassword(password);
                     user = userRepository.save(user);
                     created++;
-                } else if (user.getPasswordHash() == null) {
-                    user.setPasswordHash(securityService.hashPassword(password));
-                    user.setInitialPassword(password);
+                } else {
+                    if (user.getPasswordHash() == null) {
+                        user.setPasswordHash(securityService.hashPassword(password));
+                        user.setInitialPassword(password);
+                    }
+                    if (!fullName.isBlank() && (user.getFullName() == null || user.getFullName().equals(user.getUsername()))) {
+                        user.setFullName(fullName);
+                    }
                     userRepository.save(user);
                 }
 
@@ -105,6 +126,47 @@ public class ClassroomCsvImporter {
         }
 
         return buildResult(imported, alreadyEnrolled, created, skippedInOtherClass, skippedInvalid, skippedExisting);
+    }
+
+    private static char detectDelimiter(String line) {
+        int semicolons = 0;
+        int commas = 0;
+        for (char c : line.toCharArray()) {
+            if (c == ';') semicolons++;
+            else if (c == ',') commas++;
+        }
+        return semicolons > commas ? ';' : ',';
+    }
+
+    private static String normalizeHeader(String header) {
+        String withoutMarks = Normalizer.normalize(header.replace("\uFEFF", "").trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return withoutMarks.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private static List<String> parseRow(String line, char delimiter) {
+        List<String> columns = new ArrayList<>();
+        StringBuilder value = new StringBuilder();
+        boolean quoted = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (quoted && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    value.append('"');
+                    i++;
+                } else {
+                    quoted = !quoted;
+                }
+            } else if (c == delimiter && !quoted) {
+                columns.add(value.toString());
+                value.setLength(0);
+            } else {
+                value.append(c);
+            }
+        }
+        if (quoted) throw new IllegalArgumentException("CSV có dấu ngoặc kép chưa đóng");
+        columns.add(value.toString());
+        return columns;
     }
 
     private Map<String, Object> buildResult(int imported, int alreadyEnrolled, int created,

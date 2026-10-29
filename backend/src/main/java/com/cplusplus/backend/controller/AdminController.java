@@ -151,7 +151,16 @@ public class AdminController {
                     map.put("staffId", user.getUsername());
                     map.put("fullName", user.getFullName());
                     map.put("initialPassword", user.getInitialPassword() == null ? "" : user.getInitialPassword());
-                    map.put("classroomCount", classroomRepository.countByLecturerId(user.getId()));
+                    List<com.cplusplus.backend.domain.classroom.Classroom> classrooms = classroomRepository.findByLecturerUserId(user.getId());
+                    List<Map<String, Object>> classroomDtos = classrooms.stream().map(cls -> {
+                        Map<String, Object> cmap = new LinkedHashMap<>();
+                        cmap.put("id", cls.getId());
+                        cmap.put("name", cls.getName());
+                        cmap.put("semester", cls.getSemester() != null ? cls.getSemester() : "");
+                        return cmap;
+                    }).toList();
+                    map.put("classroomCount", classroomDtos.size());
+                    map.put("classrooms", classroomDtos);
                     map.put("createdAt", user.getCreatedAt().toEpochMilli());
                     return map;
                 })

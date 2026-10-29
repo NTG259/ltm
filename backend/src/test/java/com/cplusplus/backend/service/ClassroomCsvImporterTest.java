@@ -33,7 +33,7 @@ class ClassroomCsvImporterTest {
     void hashesLoginPasswordAndRetainsImportedPasswordForAdmin() {
         MockMultipartFile csv = new MockMultipartFile(
                 "file", "accounts.csv", "text/csv",
-                "mssv,password\nB20DCCN001,TestPass2026!\n".getBytes(StandardCharsets.UTF_8));
+                ("mssv,password\nB20DCCN001,TestPass2026!\n").getBytes(StandardCharsets.UTF_8));
         when(classroom.getId()).thenReturn(1L);
         when(users.findByUsernameIgnoreCase("B20DCCN001")).thenReturn(Optional.empty());
         when(security.hashPassword("TestPass2026!")).thenReturn("bcrypt-hash");
@@ -53,23 +53,37 @@ class ClassroomCsvImporterTest {
     }
 
     @Test
-    void skipsExistingAccountWithoutEnrollingOrChangingItsPassword() {
+    void enrollsExistingStudentIntoNewClassroomWithoutOverwritingPassword() {
         MockMultipartFile csv = new MockMultipartFile(
                 "file", "accounts.csv", "text/csv",
-                "mssv,password\nB20DCCN001,AnotherPass2026!\n".getBytes(StandardCharsets.UTF_8));
+                ("mssv,password\nB20DCCN001,AnotherPass2026!\n").getBytes(StandardCharsets.UTF_8));
         User existingStudent = org.mockito.Mockito.mock(User.class);
         when(classroom.getId()).thenReturn(1L);
         when(existingStudent.getId()).thenReturn(2L);
-        when(existingStudent.getPasswordHash()).thenReturn("existing-bcrypt-hash");
         when(users.findByUsernameIgnoreCase("B20DCCN001")).thenReturn(Optional.of(existingStudent));
         when(classroomStudents.existsByClassroomIdAndUserId(1L, 2L)).thenReturn(false);
-        when(classroomStudents.existsByUserId(2L)).thenReturn(false);
+
+        var result = new ClassroomCsvImporter(users, classroomStudents, security).importTo(classroom, csv);
+
+        assertThat(result.get("imported")).isEqualTo(1);
+        verify(classroomStudents).save(any(ClassroomStudent.class));
+    }
+
+    @Test
+    void skipsStudentAlreadyEnrolledInThisClassroom() {
+        MockMultipartFile csv = new MockMultipartFile(
+                "file", "accounts.csv", "text/csv",
+                ("mssv,password\nB20DCCN001,AnotherPass2026!\n").getBytes(StandardCharsets.UTF_8));
+        User existingStudent = org.mockito.Mockito.mock(User.class);
+        when(classroom.getId()).thenReturn(1L);
+        when(existingStudent.getId()).thenReturn(2L);
+        when(users.findByUsernameIgnoreCase("B20DCCN001")).thenReturn(Optional.of(existingStudent));
+        when(classroomStudents.existsByClassroomIdAndUserId(1L, 2L)).thenReturn(true);
 
         var result = new ClassroomCsvImporter(users, classroomStudents, security).importTo(classroom, csv);
 
         assertThat(result.get("imported")).isEqualTo(0);
-        assertThat(result.get("skippedExisting")).isEqualTo(1);
-        verify(users, never()).save(any(User.class));
+        assertThat(result.get("alreadyEnrolled")).isEqualTo(1);
         verify(classroomStudents, never()).save(any());
     }
 }

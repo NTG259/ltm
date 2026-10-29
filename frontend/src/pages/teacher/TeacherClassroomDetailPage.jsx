@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   App, Button, Empty, Modal, Select, Space, Spin, Table, Tag, Tabs,
   Typography, Upload, Popconfirm, Input,
@@ -6,11 +6,14 @@ import {
 import {
   ArrowLeftOutlined, PlusOutlined, TrophyOutlined,
   FilePdfOutlined, UploadOutlined, DeleteOutlined, PlayCircleOutlined, KeyOutlined,
+  ReloadOutlined, SearchOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
-import { useFetch, useNow } from '../../lib/hooks'
-import { formatDateTime } from '../../lib/format'
+import { useFetch, useNow, useSocket } from '../../lib/hooks'
+import { formatDateTime, formatMemory, formatRelative, formatTime } from '../../lib/format'
+import VerdictTag from '../../components/VerdictTag'
+import { VERDICT_KEYS, VERDICTS } from '../../lib/verdicts'
 
 function phaseTag(c, now) {
   if (now < c.startAt) return <Tag color="blue">Sắp diễn ra</Tag>
@@ -496,6 +499,177 @@ function CourseTab({ classroomId }) {
   )
 }
 
+// ── Tab Bài nộp ──────────────────────────────────────────────────────────
+function ClassroomSubmissionsTab({ classroomId }) {
+  const navigate = useNavigate()
+  const now = useNow(10000)
+  const [student, setStudent] = useState('')
+  const [problemId, setProblemId] = useState(null)
+  const [verdict, setVerdict] = useState(null)
+  const [page, setPage] = useState(0)
+
+  const subs = useFetch(
+    () => api.listSubmissions({
+      classroomId,
+      userId: student || undefined,
+      problemId: problemId || undefined,
+      verdict: verdict || undefined,
+      page,
+      size: 50,
+    }),
+    [classroomId, student, problemId, verdict, page],
+  )
+  const problems = useFetch(() => api.listProblems(), [])
+  const { setData, reload } = subs
+
+  useSocket(
+    useCallback((msg) => {
+      if (msg.type !== 'SUBMISSION_UPDATE') return
+      const s = msg.submission
+      // eslint-disable-next-line no-unused-vars
+      const { sourceCode, tests, history, ...row } = s
+      setData((prev) => {
+        if (!prev) return prev
+        const list = Array.isArray(prev) ? prev : (prev.submissions || [])
+        const i = list.findIndex((x) => x.id === s.id)
+        const next = i < 0 ? [row, ...list] : list.map((x, idx) => idx === i ? { ...x, ...row } : x)
+        return Array.isArray(prev) ? next : { ...prev, submissions: next }
+      })
+    }, [setData])
+  )
+
+  const rows = subs.data?.submissions || (Array.isArray(subs.data) ? subs.data : [])
+  const total = subs.data?.total || rows.length
+
+  const columns = [
+    {
+      title: 'Mã bài',
+      dataIndex: 'id',
+      width: 85,
+      render: (id) => (
+        <span className="mono" style={{ fontWeight: 600 }}>
+          #{id}
+        </span>
+      ),
+    },
+    {
+      title: 'Sinh viên',
+      dataIndex: 'userId',
+      render: (u, r) => (
+        <div>
+          <div style={{ fontWeight: 600 }}>{r.userName || u}</div>
+          <Tag color="geekblue" className="mono" style={{ marginTop: 2 }}>{u}</Tag>
+        </div>
+      ),
+    },
+    {
+      title: 'Đề bài',
+      dataIndex: 'problemTitle',
+      render: (t, r) => (
+        <span style={{ fontWeight: 500 }}>
+          #{r.problemId} {t}
+        </span>
+      ),
+    },
+    {
+      title: 'Kết quả',
+      dataIndex: 'verdict',
+      width: 140,
+      render: (_, r) => <VerdictTag submission={r} />,
+    },
+    {
+      title: 'Điểm',
+      dataIndex: 'score',
+      width: 70,
+      align: 'right',
+      render: (v) => <span className="mono">{v ?? '—'}</span>,
+    },
+    {
+      title: 'Thời gian',
+      dataIndex: 'timeMs',
+      width: 90,
+      align: 'right',
+      render: (v) => <span className="mono">{formatTime(v)}</span>,
+    },
+    {
+      title: 'Bộ nhớ',
+      dataIndex: 'memoryKb',
+      width: 90,
+      align: 'right',
+      render: (v) => <span className="mono">{formatMemory(v)}</span>,
+    },
+    {
+      title: 'Thời điểm',
+      dataIndex: 'createdAt',
+      width: 130,
+      render: (v) => (
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+          {formatRelative(v, now)}
+        </span>
+      ),
+    },
+  ]
+
+  return (
+    <div style={{ padding: 20 }}>
+      <Space wrap size={12} style={{ marginBottom: 16 }}>
+        <Input
+          allowClear
+          prefix={<SearchOutlined />}
+          placeholder="MSSV hoặc họ tên"
+          value={student}
+          onChange={(e) => { setStudent(e.target.value); setPage(0) }}
+          style={{ width: 200 }}
+        />
+        <Select
+          allowClear
+          placeholder="Đề bài"
+          value={problemId}
+          onChange={(val) => { setProblemId(val); setPage(0) }}
+          style={{ width: 240 }}
+          showSearch={{ optionFilterProp: 'label' }}
+          options={(Array.isArray(problems.data) ? problems.data : (problems.data?.problems || [])).map((p) => ({
+            value: p.id,
+            label: `#${p.id} ${p.title}`,
+          }))}
+        />
+        <Select
+          allowClear
+          placeholder="Kết quả"
+          value={verdict}
+          onChange={(val) => { setVerdict(val); setPage(0) }}
+          style={{ width: 180 }}
+          options={[
+            { value: 'PENDING', label: 'Đang chờ / đang chấm' },
+            ...VERDICT_KEYS.map((v) => ({ value: v, label: `${v} – ${VERDICTS[v].label}` })),
+          ]}
+        />
+        <Button icon={<ReloadOutlined />} onClick={reload}>Làm mới</Button>
+        <Typography.Text type="secondary">{total} bài nộp</Typography.Text>
+      </Space>
+
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={rows}
+        loading={subs.loading}
+        size="small"
+        pagination={{
+          current: page + 1,
+          pageSize: 50,
+          total,
+          onChange: (p) => setPage(p - 1),
+          showSizeChanger: false,
+        }}
+        onRow={(r) => ({
+          onClick: () => navigate(`/teacher/submissions/${r.id}`),
+          style: { cursor: 'pointer' },
+        })}
+      />
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────
 export default function TeacherClassroomDetailPage() {
   const { id } = useParams()
@@ -506,6 +680,7 @@ export default function TeacherClassroomDetailPage() {
     { key: 'students', label: `👥 Sinh viên`, children: <StudentsTab classroomId={id} /> },
     { key: 'contests', label: `🏆 Kỳ thi`, children: <ContestsTab classroomId={id} /> },
     { key: 'course', label: `📖 Khóa học`, children: <CourseTab classroomId={id} /> },
+    { key: 'submissions', label: `📝 Bài nộp`, children: <ClassroomSubmissionsTab classroomId={id} /> },
   ]
 
   return (

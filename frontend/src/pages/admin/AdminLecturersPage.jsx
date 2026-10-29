@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Tooltip, Typography, Upload } from 'antd'
+import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Tag, Tooltip, Typography, Upload } from 'antd'
 import { DeleteOutlined, KeyOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import { Link } from 'react-router-dom'
 import { api } from '../../api'
 import { useFetch } from '../../lib/hooks'
 
@@ -73,6 +74,16 @@ export default function AdminLecturersPage() {
     `${lecturer.staffId} ${lecturer.fullName}`.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi')),
   )
 
+  const deleteLecturer = async (id) => {
+    try {
+      await api.deleteLecturers([id])
+      message.success('Đã xóa tài khoản giảng viên; lớp được giữ lại nhưng bỏ gán giảng viên.')
+      list.reload()
+    } catch (error) {
+      message.error(error.message || 'Không thể xóa tài khoản giảng viên')
+    }
+  }
+
   const deleteSelected = async () => {
     setDeleting(true)
     try {
@@ -122,17 +133,51 @@ export default function AdminLecturersPage() {
         </div>
         <Table rowKey="id" loading={list.loading} dataSource={filteredLecturers} pagination={{ pageSize: 20 }}
           columns={[
-            { title: 'Mã giảng viên', dataIndex: 'staffId', className: 'mono' },
-            { title: 'Họ tên', dataIndex: 'fullName' },
-            { title: 'Lớp phụ trách', dataIndex: 'classroomCount', width: 120, align: 'center' },
-            { title: 'Mật khẩu', dataIndex: 'initialPassword', width: 190, render: (password) => password
+            { title: 'Mã giảng viên', dataIndex: 'staffId', className: 'mono', width: 140 },
+            { title: 'Họ tên', dataIndex: 'fullName', width: 180 },
+            {
+              title: 'Lớp đang phụ trách',
+              dataIndex: 'classrooms',
+              render: (classrooms) => {
+                const items = classrooms || []
+                if (items.length === 0) {
+                  return <Typography.Text type="secondary">Chưa phụ trách lớp nào</Typography.Text>
+                }
+                return (
+                  <Space wrap size={[4, 4]}>
+                    {items.map((c) => (
+                      <Link key={c.id} to={`/admin/classrooms/${c.id}`}>
+                        <Tag color="blue" style={{ cursor: 'pointer', margin: 0 }}>
+                          {c.name} {c.semester ? `(${c.semester})` : ''}
+                        </Tag>
+                      </Link>
+                    ))}
+                  </Space>
+                )
+              },
+            },
+            { title: 'Mật khẩu', dataIndex: 'initialPassword', width: 180, render: (password) => password
               ? <Input.Password value={password} readOnly autoComplete="off" aria-label="Mật khẩu khởi tạo giảng viên" />
               : <Typography.Text type="secondary">Đã đổi / không lưu</Typography.Text> },
-            { title: 'Ngày tạo', dataIndex: 'createdAt', render: (value) => new Date(value).toLocaleDateString('vi-VN') },
+            { title: 'Ngày tạo', dataIndex: 'createdAt', width: 110, render: (value) => new Date(value).toLocaleDateString('vi-VN') },
             { title: 'Hành động', key: 'actions', width: 110, render: (_, lecturer) => (
-              <Tooltip title="Đặt lại mật khẩu">
-                <Button size="small" icon={<KeyOutlined />} onClick={() => { setResetTarget(lecturer); setResetPassword('') }} />
-              </Tooltip>
+              <Space>
+                <Tooltip title="Đặt lại mật khẩu">
+                  <Button size="small" icon={<KeyOutlined />} onClick={() => { setResetTarget(lecturer); setResetPassword('') }} />
+                </Tooltip>
+                <Popconfirm
+                  title="Xóa giảng viên?"
+                  description="Các lớp và nội dung liên quan vẫn được giữ; lớp sẽ không còn giảng viên được gán."
+                  onConfirm={() => deleteLecturer(lecturer.id)}
+                  okText="Xóa"
+                  cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Tooltip title="Xóa tài khoản giảng viên">
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Tooltip>
+                </Popconfirm>
+              </Space>
             ) },
           ]}
           rowSelection={{ selectedRowKeys: selectedIds, onChange: setSelectedIds }}

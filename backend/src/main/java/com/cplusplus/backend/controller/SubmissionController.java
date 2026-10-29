@@ -25,16 +25,19 @@ public class SubmissionController {
     private final JudgeMasterService judgeMasterService;
     private final com.cplusplus.backend.repository.ContestRepository contestRepository;
     private final com.cplusplus.backend.repository.ContestProblemRepository contestProblemRepository;
+    private final com.cplusplus.backend.repository.ClassroomRepository classroomRepository;
 
     public SubmissionController(
             SubmissionRepository submissionRepository,
             JudgeMasterService judgeMasterService,
             com.cplusplus.backend.repository.ContestRepository contestRepository,
-            com.cplusplus.backend.repository.ContestProblemRepository contestProblemRepository) {
+            com.cplusplus.backend.repository.ContestProblemRepository contestProblemRepository,
+            com.cplusplus.backend.repository.ClassroomRepository classroomRepository) {
         this.submissionRepository = submissionRepository;
         this.judgeMasterService = judgeMasterService;
         this.contestRepository = contestRepository;
         this.contestProblemRepository = contestProblemRepository;
+        this.classroomRepository = classroomRepository;
     }
 
     public record SubmitRequest(Long problemId, String language, String sourceCode, Long contestId) {}
@@ -120,9 +123,11 @@ public class SubmissionController {
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) Long problemId,
             @RequestParam(required = false) Long contestId,
+            @RequestParam(required = false) Long classroomId,
             @RequestParam(required = false) String verdict,
             @RequestParam(required = false) Integer page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "50") int size,
+            HttpServletRequest servletReq) {
 
         Verdict v = null;
         if (verdict != null && !verdict.isBlank()) {
@@ -135,8 +140,49 @@ public class SubmissionController {
         Pageable pageable = PageRequest.of(pageNum, Math.min(size, 200));
         String usernameFilter = (userId != null && !userId.isBlank()) ? userId : null;
 
-        List<SubmissionRepository.Summary> summaries = submissionRepository.search(
-                usernameFilter, problemId, contestId, v, pageable);
+        User caller = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        List<SubmissionRepository.Summary> summaries;
+        long totalCount = 0;
+        boolean isPage = (page != null);
+
+        if (caller != null && caller.isLecturer()) {
+            if (classroomId != null) {
+                if (!classroomRepository.isLecturerAssigned(classroomId, caller.getId())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("message", "Bạn không phụ trách lớp học #" + classroomId));
+                }
+                summaries = submissionRepository.searchByClassroom(
+                        usernameFilter, problemId, contestId, v, classroomId, pageable);
+                if (isPage) {
+                    totalCount = submissionRepository.countSearchByClassroom(
+                            usernameFilter, problemId, contestId, v, classroomId);
+                }
+            } else {
+                List<Long> classroomIds = classroomRepository.findByLecturerUserId(caller.getId())
+                        .stream().map(com.cplusplus.backend.domain.classroom.Classroom::getId).toList();
+                boolean hasClasses = !classroomIds.isEmpty();
+                java.util.Collection<Long> queryClassroomIds = hasClasses ? classroomIds : java.util.List.of(-1L);
+
+                summaries = submissionRepository.searchByLecturer(
+                        usernameFilter, problemId, contestId, v, hasClasses, queryClassroomIds, caller.getId(), pageable);
+                if (isPage) {
+                    totalCount = submissionRepository.countSearchByLecturer(
+                            usernameFilter, problemId, contestId, v, hasClasses, queryClassroomIds, caller.getId());
+                }
+            }
+        } else if (classroomId != null) {
+            summaries = submissionRepository.searchByClassroom(
+                    usernameFilter, problemId, contestId, v, classroomId, pageable);
+            if (isPage) {
+                totalCount = submissionRepository.countSearchByClassroom(
+                        usernameFilter, problemId, contestId, v, classroomId);
+            }
+        } else {
+            summaries = submissionRepository.search(usernameFilter, problemId, contestId, v, pageable);
+            if (isPage) {
+                totalCount = submissionRepository.countSearch(usernameFilter, problemId, contestId, v);
+            }
+        }
 
         List<Map<String, Object>> rows = summaries.stream().map(s -> {
             Map<String, Object> map = new LinkedHashMap<>();
@@ -159,8 +205,7 @@ public class SubmissionController {
 
         // Khi page được chỉ định rõ → trả về { total, submissions } cho phân trang phía client
         if (page != null) {
-            long total = submissionRepository.countSearch(usernameFilter, problemId, contestId, v);
-            return ResponseEntity.ok(Map.of("total", total, "submissions", rows));
+            return ResponseEntity.ok(Map.of("total", totalCount, "submissions", rows));
         }
         return ResponseEntity.ok(rows);
     }
@@ -175,9 +220,17 @@ public class SubmissionController {
         Submission sub = submissionRepository.findDetailed(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài nộp #" + id));
 
-        if (!caller.isAdmin() && !caller.isLecturer() && !sub.getUser().getId().equals(caller.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Bạn không có quyền xem bài nộp này"));
+        if (!caller.isAdmin() && !sub.getUser().getId().equals(caller.getId())) {
+            if (caller.isLecturer()) {
+                boolean allowed = submissionRepository.isSubmissionVisibleToLecturer(sub.getId(), caller.getId());
+                if (!allowed) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(Map.of("message", "Bạn chỉ được xem bài nộp thuộc các lớp phụ trách"));
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Bạn không có quyền xem bài nộp này"));
+            }
         }
         return ResponseEntity.ok(DtoMapper.toSubmissionMap(sub));
     }

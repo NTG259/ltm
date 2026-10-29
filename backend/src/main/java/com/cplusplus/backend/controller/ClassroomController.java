@@ -18,6 +18,7 @@ import com.cplusplus.backend.service.ClassroomCsvImporter;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,6 +44,7 @@ public class ClassroomController {
     private final ClassroomCsvImporter csvImporter;
     private final UserRepository userRepository;
     private final SecurityService securityService;
+    private final JdbcTemplate jdbc;
 
     public ClassroomController(ClassroomRepository classroomRepository,
                                ClassroomStudentRepository classroomStudentRepository,
@@ -56,7 +58,8 @@ public class ClassroomController {
                                CourseUnitFileRepository courseUnitFileRepository,
                                ClassroomCsvImporter csvImporter,
                                UserRepository userRepository,
-                               SecurityService securityService) {
+                               SecurityService securityService,
+                               JdbcTemplate jdbc) {
         this.classroomRepository = classroomRepository;
         this.classroomStudentRepository = classroomStudentRepository;
         this.classroomContestRepository = classroomContestRepository;
@@ -70,11 +73,58 @@ public class ClassroomController {
         this.csvImporter = csvImporter;
         this.userRepository = userRepository;
         this.securityService = securityService;
+        this.jdbc = jdbc;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Classroom CRUD
     // ─────────────────────────────────────────────────────────────────────────
+
+    private Map<Long, List<Map<String, Object>>> loadAssignedLecturers(List<Long> classroomIds) {
+        if (classroomIds == null || classroomIds.isEmpty()) return Map.of();
+        String inClause = classroomIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+        String sql = """
+                SELECT DISTINCT cl.classroom_id, u.id, u.username, u.full_name
+                FROM classroom_lecturers cl
+                JOIN users u ON u.id = cl.user_id
+                WHERE cl.classroom_id IN (%s)
+                ORDER BY u.full_name, u.id
+                """.formatted(inClause);
+
+        Map<Long, List<Map<String, Object>>> map = new LinkedHashMap<>();
+        jdbc.query(sql, rs -> {
+            Long cId = rs.getLong("classroom_id");
+            map.computeIfAbsent(cId, k -> new ArrayList<>()).add(Map.of(
+                    "id", rs.getLong("id"),
+                    "username", rs.getString("username"),
+                    "fullName", rs.getString("full_name")
+            ));
+        });
+        return map;
+    }
+
+    private Map<String, Object> toClassroomDto(Classroom c, Map<Long, List<Map<String, Object>>> lecturersMap) {
+        Map<String, Object> map = new LinkedHashMap<>(DtoMapper.toClassroomMap(c));
+        List<Map<String, Object>> lecturers = lecturersMap.getOrDefault(c.getId(), List.of());
+        if (!lecturers.isEmpty()) {
+            map.put("lecturers", lecturers);
+            if (map.get("lecturerName") == null) {
+                Map<String, Object> primary = lecturers.get(0);
+                map.put("lecturerId", primary.get("id"));
+                map.put("lecturerName", primary.get("fullName"));
+                map.put("lecturerStaffId", primary.get("username"));
+            }
+        } else if (c.getLecturer() != null) {
+            map.put("lecturers", List.of(Map.of(
+                    "id", c.getLecturer().getId(),
+                    "username", c.getLecturer().getUsername(),
+                    "fullName", c.getLecturer().getFullName()
+            )));
+        } else {
+            map.put("lecturers", List.of());
+        }
+        return map;
+    }
 
     @GetMapping
     public ResponseEntity<?> listClassrooms(HttpServletRequest req) {
@@ -89,7 +139,8 @@ public class ClassroomController {
         } else {
             list = classroomRepository.findByStudentUserId(user.getId());
         }
-        return ResponseEntity.ok(list.stream().map(DtoMapper::toClassroomMap).toList());
+        Map<Long, List<Map<String, Object>>> lecturersMap = loadAssignedLecturers(list.stream().map(Classroom::getId).toList());
+        return ResponseEntity.ok(list.stream().map(c -> toClassroomDto(c, lecturersMap)).toList());
     }
 
     @GetMapping("/{id}")
@@ -114,7 +165,8 @@ public class ClassroomController {
                     );
                 }).toList();
 
-        Map<String, Object> result = new LinkedHashMap<>(DtoMapper.toClassroomMap(classroom));
+        Map<Long, List<Map<String, Object>>> lecturersMap = loadAssignedLecturers(List.of(classroom.getId()));
+        Map<String, Object> result = new LinkedHashMap<>(toClassroomDto(classroom, lecturersMap));
         result.put("contests", contests);
         return ResponseEntity.ok(result);
     }
@@ -133,7 +185,11 @@ public class ClassroomController {
         }
         Classroom classroom = classroomRepository.save(
                 new Classroom(name.trim(), body.get("semester"), user));
-        classroom.setLecturer(findLecturer(body.get("lecturerId")));
+        User lecturer = findLecturer(body.get("lecturerId"));
+        classroom.setLecturer(lecturer);
+        if (lecturer != null) {
+            jdbc.update("INSERT INTO classroom_lecturers (classroom_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", classroom.getId(), lecturer.getId());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(DtoMapper.toClassroomMap(classroom));
     }
 
@@ -156,7 +212,11 @@ public class ClassroomController {
             classroom.setSemester(body.get("semester"));
         }
         if (user.isAdmin() && body.containsKey("lecturerId")) {
-            classroom.setLecturer(findLecturer(body.get("lecturerId")));
+            User lecturer = findLecturer(body.get("lecturerId"));
+            classroom.setLecturer(lecturer);
+            if (lecturer != null) {
+                jdbc.update("INSERT INTO classroom_lecturers (classroom_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", classroom.getId(), lecturer.getId());
+            }
         }
         return ResponseEntity.ok(DtoMapper.toClassroomMap(classroom));
     }
@@ -250,8 +310,14 @@ public class ClassroomController {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lớp #" + id));
         if (!canManageClassroom(classroom, user)) return forbidden();
 
-        Map<String, Object> result = csvImporter.importTo(classroom, file);
-        return ResponseEntity.ok(result);
+        try {
+            Map<String, Object> result = csvImporter.importTo(classroom, file);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Lỗi nhập CSV: " + (e.getMessage() != null ? e.getMessage() : "Dữ liệu không hợp lệ")));
+        }
     }
 
     @DeleteMapping("/{id}/students/{userId}")

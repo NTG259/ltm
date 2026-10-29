@@ -198,7 +198,7 @@ function AppRoutes() {
           <Route path="/teacher/courses" element={<AdminCoursesPage teacher />} />
           <Route path="/teacher/courses/:id" element={<AdminCourseEditPage teacher />} />
           <Route path="/teacher/contests" element={<TeacherContestsPage />} />
-          <Route path="/teacher/submissions" element={<SubmissionsPage admin />} />
+          <Route path="/teacher/submissions" element={<SubmissionsPage teacher />} />
           <Route path="/teacher/submissions/:id" element={<SubmissionDetailPage />} />
           <Route path="/teacher/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage teacher />} />
           <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />

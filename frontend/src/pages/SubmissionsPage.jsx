@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
-import { Card, Input, Select, Space, Statistic, Table, Tag, Typography } from 'antd'
+import { Alert, Card, Input, Select, Space, Statistic, Table, Tabs, Tag, Typography } from 'antd'
 import { CloudServerOutlined, SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
@@ -12,11 +12,23 @@ import VerdictTag from '../components/VerdictTag'
 const PAGE_SIZE = 50
 
 /** Danh sách bài nộp: thí sinh thấy bài của mình; admin tra cứu & lọc toàn trường. Cập nhật realtime. */
-export default function SubmissionsPage({ admin }) {
+export default function SubmissionsPage({ admin, teacher }) {
   const { user } = useAuth()
+  const isLecturer = teacher || (!admin && user?.role === 'lecturer') || (admin && user?.role === 'lecturer')
+  const isStaff = admin || isLecturer
   const now = useNow(10000)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  const { data: classrooms, loading: loadingClassrooms } = useFetch(
+    () => (isLecturer ? api.listClassrooms() : Promise.resolve([])),
+    [isLecturer]
+  )
+
+  const classroomIdParam = searchParams.get('classroomId')
+  const activeClassroomId = isLecturer
+    ? (classroomIdParam ? Number(classroomIdParam) : (classrooms?.[0]?.id ?? null))
+    : null
 
   const verdict = searchParams.get('verdict') || null
   const problemId = searchParams.get('problemId') ? Number(searchParams.get('problemId')) : null
@@ -39,17 +51,24 @@ export default function SubmissionsPage({ admin }) {
     debounceRef.current = setTimeout(() => setParam('student', val), 300)
   }
 
-  // Admin mode: server-side filtering + pagination
+  // Staff mode (Admin / Lecturer): server-side filtering + pagination + scoped classroom
   // Student mode: load own submissions (usually small), filter client-side
-  const adminQuery = admin
-    ? { userId: student || undefined, problemId: problemId || undefined, verdict: verdict || undefined, page, size: PAGE_SIZE }
+  const staffQuery = isStaff
+    ? {
+        userId: student || undefined,
+        problemId: problemId || undefined,
+        verdict: verdict || undefined,
+        classroomId: isLecturer ? (activeClassroomId || undefined) : undefined,
+        page,
+        size: PAGE_SIZE,
+      }
     : null
 
   const subs = useFetch(
-    () => admin
-      ? api.listSubmissions(adminQuery)
+    () => isStaff
+      ? api.listSubmissions(staffQuery)
       : api.listSubmissions({ userId: user.id }),
-    admin ? [student, problemId, verdict, page] : [user.id],
+    isStaff ? [student, problemId, verdict, activeClassroomId, page] : [user.id],
   )
   const problems = useFetch(() => api.listProblems(), [])
   const { setData } = subs
@@ -59,7 +78,7 @@ export default function SubmissionsPage({ admin }) {
       (msg) => {
         if (msg.type !== 'SUBMISSION_UPDATE') return
         const s = msg.submission
-        if (!admin && s.userId !== user.id) return
+        if (!isStaff && s.userId !== user.id) return
         // eslint-disable-next-line no-unused-vars
         const { sourceCode, tests, history, ...row } = s
         setData((prev) => {
@@ -70,7 +89,7 @@ export default function SubmissionsPage({ admin }) {
           return Array.isArray(prev) ? next : { ...prev, submissions: next }
         })
       },
-      [admin, user.id, setData],
+      [isStaff, user.id, setData],
     ),
   )
 
@@ -94,20 +113,22 @@ export default function SubmissionsPage({ admin }) {
     const list = Array.isArray(subs.data) ? (subs.data || []) : (subs.data?.submissions || [])
     const finished = list.filter((s) => s.status === 'FINISHED')
     return {
-      total: admin ? total : list.length,
+      total: isStaff ? total : list.length,
       pending: list.length - finished.length,
       ac: finished.filter((s) => s.verdict === 'AC').length,
       students: new Set(list.map((s) => s.userId)).size,
     }
-  }, [subs.data, total, admin])
+  }, [subs.data, total, isStaff])
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>{admin ? 'Toàn bộ bài nộp của sinh viên' : 'Bài nộp của tôi'}</h1>
+          <h1>{isLecturer ? 'Bài nộp sinh viên theo lớp phụ trách' : admin ? 'Toàn bộ bài nộp của sinh viên' : 'Bài nộp của tôi'}</h1>
           <p>
-            {admin
+            {isLecturer
+              ? 'Xem và theo dõi bài nộp của sinh viên theo từng lớp học bạn phụ trách. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn và kết quả chấm.'
+              : admin
               ? 'Tra cứu và lọc bài nộp của sinh viên. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn C++ và kết quả chấm.'
               : 'Lịch sử nộp bài và kết quả chấm của bạn. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn và kết quả test.'}
           </p>
@@ -124,16 +145,43 @@ export default function SubmissionsPage({ admin }) {
         <Card size="small">
           <Statistic title="Đang chờ / đang chấm" value={stats.pending} styles={{ content: { color: '#2563eb' } }} />
         </Card>
-        {admin && (
+        {isStaff && (
           <Card size="small">
             <Statistic title="Số thí sinh" value={stats.students} />
           </Card>
         )}
       </div>
 
+      {isLecturer && (
+        <div style={{ marginBottom: 16 }}>
+          {classrooms && classrooms.length > 0 ? (
+            <Tabs
+              type="card"
+              activeKey={activeClassroomId ? String(activeClassroomId) : undefined}
+              onChange={(k) => setParam('classroomId', k)}
+              items={classrooms.map((cls) => ({
+                key: String(cls.id),
+                label: (
+                  <span>
+                    🏫 <strong>{cls.name}</strong> {cls.semester ? <Tag color="purple" style={{ marginLeft: 6 }}>{cls.semester}</Tag> : ''}
+                  </span>
+                ),
+              }))}
+            />
+          ) : !loadingClassrooms ? (
+            <Alert
+              type="info"
+              showIcon
+              message="Bạn chưa có lớp học phụ trách"
+              description="Khi được quản trị viên phân công lớp học, danh sách bài nộp của sinh viên theo từng lớp sẽ hiển thị tại đây."
+            />
+          ) : null}
+        </div>
+      )}
+
       <Card styles={{ body: { padding: 0 } }}>
         <Space wrap size={12} style={{ padding: 14 }}>
-          {admin && (
+          {isStaff && (
             <Input
               allowClear
               prefix={<SearchOutlined />}
@@ -170,7 +218,7 @@ export default function SubmissionsPage({ admin }) {
           loading={subs.loading}
           dataSource={rows}
           scroll={{ x: 920 }}
-          pagination={admin
+          pagination={isStaff
             ? { current: page + 1, pageSize: PAGE_SIZE, total, showSizeChanger: false,
                 onChange: (p) => setParam('page', p - 1 || null) }
             : { pageSize: 15, showSizeChanger: false }}
@@ -178,7 +226,7 @@ export default function SubmissionsPage({ admin }) {
             style: { cursor: 'pointer' },
             onClick: (e) => {
               if (e.target.closest('a, button, input, .ant-select')) return
-              navigate(`/submissions/${s.id}`)
+              navigate(isLecturer ? `/teacher/submissions/${s.id}` : admin ? `/admin/submissions/${s.id}` : `/submissions/${s.id}`)
             },
           })}
           columns={[
@@ -187,7 +235,7 @@ export default function SubmissionsPage({ admin }) {
               dataIndex: 'id',
               width: 85,
               render: (id) => (
-                <Link to={`/submissions/${id}`} className="mono" style={{ fontWeight: 600 }}>
+                <Link to={isLecturer ? `/teacher/submissions/${id}` : admin ? `/admin/submissions/${id}` : `/submissions/${id}`} className="mono" style={{ fontWeight: 600 }}>
                   #{id}
                 </Link>
               ),
@@ -198,7 +246,7 @@ export default function SubmissionsPage({ admin }) {
               width: 130,
               render: (v) => <span title={formatDateTime(v)}>{formatRelative(v, now)}</span>,
             },
-            ...(admin
+            ...(isStaff
               ? [
                   {
                     title: 'Thí sinh',

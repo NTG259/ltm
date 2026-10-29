@@ -34,11 +34,19 @@ public class LecturerAdminController {
     public List<Map<String, Object>> assigned(@PathVariable Long classroomId, HttpServletRequest request) {
         requireAdmin(request);
         return jdbc.query("""
-                SELECT u.id, u.username, u.full_name FROM classroom_lecturers cl
-                JOIN users u ON u.id = cl.user_id WHERE cl.classroom_id = ?
+                SELECT DISTINCT u.id, u.username, u.full_name FROM users u
+                WHERE u.id IN (
+                    SELECT user_id FROM classroom_lecturers WHERE classroom_id = ?
+                    UNION
+                    SELECT lecturer_id FROM classrooms WHERE id = ? AND lecturer_id IS NOT NULL
+                    UNION
+                    SELECT c.created_by FROM classrooms c
+                    JOIN users cu ON cu.id = c.created_by
+                    WHERE c.id = ? AND c.created_by IS NOT NULL AND cu.role = 'LECTURER'
+                )
                 ORDER BY u.full_name, u.id
                 """, (rs, row) -> Map.of("id", rs.getLong("id"), "username", rs.getString("username"),
-                        "fullName", rs.getString("full_name")), classroomId);
+                        "fullName", rs.getString("full_name")), classroomId, classroomId, classroomId);
     }
 
     @PostMapping("/classrooms/{classroomId}/{lecturerId}")
@@ -56,6 +64,7 @@ public class LecturerAdminController {
         if (added == 0 && Boolean.FALSE.equals(jdbc.queryForObject(
                 "SELECT EXISTS (SELECT 1 FROM classrooms WHERE id = ?)", Boolean.class, classroomId)))
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy lớp");
+        jdbc.update("UPDATE classrooms SET lecturer_id = ? WHERE id = ? AND lecturer_id IS NULL", lecturerId, classroomId);
     }
 
     @DeleteMapping("/classrooms/{classroomId}/{lecturerId}")
@@ -63,6 +72,7 @@ public class LecturerAdminController {
     public void unassign(@PathVariable Long classroomId, @PathVariable Long lecturerId, HttpServletRequest request) {
         requireAdmin(request);
         jdbc.update("DELETE FROM classroom_lecturers WHERE classroom_id = ? AND user_id = ?", classroomId, lecturerId);
+        jdbc.update("UPDATE classrooms SET lecturer_id = (SELECT user_id FROM classroom_lecturers WHERE classroom_id = ? LIMIT 1) WHERE id = ? AND lecturer_id = ?", classroomId, classroomId, lecturerId);
     }
 
     private void requireAdmin(HttpServletRequest request) {

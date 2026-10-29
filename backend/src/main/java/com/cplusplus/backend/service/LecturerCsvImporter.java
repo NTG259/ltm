@@ -47,7 +47,8 @@ public class LecturerCsvImporter {
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
             if (headerLine == null) throw new IllegalArgumentException("CSV không có dòng tiêu đề");
-            List<String> headers = parseRow(headerLine);
+            char delimiter = detectDelimiter(headerLine);
+            List<String> headers = parseRow(headerLine, delimiter);
             int staffIdIndex = -1;
             int fullNameIndex = -1;
             int passwordIndex = -1;
@@ -66,7 +67,7 @@ public class LecturerCsvImporter {
                 if (line.isBlank()) continue;
                 List<String> columns;
                 try {
-                    columns = parseRow(line);
+                    columns = parseRow(line, delimiter);
                 } catch (IllegalArgumentException e) {
                     skippedInvalid++;
                     continue;
@@ -110,7 +111,17 @@ public class LecturerCsvImporter {
         return withoutMarks.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
-    private static List<String> parseRow(String line) {
+    private static char detectDelimiter(String line) {
+        int semicolons = 0;
+        int commas = 0;
+        for (char c : line.toCharArray()) {
+            if (c == ';') semicolons++;
+            else if (c == ',') commas++;
+        }
+        return semicolons > commas ? ';' : ',';
+    }
+
+    private static List<String> parseRow(String line, char delimiter) {
         List<String> columns = new ArrayList<>();
         StringBuilder value = new StringBuilder();
         boolean quoted = false;
@@ -123,7 +134,7 @@ public class LecturerCsvImporter {
                 } else {
                     quoted = !quoted;
                 }
-            } else if (c == ',' && !quoted) {
+            } else if (c == delimiter && !quoted) {
                 columns.add(value.toString());
                 value.setLength(0);
             } else {
