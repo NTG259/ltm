@@ -12,5 +12,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     List<Course> findByPublishedTrueOrderByCreatedAtDesc();
 
+    List<Course> findByCreatedByIdOrderByCreatedAtDesc(Long createdById);
+
     Optional<Course> findByIdAndPublishedTrue(Long id);
 }

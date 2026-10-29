@@ -9,6 +9,7 @@ const TOKEN_KEY = 'cj.token'
 const USER_KEY = 'cj.user'
 const ADMIN_PASSWORD = 'admin123'
 const mockAccounts = new Map()
+const mockLecturers = [{ id: 'GV001', staffId: 'GV001', fullName: 'Giảng viên mẫu', password: 'gv123456', initialPassword: 'gv123456', createdAt: Date.now() }]
 
 function storageGet(key) {
   try {
@@ -228,13 +229,23 @@ function setStoredCourses(list) {
 const mockApi = {
   async changePassword(payload) {
     const session = getStoredSession()
-    const studentId = session?.user?.id
+    const userId = session?.user?.id
     const accounts = getMockAccounts()
-    if (!studentId || session.user.role === 'admin') throw new Error('Chỉ sinh viên mới dùng chức năng này')
-    if (accounts[studentId] !== payload.currentPassword) throw new Error('Mật khẩu hiện tại không chính xác')
+    if (!userId || session.user.role === 'admin') throw new Error('Tài khoản này không dùng chức năng đổi mật khẩu')
+    let currentPassword = accounts[userId]
+    let lecturer = mockLecturers.find((item) => item.staffId.toUpperCase() === String(userId).toUpperCase())
+    if (session.user.role === 'lecturer') currentPassword = lecturer?.password || 'gv123456'
+    if (currentPassword !== payload.currentPassword) throw new Error('Mật khẩu hiện tại không chính xác')
     if (!payload.newPassword || payload.newPassword.length < 8) throw new Error('Mật khẩu cần ít nhất 8 ký tự')
-    accounts[studentId] = payload.newPassword
-    setMockAccounts(accounts)
+    if (session.user.role === 'lecturer') {
+      if (lecturer) {
+        lecturer.password = payload.newPassword
+        lecturer.initialPassword = null
+      }
+    } else {
+      accounts[userId] = payload.newPassword
+      setMockAccounts(accounts)
+    }
     return delay({ success: true })
   },
   async login(payload) {
@@ -244,10 +255,11 @@ const mockApi = {
       if (payload.password !== ADMIN_PASSWORD) throw new Error('Sai mật khẩu quản trị')
       return delay({ token: 'mock-admin-token', user: { id: 'admin', name: 'Quản trị viên', role: 'admin' } })
     }
-    // Lecturer accounts: GV001..GV999 with password "gv123456"
+    // Seed/mock lecturer accounts use the default password until changed.
     if (/^GV\d{3}$/i.test(username)) {
-      if (payload.password !== 'gv123456') throw new Error('Tài khoản hoặc mật khẩu không chính xác')
       const gvId = username.toUpperCase()
+      const lecturer = mockLecturers.find((item) => item.staffId === gvId)
+      if (payload.password !== (lecturer?.password || 'gv123456')) throw new Error('Tài khoản hoặc mật khẩu không chính xác')
       return delay({ token: `mock-${gvId}`, user: { id: gvId, name: `Giảng viên ${gvId}`, role: 'lecturer' } })
     }
     if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(username)) throw new Error('Tài khoản hoặc mật khẩu không chính xác')
@@ -321,6 +333,69 @@ const mockApi = {
   contestStandings: async (id) => delay(icpcStandings(findContest(id), engine.submissions())),
   saveContest: (data) => delay(engine.saveContest(data)),
   deleteContest: (id) => delay(engine.deleteContest(id)),
+  teacherListProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
+  teacherGetProblem: (id) => mockApi.getProblem(id),
+  teacherSaveProblem: (data) => delay(engine.saveProblem({ ...data, publicVisible: false })),
+  teacherDeleteProblem: (id) => delay(engine.deleteProblem(id)),
+  teacherListContests: (user) => mockApi.listContests(user),
+  teacherAvailableContests: () => delay(engine.contests()),
+  teacherContestProblems: () => delay(problemStats(engine.problems(), engine.submissions())),
+  teacherSaveContest: (data) => delay(engine.saveContest(data)),
+  teacherDeleteContest: (id) => delay(engine.deleteContest(id)),
+  listLecturers: () => delay(mockLecturers.map(({ password, ...lecturer }) => lecturer)),
+  createLecturer: (data) => {
+    const lecturer = { id: Date.now(), ...data, staffId: data.staffId.toUpperCase(), initialPassword: data.password, createdAt: Date.now() }
+    mockLecturers.push(lecturer)
+    return delay({ ...lecturer, password: undefined })
+  },
+  deleteLecturers: (ids) => {
+    let deleted = 0
+    for (let index = mockLecturers.length - 1; index >= 0; index--) {
+      if (ids.includes(mockLecturers[index].id)) {
+        mockLecturers.splice(index, 1)
+        deleted++
+      }
+    }
+    return delay({ deleted })
+  },
+  resetLecturerPassword: (id, password) => {
+    const lecturer = mockLecturers.find((item) => item.id === id)
+    if (!lecturer) return Promise.reject(new Error('Không tìm thấy tài khoản giảng viên'))
+    if (!password || password.length < 8) return Promise.reject(new Error('Mật khẩu phải có ít nhất 8 ký tự'))
+    lecturer.password = password
+    lecturer.initialPassword = password
+    return delay({ message: 'Đã đặt lại mật khẩu thành công' })
+  },
+  importLecturers: async (file) => {
+    const lines = (await file.text()).replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean)
+    if (lines.length < 1) throw new Error('File CSV không có dữ liệu')
+    const normalize = (value) => value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '')
+    const headers = lines[0].split(',').map(normalize)
+    const staffIndex = headers.findIndex((header) => ['staffid', 'magv', 'magiangvien', 'manhanvien', 'username'].includes(header))
+    const nameIndex = headers.findIndex((header) => ['fullname', 'hoten', 'tengiangvien'].includes(header))
+    const passwordIndex = headers.findIndex((header) => ['password', 'matkhau'].includes(header))
+    if ([staffIndex, nameIndex, passwordIndex].some((index) => index < 0)) {
+      throw new Error('CSV phải có ba cột: MaGiangVien,HoTen,MatKhau')
+    }
+    let imported = 0
+    let skippedInvalid = 0
+    let skippedExisting = 0
+    for (const line of lines.slice(1)) {
+      const columns = line.split(',')
+      const staffId = (columns[staffIndex] || '').trim().toUpperCase()
+      const fullName = (columns[nameIndex] || '').trim()
+      const password = columns[passwordIndex] || ''
+      if (!/^[A-Z0-9._-]{3,32}$/.test(staffId) || !fullName || fullName.length > 100 || password.length < 8) {
+        skippedInvalid++
+      } else if (mockLecturers.some((lecturer) => lecturer.staffId.toUpperCase() === staffId)) {
+        skippedExisting++
+      } else {
+        mockLecturers.push({ id: Date.now() + imported, staffId, fullName, password, initialPassword: password, createdAt: Date.now() })
+        imported++
+      }
+    }
+    return delay({ imported, skippedInvalid, skippedExisting })
+  },
   reportViolation: () => delay({ success: true, violationCount: 1 }),
   getProctorStatus: (id) => delay({ contestId: id, participants: [], recentViolations: [] }),
   runPlagiarismCheck: (id) => delay({ hasReport: true, status: 'RUNNING', contestId: id, submissionCount: 0, suspiciousCount: 0, highRiskCount: 0, totalMatches: 0, matches: [] }, 300),
@@ -428,6 +503,7 @@ const mockApi = {
     }),
   killWorker: (id) => delay(engine.killWorker(id), 50),
   reviveWorker: (id) => delay(engine.reviveWorker(id), 50),
+  removeDisconnectedWorkers: () => delay(engine.removeDisconnectedWorkers(), 50),
   // ---- Khóa học (Curriculum mock) ----
   listCourses: () => {
     const list = getStoredCourses()
@@ -657,6 +733,37 @@ const realApi = {
   compareSubmissions: (id, subA, subB) => http('GET', `/contests/${id}/plagiarism/compare?subA=${subA}&subB=${subB}`),
   saveContest: (data) => (data.id ? http('PUT', `/admin/contests/${data.id}`, data) : http('POST', '/admin/contests', data)),
   deleteContest: (id) => http('DELETE', `/admin/contests/${id}`),
+  teacherListProblems: () => http('GET', '/teacher/problems'),
+  teacherGetProblem: (id) => http('GET', `/teacher/problems/${id}`),
+  teacherSaveProblem: (data) => data.id
+    ? http('PUT', `/teacher/problems/${data.id}`, data)
+    : http('POST', '/teacher/problems', data),
+  teacherDeleteProblem: (id) => http('DELETE', `/teacher/problems/${id}`),
+  teacherListContests: () => http('GET', '/teacher/contests'),
+  teacherAvailableContests: () => http('GET', '/teacher/library/contests'),
+  teacherContestProblems: () => http('GET', '/teacher/contests/problems'),
+  teacherSaveContest: (data) => data.id
+    ? http('PUT', `/teacher/contests/${data.id}`, data)
+    : http('POST', '/teacher/contests', data),
+  teacherDeleteContest: (id) => http('DELETE', `/teacher/contests/${id}`),
+  listLecturers: () => http('GET', '/admin/lecturers'),
+  createLecturer: (data) => http('POST', '/admin/lecturers', data),
+  deleteLecturers: (ids) => http('DELETE', '/admin/lecturers', { ids }),
+  resetLecturerPassword: (id, password) => http('POST', `/admin/lecturers/${id}/reset-password`, { password }),
+  importLecturers: (file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/admin/lecturers/import`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
   adminOverview: () => http('GET', '/admin/overview'),
   saveProblem: (data) => (data.id ? http('PUT', `/admin/problems/${data.id}`, data) : http('POST', '/admin/problems', data)),
   toggleProblemVisibility: (id, visible) => http('PATCH', `/admin/problems/${id}/visibility`, { publicVisible: visible }),
@@ -691,6 +798,7 @@ const realApi = {
   },
   killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
   reviveWorker: () => Promise.reject(new Error('Hãy khởi động lại tiến trình judge_worker.py')),
+  removeDisconnectedWorkers: () => http('DELETE', '/admin/workers/disconnected'),
   adminLogs: (level) => http('GET', level ? `/admin/logs?level=${level}` : '/admin/logs'),
   // ---- Lớp học ----
   listClassrooms: () => http('GET', '/classrooms'),

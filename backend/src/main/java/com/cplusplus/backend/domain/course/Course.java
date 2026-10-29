@@ -1,6 +1,7 @@
 package com.cplusplus.backend.domain.course;
 
 import jakarta.persistence.*;
+import com.cplusplus.backend.domain.user.User;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
@@ -23,6 +24,10 @@ public class Course {
 
     @Column(name = "is_published", nullable = false)
     private boolean published = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -63,6 +68,10 @@ public class Course {
     public boolean isPublished() {
         return published;
     }
+
+    public User getCreatedBy() { return createdBy; }
+
+    public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
 
     public void setPublished(boolean published) {
         this.published = published;

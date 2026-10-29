@@ -21,6 +21,7 @@ const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminProblemsPage = lazy(() => import('./pages/admin/AdminProblemsPage'))
 const AdminClassroomsPage = lazy(() => import('./pages/admin/AdminClassroomsPage'))
+const AdminLecturersPage = lazy(() => import('./pages/admin/AdminLecturersPage'))
 const AdminClassroomDetailPage = lazy(() => import('./pages/admin/AdminClassroomDetailPage'))
 const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroomMonitorPage'))
 const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
@@ -34,6 +35,8 @@ const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const TeacherClassroomsPage = lazy(() => import('./pages/teacher/TeacherClassroomsPage'))
 const TeacherClassroomDetailPage = lazy(() => import('./pages/teacher/TeacherClassroomDetailPage'))
+const TeacherProblemsPage = lazy(() => import('./pages/teacher/TeacherProblemsPage'))
+const TeacherContestsPage = lazy(() => import('./pages/teacher/TeacherContestsPage'))
 
 const THEME_KEY = 'cj.theme'
 
@@ -140,6 +143,14 @@ function AppRoutes() {
             }
           />
           <Route
+            path="/admin/lecturers"
+            element={
+              <RequireAuth admin>
+                <AdminLecturersPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/admin/classrooms/:id"
             element={
               <RequireAuth admin>
@@ -174,6 +185,11 @@ function AppRoutes() {
         >
           <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
           <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
+          <Route path="/teacher/problems" element={<TeacherProblemsPage />} />
+          <Route path="/teacher/courses" element={<AdminCoursesPage teacher />} />
+          <Route path="/teacher/courses/:id" element={<AdminCourseEditPage teacher />} />
+          <Route path="/teacher/contests" element={<TeacherContestsPage />} />
+          <Route path="/teacher/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage teacher />} />
         </Route>
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>

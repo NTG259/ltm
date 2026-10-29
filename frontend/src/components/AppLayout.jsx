@@ -44,6 +44,7 @@ export default function AppLayout() {
   const items = [
     ...(isAdmin
       ? [
+          { key: '/admin/lecturers', icon: <UsergroupAddOutlined />, label: <Link to="/admin/lecturers">Giảng viên</Link> },
           { key: '/admin', icon: <DashboardOutlined />, label: <Link to="/admin">Giám sát</Link> },
           { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp</Link> },
           { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },

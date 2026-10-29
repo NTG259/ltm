@@ -13,4 +13,8 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
 
     /** Lớp học do giảng viên (createdBy) tạo. */
     List<Classroom> findByCreatedById(Long createdById);
+
+    List<Classroom> findByLecturerId(Long lecturerId);
+
+    long countByLecturerId(Long lecturerId);
 }

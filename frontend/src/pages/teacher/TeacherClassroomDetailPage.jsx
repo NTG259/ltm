@@ -84,9 +84,32 @@ function StudentsTab({ classroomId }) {
 // ── Tab Kỳ thi ────────────────────────────────────────────────────────────
 function ContestsTab({ classroomId }) {
   const now = useNow(30000)
-  const { data: contests, loading } = useFetch(
+  const { message } = App.useApp()
+  const { data: contests, loading, reload } = useFetch(
     () => api.listClassroomContests(classroomId), [classroomId]
   )
+  const { data: available } = useFetch(() => api.teacherAvailableContests(), [])
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [selectedContest, setSelectedContest] = useState(null)
+  const [assigning, setAssigning] = useState(false)
+  const assignedIds = new Set((contests || []).map((contest) => contest.contestId))
+  const availableToAssign = (available || []).filter((contest) => !assignedIds.has(contest.id))
+
+  const assign = async () => {
+    if (!selectedContest) return
+    setAssigning(true)
+    try {
+      await api.assignClassroomContest(classroomId, selectedContest)
+      message.success('Đã gán kỳ thi vào lớp')
+      setAssignOpen(false)
+      setSelectedContest(null)
+      reload()
+    } catch (error) {
+      message.error(error.message)
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   const columns = [
     {
@@ -105,11 +128,20 @@ function ContestsTab({ classroomId }) {
 
   return (
     <div style={{ padding: 20 }}>
+      <Button icon={<PlusOutlined />} onClick={() => setAssignOpen(true)} disabled={!availableToAssign.length} style={{ marginBottom: 12 }}>
+        Gán kỳ thi có sẵn
+      </Button>
       {!loading && (!contests || contests.length === 0) ? (
         <Empty description="Lớp này chưa có kỳ thi nào." />
       ) : (
         <Table rowKey="contestId" columns={columns} dataSource={contests || []} loading={loading} pagination={false} size="small" />
       )}
+      <Modal open={assignOpen} title="Gán kỳ thi có sẵn" onOk={assign} onCancel={() => setAssignOpen(false)}
+        confirmLoading={assigning} okText="Gán vào lớp" cancelText="Hủy">
+        <Select style={{ width: '100%', marginTop: 12 }} value={selectedContest} onChange={setSelectedContest}
+          placeholder="Chọn kỳ thi do admin hoặc bạn tạo"
+          options={availableToAssign.map((contest) => ({ value: contest.id, label: contest.title }))} />
+      </Modal>
     </div>
   )
 }

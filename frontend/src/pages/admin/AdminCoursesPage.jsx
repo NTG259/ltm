@@ -5,10 +5,14 @@ import { Link } from 'react-router-dom'
 import { api } from '../../api'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import { useFetch } from '../../lib/hooks'
+import { useAuth } from '../../auth/context'
 
-export default function AdminCoursesPage() {
+export default function AdminCoursesPage({ teacher = false }) {
   const { message } = App.useApp()
-  const { data: courses, loading, reload: refetch } = useFetch(() => api.listCourses(), [])
+  const { user } = useAuth()
+  const { data: allCourses, loading, reload: refetch } = useFetch(() => api.listCourses(), [])
+  const courses = teacher ? (allCourses || []).filter((course) => course.createdBy === user?.id) : allCourses || []
+  const basePath = teacher ? '/teacher/courses' : '/admin/courses'
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form] = Form.useForm()
@@ -78,7 +82,7 @@ export default function AdminCoursesPage() {
       key: 'title',
       render: (title, row) => (
         <Space orientation="vertical" size={2}>
-          <Link to={`/admin/courses/${row.id}`} style={{ fontWeight: 600, fontSize: 15 }}>
+          <Link to={`${basePath}/${row.id}`} style={{ fontWeight: 600, fontSize: 15 }}>
             {title}
           </Link>
           {row.description && (
@@ -129,7 +133,7 @@ export default function AdminCoursesPage() {
       align: 'right',
       render: (_, row) => (
         <Space>
-          <Link to={`/admin/courses/${row.id}`}>
+          <Link to={`${basePath}/${row.id}`}>
             <Button size="small" icon={<UnorderedListOutlined />}>
               Chủ đề
             </Button>
@@ -153,8 +157,8 @@ export default function AdminCoursesPage() {
   return (
     <div className="page admin-page--wide">
       <AdminPageHeader
-        title="Quản lý Khóa học & Lộ trình"
-        description="Xây dựng lộ trình học C++, sắp xếp các chủ đề lý thuyết và bài tập"
+        title={teacher ? 'Khóa học của tôi' : 'Quản lý Khóa học & Lộ trình'}
+        description={teacher ? 'Tạo khóa học và soạn nội dung bằng các đề có sẵn trong kho chung.' : 'Xây dựng lộ trình học C++, sắp xếp các chủ đề lý thuyết và bài tập'}
         icon={<BookOutlined />}
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size="large">

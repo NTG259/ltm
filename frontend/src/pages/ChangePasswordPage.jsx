@@ -24,7 +24,7 @@ export default function ChangePasswordPage() {
       <Card>
         <Typography.Title level={3}>Đổi mật khẩu</Typography.Title>
         <Typography.Paragraph type="secondary">
-          Sau khi đổi, giảng viên sẽ không còn xem được mật khẩu ban đầu của bạn.
+          Sau khi đổi mật khẩu, mật khẩu ban đầu sẽ không còn hiển thị trong trang quản lý tài khoản.
         </Typography.Paragraph>
         <Form layout="vertical" onFinish={submit}>
           <Form.Item name="currentPassword" label="Mật khẩu hiện tại" rules={[{ required: true }]}>

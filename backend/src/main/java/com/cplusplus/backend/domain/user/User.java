@@ -36,6 +36,10 @@ public class User {
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
+    /** Mật khẩu khởi tạo/đặt lại để quản trị viên phân phối; xóa khi người dùng tự đổi mật khẩu. */
+    @Column(name = "initial_password")
+    private String initialPassword;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -110,6 +114,14 @@ public class User {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getInitialPassword() {
+        return initialPassword;
+    }
+
+    public void setInitialPassword(String initialPassword) {
+        this.initialPassword = initialPassword;
     }
 
     public Instant getCreatedAt() {

@@ -31,7 +31,7 @@ function ProblemCell({ cell }) {
   )
 }
 
-export default function AdminContestMonitorPage() {
+export default function AdminContestMonitorPage({ teacher = false }) {
   const { cid, kid } = useParams()
   const [lastRefresh, setLastRefresh] = useState(null)
   const { data: rawRows, loading, reload } = useFetch(async () => {
@@ -145,7 +145,7 @@ export default function AdminContestMonitorPage() {
   return (
     <div className="page admin-page--monitor">
       <Space wrap style={{ marginBottom: 16 }}>
-        <Link to={`/admin/classrooms/${cid}`}>
+        <Link to={`${teacher ? '/teacher' : '/admin'}/classrooms/${cid}`}>
           <Button icon={<ArrowLeftOutlined />}>Chi tiết lớp</Button>
         </Link>
         <Typography.Title level={3} style={{ margin: 0 }}>

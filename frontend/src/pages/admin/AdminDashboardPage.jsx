@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { App, Col, Row, Spin } from 'antd'
+import { App, Button, Col, Popconfirm, Row, Spin } from 'antd'
+import { DeleteOutlined } from '@ant-design/icons'
 import { api } from '../../api'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import {
@@ -30,6 +31,7 @@ export default function AdminDashboardPage() {
 
   const base = overview.data || { workers: [], queue: [], logs: [], submissions: 0, throughput: [] }
   const workers = live.workers || base.workers
+  const disconnectedCount = workers.filter((w) => w.status === 'DEAD').length
   const logs = useMemo(
     () => (live.logs ? [...live.logs, ...base.logs.filter((entry) => !live.logs.some((item) => item.id === entry.id))] : base.logs),
     [base.logs, live.logs],
@@ -51,6 +53,16 @@ export default function AdminDashboardPage() {
       message.info(e.message)
     }
   }, [message])
+  const removeDisconnected = useCallback(async () => {
+    try {
+      const result = await api.removeDisconnectedWorkers()
+      overview.setData((current) => current && ({ ...current, workers: current.workers.filter((w) => w.status !== 'DEAD') }))
+      setLive((current) => current.workers ? ({ ...current, workers: current.workers.filter((w) => w.status !== 'DEAD') }) : current)
+      message.success(`Đã xóa ${result.removed} worker đã ngắt kết nối`)
+    } catch (e) {
+      message.error(e.message || 'Không thể xóa worker đã ngắt kết nối')
+    }
+  }, [message, overview.setData])
 
   return (
     <div className="page">
@@ -58,6 +70,20 @@ export default function AdminDashboardPage() {
         title="Giám sát cụm Judge Worker"
         description="Trạng thái sống còn qua Heartbeat (PING/PONG 5s, timeout 15s), hàng đợi FIFO và nhật ký điều phối của Master."
       />
+      {disconnectedCount > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <Popconfirm
+            title={`Xóa ${disconnectedCount} worker đã ngắt kết nối?`}
+            description="Các worker đang hoạt động sẽ được giữ lại."
+            okText="Xóa worker đã dừng"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+            onConfirm={removeDisconnected}
+          >
+            <Button danger icon={<DeleteOutlined />}>Dọn worker đã dừng ({disconnectedCount})</Button>
+          </Popconfirm>
+        </div>
+      )}
 
       {overview.loading && <Spin style={{ display: 'block', margin: 40 }} />}
       {!overview.loading && (

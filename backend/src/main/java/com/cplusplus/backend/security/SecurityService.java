@@ -85,15 +85,18 @@ public class SecurityService {
     }
 
     @Transactional
-    public void changeStudentPassword(User student, String currentPassword, String newPassword) {
-        if (student == null || student.isAdmin() || student.getPasswordHash() == null
-                || !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, student.getPasswordHash())) {
+    public void changePassword(User user, String currentPassword, String newPassword) {
+        if (user == null || user.isAdmin() || user.getPasswordHash() == null
+                || !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, user.getPasswordHash())) {
             throw new IllegalArgumentException("Mật khẩu hiện tại không chính xác");
         }
-        student.setPasswordHash(hashPassword(newPassword));
-        classroomStudentRepository.findByUserId(student.getId())
-                .ifPresent(enrollment -> enrollment.setImportedPassword(null));
-        userRepository.save(student);
+        user.setPasswordHash(hashPassword(newPassword));
+        user.setInitialPassword(null);
+        if (!user.isLecturer()) {
+            classroomStudentRepository.findByUserId(user.getId())
+                    .ifPresent(enrollment -> enrollment.setImportedPassword(null));
+        }
+        userRepository.save(user);
     }
 
     @Transactional
