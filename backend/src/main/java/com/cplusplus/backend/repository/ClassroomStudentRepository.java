@@ -2,6 +2,7 @@ package com.cplusplus.backend.repository;
 
 import com.cplusplus.backend.domain.classroom.ClassroomStudent;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -13,4 +14,6 @@ public interface ClassroomStudentRepository extends JpaRepository<ClassroomStude
     boolean existsByClassroomIdAndUserId(Long classroomId, Long userId);
 
     boolean existsByUserId(Long userId);
+
+    Optional<ClassroomStudent> findByUserId(Long userId);
 }

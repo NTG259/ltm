@@ -47,10 +47,25 @@ int main(){
 }
 `;
 
-export default function () {
+export function setup() {
+  if (TOKEN) return { token: TOKEN };
+  const res = http.post(
+    `${BASE}/api/auth/login`,
+    JSON.stringify({ username: "admin", password: "admin123" }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+  if (res.status === 200 || res.status === 201) {
+    const data = res.json();
+    return { token: data.token || (data.data && data.data.token) || "" };
+  }
+  return { token: "" };
+}
+
+export default function (data) {
+  const token = (data && data.token) || TOKEN;
   const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${TOKEN}`,
+    Authorization: `Bearer ${token}`,
   };
 
   // Submit
@@ -79,14 +94,19 @@ export default function () {
 
   // Poll until terminal verdict (max 60s)
   let verdict = null;
+  const terminal = ["AC", "WA", "TLE", "MLE", "RTE", "CE", "SEC", "FAILED"];
   for (let i = 0; i < 30; i++) {
     sleep(2);
     const poll = http.get(`${BASE}/api/submissions/${sub.id}`, { headers });
     if (poll.status === 200) {
       const s = poll.json();
-      const terminal = ["AC", "WA", "TLE", "MLE", "RTE", "CE", "SEC", "FAILED"];
-      if (terminal.includes(s.status || s.verdict)) {
-        verdict = s.status || s.verdict;
+      const v = s.verdict || (terminal.includes(s.status) ? s.status : null);
+      if (v && terminal.includes(v)) {
+        verdict = v;
+        break;
+      }
+      if (s.status === "FINISHED") {
+        verdict = s.verdict || "AC";
         break;
       }
     }

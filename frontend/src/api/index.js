@@ -226,6 +226,17 @@ function setStoredCourses(list) {
 }
 
 const mockApi = {
+  async changePassword(payload) {
+    const session = getStoredSession()
+    const studentId = session?.user?.id
+    const accounts = getMockAccounts()
+    if (!studentId || session.user.role === 'admin') throw new Error('Chỉ sinh viên mới dùng chức năng này')
+    if (accounts[studentId] !== payload.currentPassword) throw new Error('Mật khẩu hiện tại không chính xác')
+    if (!payload.newPassword || payload.newPassword.length < 8) throw new Error('Mật khẩu cần ít nhất 8 ký tự')
+    accounts[studentId] = payload.newPassword
+    setMockAccounts(accounts)
+    return delay({ success: true })
+  },
   async login(payload) {
     const username = payload.username?.trim()
     if (!username || !payload.password) throw new Error('Vui lòng nhập tài khoản và mật khẩu')
@@ -561,6 +572,7 @@ const mockApi = {
 
 const realApi = {
   login: (payload) => http('POST', '/auth/login', payload),
+  changePassword: (payload) => http('POST', '/auth/change-password', payload),
   listProblems: () => http('GET', '/problems'),
   getProblem: (id) => http('GET', `/problems/${id}`),
   submit: (payload) => http('POST', '/submissions', payload),
@@ -681,22 +693,22 @@ const realApi = {
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),
   getContestMonitor: (cid, kid) => http('GET', `/classrooms/${cid}/contests/${kid}/monitor`),
   // ---- Khóa học (Curriculum) ----
-  listCourses: () => http('GET', '/courses').catch(() => mockApi.listCourses()),
-  getCourse: (id) => http('GET', `/courses/${id}`).catch(() => mockApi.getCourse(id)),
-  createCourse: (data) => http('POST', '/courses', data).catch(() => mockApi.createCourse(data)),
-  updateCourse: (id, data) => http('PUT', `/courses/${id}`, data).catch(() => mockApi.updateCourse(id, data)),
-  deleteCourse: (id) => http('DELETE', `/courses/${id}`).catch(() => mockApi.deleteCourse(id)),
-  addCourseUnit: (id, data) => http('POST', `/courses/${id}/units`, data).catch(() => mockApi.addCourseUnit(id, data)),
-  updateCourseUnit: (id, uid, data) => http('PUT', `/courses/${id}/units/${uid}`, data).catch(() => mockApi.updateCourseUnit(id, uid, data)),
-  deleteCourseUnit: (id, uid) => http('DELETE', `/courses/${id}/units/${uid}`).catch(() => mockApi.deleteCourseUnit(id, uid)),
-  reorderCourseUnits: (id, items) => http('PUT', `/courses/${id}/units/reorder`, items).catch(() => mockApi.reorderCourseUnits(id, items)),
-  getLesson: (unitId) => http('GET', `/courses/units/${unitId}/lesson`).catch(() => mockApi.getLesson(unitId)),
-  updateLesson: (unitId, data) => http('PUT', `/courses/units/${unitId}/lesson`, data).catch(() => mockApi.updateLesson(unitId, data)),
-  getUnitProblems: (unitId) => http('GET', `/courses/units/${unitId}/problems`).catch(() => mockApi.getUnitProblems(unitId)),
-  assignUnitProblem: (unitId, problemId) => http('POST', `/courses/units/${unitId}/problems`, { problemId }).catch(() => mockApi.assignUnitProblem(unitId, problemId)),
-  removeUnitProblem: (unitId, problemId) => http('DELETE', `/courses/units/${unitId}/problems/${problemId}`).catch(() => mockApi.removeUnitProblem(unitId, problemId)),
-  getCourseProgress: (courseId) => http('GET', `/courses/${courseId}/progress`).catch(() => mockApi.getCourseProgress(courseId)),
-  toggleUnitProgress: (unitId) => http('POST', `/courses/units/${unitId}/toggle-progress`).catch(() => mockApi.toggleUnitProgress(unitId)),
+  listCourses: () => http('GET', '/courses'),
+  getCourse: (id) => http('GET', `/courses/${id}`),
+  createCourse: (data) => http('POST', '/courses', data),
+  updateCourse: (id, data) => http('PUT', `/courses/${id}`, data),
+  deleteCourse: (id) => http('DELETE', `/courses/${id}`),
+  addCourseUnit: (id, data) => http('POST', `/courses/${id}/units`, data),
+  updateCourseUnit: (id, uid, data) => http('PUT', `/courses/${id}/units/${uid}`, data),
+  deleteCourseUnit: (id, uid) => http('DELETE', `/courses/${id}/units/${uid}`),
+  reorderCourseUnits: (id, items) => http('PUT', `/courses/${id}/units/reorder`, items),
+  getLesson: (unitId) => http('GET', `/courses/units/${unitId}/lesson`),
+  updateLesson: (unitId, data) => http('PUT', `/courses/units/${unitId}/lesson`, data),
+  getUnitProblems: (unitId) => http('GET', `/courses/units/${unitId}/problems`),
+  assignUnitProblem: (unitId, problemId) => http('POST', `/courses/units/${unitId}/problems`, { problemId }),
+  removeUnitProblem: (unitId, problemId) => http('DELETE', `/courses/units/${unitId}/problems/${problemId}`),
+  getCourseProgress: (courseId) => http('GET', `/courses/${courseId}/progress`),
+  toggleUnitProgress: (unitId) => http('POST', `/courses/units/${unitId}/toggle-progress`),
 }
 
 export const api = USE_MOCK ? mockApi : realApi

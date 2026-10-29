@@ -45,116 +45,6 @@ import CodeEditor from '../../components/CodeEditor'
 import VerdictTag from '../../components/VerdictTag'
 import { formatMemory, formatTime } from '../../lib/format'
 
-const SAMPLE_LESSONS = {
-  io: {
-    theory: `### 1. Luồng nhập xuất cơ bản trong C++
-C++ sử dụng thư viện \`<iostream>\` để xử lý việc nhập dữ liệu từ bàn phím và in kết quả ra màn hình.
-- **std::cin**: Đối tượng nhận luồng dữ liệu đầu vào (Standard Input).
-- **std::cout**: Đối tượng xuất luồng dữ liệu ra màn hình (Standard Output).
-- **toán tử >>**: Trích xuất dữ liệu từ \`cin\` gán vào biến.
-- **toán tử <<**: Đẩy dữ liệu ra \`cout\`.
-- **std::endl**: Xuống dòng và xóa bộ nhớ đệm (flush buffer).
-
-### 2. Ví dụ minh họa
-Khi nhập nhiều biến cùng lúc, các biến được ngăn cách bởi dấu cách hoặc ký tự xuống dòng:
-\`\`\`cpp
-int a, b;
-std::cin >> a >> b;
-std::cout << "Tổng: " << (a + b) << std::endl;
-\`\`\``,
-    code: `#include <iostream>
-using namespace std;
-
-int main() {
-    int a, b;
-    if (cin >> a >> b) {
-        cout << "Tong 2 so la: " << (a + b) << endl;
-    }
-    return 0;
-}`,
-    input: '15 25',
-  },
-  branches: {
-    theory: `### 1. Cấu trúc rẽ nhánh if - else
-Dùng để kiểm tra điều kiện logic và phân nhánh luồng thực thi của chương trình.
-\`\`\`cpp
-if (điều_kiện) {
-    // Khối lệnh thực thi khi điều kiện Đúng (true)
-} else {
-    // Khối lệnh thực thi khi điều kiện Sai (false)
-}
-\`\`\`
-
-### 2. Cấu trúc switch - case
-Thường dùng khi so sánh một biến số nguyên/ký tự với nhiều giá trị hằng số rời rạc.`,
-    code: `#include <iostream>
-using namespace std;
-
-int main() {
-    int n;
-    if (cin >> n) {
-        if (n % 2 == 0) {
-            cout << n << " la so chan" << endl;
-        } else {
-            cout << n << " la so le" << endl;
-        }
-    }
-    return 0;
-}`,
-    input: '42',
-  },
-  loop: {
-    theory: `### 1. Vòng lặp trong C++
-- **for**: Dùng khi biết trước số lần lặp cụ thể.
-- **while**: Kiểm tra điều kiện trước khi thực hiện thân vòng lặp.
-- **do-while**: Thực thi ít nhất 1 lần trước khi kiểm tra điều kiện.
-
-### 2. Điều khiển luồng lặp
-- **break**: Thoát ngay lập tức khỏi vòng lặp trong cùng.
-- **continue**: Bỏ qua phần còn lại của vòng lặp hiện tại và nhảy tới bước lặp kế tiếp.`,
-    code: `#include <iostream>
-using namespace std;
-
-int main() {
-    int n;
-    if (cin >> n) {
-        long long sum = 0;
-        for (int i = 1; i <= n; i++) {
-            sum += i;
-        }
-        cout << "Tong tu 1 den " << n << " la: " << sum << endl;
-    }
-    return 0;
-}`,
-    input: '10',
-  },
-  default: {
-    theory: `### Chào mừng bạn đến với bài học này!
-Nội dung bài giảng đang được ban quản trị tiếp tục cập nhật và bổ sung.
-
-**Lời khuyên:**
-- Đọc kỹ lý thuyết và phân tích các trường hợp biên.
-- Tự gõ lại mã nguồn mẫu để rèn luyện thói quen tư duy và cú pháp.
-- Hoàn thành các bài tập thực hành liên kết để củng cố kỹ năng lập trình.`,
-    code: `#include <iostream>
-using namespace std;
-
-int main() {
-    cout << "Chao mung ban den voi CodeJudge!" << endl;
-    return 0;
-}`,
-    input: '',
-  },
-}
-
-function getFallbackLesson(title = '') {
-  const t = title.toLowerCase()
-  if (t.includes('nhập xuất') || t.includes('cin') || t.includes('cout')) return SAMPLE_LESSONS.io
-  if (t.includes('rẽ nhánh') || t.includes('if') || t.includes('switch')) return SAMPLE_LESSONS.branches
-  if (t.includes('lặp') || t.includes('for') || t.includes('while')) return SAMPLE_LESSONS.loop
-  return SAMPLE_LESSONS.default
-}
-
 export default function CourseLearnPage() {
   const { courseId, unitId } = useParams()
   const navigate = useNavigate()
@@ -262,20 +152,11 @@ export default function CourseLearnPage() {
         api.getLesson(unitIdKey),
         api.getUnitProblems(unitIdKey),
       ]).then(([resLesson, resProblems]) => {
-        const fallback = getFallbackLesson(currentUnit?.title)
         return {
-          theoryContent: resLesson?.theoryContent || fallback.theory,
-          sampleCode: resLesson?.sampleCode || fallback.code,
-          sampleInput: resLesson?.sampleInput || fallback.input,
+          theoryContent: resLesson?.theoryContent || '',
+          sampleCode: resLesson?.sampleCode || '',
+          sampleInput: resLesson?.sampleInput || '',
           problems: resProblems || [],
-        }
-      }).catch(() => {
-        const fallback = getFallbackLesson(currentUnit?.title)
-        return {
-          theoryContent: fallback.theory,
-          sampleCode: fallback.code,
-          sampleInput: fallback.input,
-          problems: [],
         }
       })
     },

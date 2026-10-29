@@ -48,6 +48,8 @@ export default function AdminClassroomDetailPage() {
   const { data: allContests } = useFetch(() => api.listContests(), [])
 
   const [importing, setImporting] = useState(false)
+  const [selectedStudentIds, setSelectedStudentIds] = useState([])
+  const [deletingSelected, setDeletingSelected] = useState(false)
   const [selectedContest, setSelectedContest] = useState(null)
   const [assigning, setAssigning] = useState(false)
 
@@ -149,11 +151,26 @@ export default function AdminClassroomDetailPage() {
   const removeStudent = async (userId) => {
     try {
       await api.removeClassroomStudent(id, userId)
+      setSelectedStudentIds((current) => current.filter((selectedId) => selectedId !== userId))
       message.success('Đã xóa sinh viên khỏi lớp')
       refetchStudents()
     } catch (e) {
       message.error(e.message)
     }
+  }
+
+  const removeSelectedStudents = async () => {
+    setDeletingSelected(true)
+    const results = await Promise.allSettled(
+      selectedStudentIds.map((userId) => api.removeClassroomStudent(id, userId)),
+    )
+    const removed = results.filter((result) => result.status === 'fulfilled').length
+    const failed = results.length - removed
+    setSelectedStudentIds([])
+    if (failed === 0) message.success(`Đã xóa ${removed} sinh viên khỏi lớp`)
+    else message.warning(`Đã xóa ${removed} sinh viên; ${failed} sinh viên xóa không thành công`)
+    await refetchStudents()
+    setDeletingSelected(false)
   }
 
   const assignContest = async () => {
@@ -324,6 +341,23 @@ export default function AdminClassroomDetailPage() {
                         Import CSV (MSSV, mật khẩu)
                       </Button>
                     </Upload>
+                    <Popconfirm
+                      title={`Xóa ${selectedStudentIds.length} sinh viên khỏi lớp?`}
+                      description="Tài khoản sinh viên vẫn được giữ; chỉ xóa quan hệ với lớp này."
+                      onConfirm={removeSelectedStudents}
+                      okText="Xóa đã chọn"
+                      cancelText="Hủy"
+                      okButtonProps={{ danger: true, loading: deletingSelected }}
+                    >
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        disabled={selectedStudentIds.length === 0}
+                        loading={deletingSelected}
+                      >
+                        Xóa đã chọn ({selectedStudentIds.length})
+                      </Button>
+                    </Popconfirm>
                   </Space>
                   <Typography.Text type="secondary" style={{ fontSize: 13 }}>
                     Tổng số: <b>{(students || []).length}</b> sinh viên
@@ -342,6 +376,10 @@ export default function AdminClassroomDetailPage() {
                   columns={studentColumns}
                   dataSource={students || []}
                   loading={loadingStudents}
+                  rowSelection={{
+                    selectedRowKeys: selectedStudentIds,
+                    onChange: setSelectedStudentIds,
+                  }}
                   pagination={{ pageSize: 20 }}
                   locale={{ emptyText: 'Chưa có sinh viên nào trong lớp' }}
                 />

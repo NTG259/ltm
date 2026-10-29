@@ -104,6 +104,7 @@ docker compose up -d --scale worker=8
   docker compose down
   ```
 * **Dừng và dọn sạch toàn bộ dữ liệu (Reset sạch sẽ database và Redis volume):**
+
   ```powershell
   docker compose down -v
   ```

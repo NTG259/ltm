@@ -30,6 +30,7 @@ const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
 const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
 const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
 const PlaygroundPage = lazy(() => import('./pages/PlaygroundPage'))
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 
 const THEME_KEY = 'cj.theme'
 
@@ -63,6 +64,7 @@ function AppRoutes() {
             </RequireAuth>
           }
         >
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/courses" element={<CourseListPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />

@@ -5,6 +5,7 @@ import {
   DashboardOutlined,
   DatabaseOutlined,
   LogoutOutlined,
+  KeyOutlined,
   OrderedListOutlined,
   ProfileOutlined,
   ReadOutlined,
@@ -158,6 +159,12 @@ export default function AppLayout() {
                   ),
                 },
                 { type: 'divider' },
+                ...(!isAdmin ? [{
+                  key: 'change-password',
+                  icon: <KeyOutlined />,
+                  label: 'Đổi mật khẩu',
+                  onClick: () => navigate('/change-password'),
+                }] : []),
                 {
                   key: 'logout',
                   icon: <LogoutOutlined />,
