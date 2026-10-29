@@ -4,22 +4,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+### Phát triển local (khuyến nghị)
+
+Backend và frontend chạy ngoài Docker; db/redis/go-judge/worker chạy trong Docker.
+
+```powershell
+# 1. Khởi động hạ tầng (db, redis, go-judge, worker)
+docker compose -f compose.infra.yaml up -d --scale worker=2
+# Lần đầu hoặc sau khi dùng full-stack: thêm --remove-orphans để dọn container cũ
+# docker compose -f compose.infra.yaml up -d --scale worker=2 --remove-orphans
+
+# 2. Chạy backend (profile local kết nối tới Docker db/redis)
+$env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"; cd backend; .\mvnw spring-boot:run -Dspring-boot.run.profiles=local   # :8082
+
+# 3. Chạy frontend
+cd frontend; npm run dev   # :5173 → proxy /api → localhost:8082
+```
+
+Worker trong Docker kết nối ngược vào backend local qua `host.docker.internal:9000`. Cổng host Docker: PostgreSQL `127.0.0.1:15432`, Redis `127.0.0.1:16379`.
+
 ### Backend (Master – Spring Boot)
 ```powershell
-cd backend; .\mvnw spring-boot:run          # run (port :8082 locally, see note below)
+$env:JAVA_TOOL_OPTIONS="-Duser.timezone=UTC"; cd backend; .\mvnw spring-boot:run -Dspring-boot.run.profiles=local   # local dev
+cd backend; .\mvnw spring-boot:run          # Neon cloud DB + Redis localhost:6379
 cd backend; .\mvnw test                     # all tests
 cd backend; .\mvnw test -Dtest=ClassName    # single test class
 cd backend; .\mvnw compile                  # compile only
 ```
 
-**Port note:** `server.port` defaults to `8082` locally. In Docker Compose it is overridden to `8000` via `SERVER_PORT=8000`. Always start Redis before the backend — it will refuse to start without it.
-
-```powershell
-# Start Redis (Docker required)
-docker compose up -d redis
-# Then backend
-cd backend; .\mvnw spring-boot:run
-```
+**Port note:** `server.port` defaults to `8082` locally. In Docker Compose it is overridden to `8000` via `SERVER_PORT=8000`. Profile `local` (file `application-local.yaml`) points to Docker db/redis.
 
 ### Frontend (React + Vite)
 ```powershell
@@ -29,7 +42,12 @@ cd frontend; npm run build   # production build
 cd frontend; npm run lint    # ESLint
 ```
 
-By default the frontend runs in **mock mode** (no backend needed). Set `VITE_USE_MOCK=false` in `frontend/.env.local` to point at the real backend (`API_BASE=/api`, WebSocket `ws://localhost:18001`). The Vite dev proxy defaults to `http://127.0.0.1:8082` (local Spring Boot). For Docker Compose set `VITE_BACKEND_URL=http://127.0.0.1:18000` in `frontend/.env.local`.
+Frontend luôn dùng real API. Vite dev proxy mặc định `http://127.0.0.1:8082` (local Spring Boot). Đặt trong `frontend/.env.local` nếu muốn trỏ vào Docker Compose full stack:
+```
+VITE_BACKEND_URL=http://127.0.0.1:18000
+VITE_WS_URL=ws://localhost:18001
+```
+**Quan trọng:** Thiếu `VITE_WS_URL` sẽ khiến WebSocket kết nối sai cổng (`:8001` thay vì `:18001`), làm kết quả chấm bài không cập nhật realtime.
 
 ### Docker Compose (full stack)
 ```powershell

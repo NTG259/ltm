@@ -1,0 +1,82 @@
+# Hạ tầng cho phát triển local (không có backend/frontend container).
+#
+# Khởi động:
+#   docker compose -f compose.infra.yaml up -d --scale worker=2
+#
+# Sau đó chạy local:
+#   cd backend; .\mvnw spring-boot:run -Dspring-boot.run.profiles=local   # :8082
+#   cd frontend; npm run dev                                               # :5173
+#
+# Cổng host:
+#   PostgreSQL  127.0.0.1:15432
+#   Redis       127.0.0.1:16379
+#   Worker      kết nối ngược vào backend local qua host.docker.internal:9000
+
+name: codejudge
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: codejudge
+      POSTGRES_USER: codejudge
+      POSTGRES_PASSWORD: codejudge
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql
+    networks: [default]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codejudge -d codejudge"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    ports:
+      - "127.0.0.1:16379:6379"
+    volumes:
+      - redis-data:/data
+    networks: [default]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  go-judge:
+    build: ./go-judge-custom
+    image: codejudge/go-judge
+    restart: unless-stopped
+    privileged: true
+    shm_size: 256m
+    command:
+      - -http-addr=0.0.0.0:5050
+      - -auth-token=
+      - -parallelism=4
+      - -release
+    networks: [judge]
+
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    environment:
+      MASTER_HOST: host.docker.internal   # backend chạy local trên máy host
+      MASTER_PORT: 9000
+      GO_JUDGE_URL: http://go-judge:5050
+      TZ: Asia/Ho_Chi_Minh
+    networks: [judge]
+    deploy:
+      replicas: 2
+
+# judge network KHÔNG có internal: true để worker ra được host.docker.internal
+networks:
+  default:
+  judge:
+
+volumes:
+  db-data:
+  redis-data:

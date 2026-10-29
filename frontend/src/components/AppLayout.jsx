@@ -19,11 +19,9 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
 import { useOnlineCount, useSocketStatus } from '../lib/hooks'
-import { USE_MOCK } from '../api'
 import CyberBackground from './CyberBackground'
 
 const SOCKET_LABEL = {
-  mock: { status: 'processing', text: 'Mock Master', tip: 'Đang dùng Master giả lập trong trình duyệt (VITE_USE_MOCK)' },
   open: { status: 'success', text: 'WS :8001', tip: 'Đã kết nối WebSocket RFC 6455 tới Master' },
   connecting: { status: 'warning', text: 'Đang kết nối…', tip: 'Đang kết nối WebSocket tới Master :8001' },
   reconnecting: { status: 'warning', text: 'Đang thử lại…', tip: 'WebSocket bị ngắt – đang tự động kết nối lại' },
@@ -56,7 +54,6 @@ export default function AppLayout() {
           { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp</Link> },
           { key: '/my-classrooms', icon: <TeamOutlined />, label: <Link to="/my-classrooms">Lớp học</Link> },
         ]),
-    { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> },
   ]
   const selected =
     items
@@ -109,7 +106,7 @@ export default function AppLayout() {
         <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
         <Space size={8} align="center" style={{ lineHeight: 1 }}>
           {isAdmin && <Tooltip title={
-            (socketStatus === 'open' || socketStatus === 'mock') && onlineCount != null
+            socketStatus === 'open' && onlineCount != null
               ? `${onlineCount} sinh viên đang online`
               : socket.tip
           }>
@@ -131,7 +128,7 @@ export default function AppLayout() {
                       : 'none',
                 }}
               />
-              {(socketStatus === 'open' || socketStatus === 'mock') && onlineCount != null ? (
+              {socketStatus === 'open' && onlineCount != null ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <UsergroupAddOutlined style={{ fontSize: 12 }} />
                   {onlineCount}

@@ -6,7 +6,6 @@ import AuthProvider from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import { buildTheme, ThemeModeContext } from './theme'
 import AppLayout from './components/AppLayout'
-import TeacherLayout from './components/TeacherLayout'
 import LoginPage from './pages/LoginPage'
 
 const ProblemsPage = lazy(() => import('./pages/ProblemsPage'))
@@ -31,9 +30,6 @@ const CourseDetailPage = lazy(() => import('./pages/Courses/CourseDetailPage'))
 const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
 const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
 const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
-const TeacherClassroomsPage = lazy(() => import('./pages/teacher/TeacherClassroomsPage'))
-const TeacherClassroomDetailPage = lazy(() => import('./pages/teacher/TeacherClassroomDetailPage'))
-
 const THEME_KEY = 'cj.theme'
 
 function readTheme() {
@@ -44,18 +40,17 @@ function readTheme() {
   }
 }
 
-function RequireAuth({ admin, lecturer, children }) {
-  const { user, isAdmin, isLecturer } = useAuth()
+function RequireAuth({ admin, children }) {
+  const { user, isAdmin } = useAuth()
   const location = useLocation()
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (admin && !isAdmin) return <Navigate to="/problems" replace />
-  if (lecturer && !isLecturer && !isAdmin) return <Navigate to="/problems" replace />
   return children
 }
 
 function AppRoutes() {
-  const { user, isAdmin, isLecturer } = useAuth()
-  const home = !user ? '/login' : isAdmin ? '/admin' : isLecturer ? '/teacher/classrooms' : '/problems'
+  const { user, isAdmin } = useAuth()
+  const home = !user ? '/login' : isAdmin ? '/admin' : '/problems'
   return (
     <Suspense fallback={<Spin style={{ display: 'block', margin: 80 }} />}>
       <Routes>
@@ -161,17 +156,6 @@ function AppRoutes() {
               </RequireAuth>
             }
           />
-        </Route>
-        {/* Teacher routes */}
-        <Route
-          element={
-            <RequireAuth lecturer>
-              <TeacherLayout />
-            </RequireAuth>
-          }
-        >
-          <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
-          <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
         </Route>
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>

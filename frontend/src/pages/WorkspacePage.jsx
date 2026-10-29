@@ -22,9 +22,10 @@ import {
   CaretRightOutlined,
   CloudUploadOutlined,
   CopyOutlined,
-  EllipsisOutlined,
   FolderOpenOutlined,
   LoadingOutlined,
+  PlusOutlined,
+  RedoOutlined,
   SafetyCertificateOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
@@ -33,11 +34,22 @@ import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useLiveSubmission, useNow, useSocket } from '../lib/hooks'
 import { useProctoring } from '../lib/useProctoring'
-import { DIFFICULTIES } from '../lib/verdicts'
+import { DIFFICULTIES, VERDICTS } from '../lib/verdicts'
 import { formatMemory, formatRelative, formatTime } from '../lib/format'
-import { SAMPLE_SOURCES, STARTER_CODE } from '../api/mock/data'
+const STARTER_CODE = `#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    // TODO: Viết lời giải thuật toán tại đây
+
+    return 0;
+}
+`
 import CodeEditor from '../components/CodeEditor'
-import CustomTestRunner from '../components/CustomTestRunner'
+import CompilerErrorExplainer from '../components/CompilerErrorExplainer'
 import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
 import ContestClock from '../components/ContestClock'
@@ -47,7 +59,6 @@ const draftKey = (pid, uid) => `cj.draft.${uid}.${pid}`
 function readDraft(pid, uid) {
   try {
     const val = localStorage.getItem(draftKey(pid, uid))
-    // Nếu draft cũ là code A+B nhưng bài hiện tại không phải bài 1, dọn dẹp để nạp template sạch
     if (val && Number(pid) !== 1 && val.includes('cin >> a >> b') && val.includes('cout << a + b')) {
       localStorage.removeItem(draftKey(pid, uid))
       return null
@@ -58,7 +69,6 @@ function readDraft(pid, uid) {
   }
 }
 
-/** Hiển thị đoạn văn có `code` inline. */
 function Rich({ text }) {
   return <ReactMarkdown>{text || ''}</ReactMarkdown>
 }
@@ -74,17 +84,11 @@ function Statement({ problem }) {
   return (
     <div className="statement">
       <div className="limits-inline">
-        <span>
-          Thời gian: <b>{problem.timeLimitMs / 1000} s</b>
-        </span>
-        <span>
-          Bộ nhớ: <b>{problem.memoryLimitMb} MB</b>
-        </span>
+        <span>Thời gian: <b>{problem.timeLimitMs / 1000} s</b></span>
+        <span>Bộ nhớ: <b>{problem.memoryLimitMb} MB</b></span>
         <span>
           {problem.tags.map((t) => (
-            <Tag key={t} variant="filled" style={{ marginInlineEnd: 4 }}>
-              {t}
-            </Tag>
+            <Tag key={t} variant="filled" style={{ marginInlineEnd: 4 }}>{t}</Tag>
           ))}
         </span>
       </div>
@@ -100,13 +104,7 @@ function Statement({ problem }) {
             <div className="io-box">
               <div className="io-box-head">
                 Input
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<CopyOutlined />}
-                  onClick={() => copy(s.input)}
-                  aria-label="Sao chép input"
-                />
+                <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => copy(s.input)} aria-label="Sao chép input" />
               </div>
               <pre>{s.input}</pre>
             </div>
@@ -140,38 +138,25 @@ function MySubmissions({ problemId, userId, contestId, onPick, refreshKey }) {
         {
           title: 'ID',
           dataIndex: 'id',
-          width: 80,
+          width: 70,
           render: (id) => (
-            <Link
-              to={`/submissions/${id}`}
-              target="_blank"
-              onClick={(e) => e.stopPropagation()}
-              className="mono"
-              style={{ fontWeight: 600 }}
-              title="Mở trang chi tiết bài nộp này"
-            >
+            <Link to={`/submissions/${id}`} target="_blank" onClick={(e) => e.stopPropagation()} className="mono" style={{ fontWeight: 600 }}>
               #{id}
             </Link>
           ),
         },
         { title: 'Kết quả', render: (_, r) => <VerdictTag submission={r} /> },
-        { title: 'Điểm', dataIndex: 'score', width: 65, render: (v) => v ?? '—' },
-        { title: 'Thời gian', dataIndex: 'timeMs', width: 85, render: (v) => <span className="mono">{formatTime(v)}</span> },
-        { title: 'Bộ nhớ', dataIndex: 'memoryKb', width: 80, render: (v) => <span className="mono">{formatMemory(v)}</span> },
+        { title: 'Điểm', dataIndex: 'score', width: 55, render: (v) => v ?? '—' },
+        { title: 'Thời gian', dataIndex: 'timeMs', width: 80, render: (v) => <span className="mono">{formatTime(v)}</span> },
         { title: 'Nộp lúc', dataIndex: 'createdAt', render: (v) => formatRelative(v, now) },
         {
           title: '',
           key: 'action',
-          width: 85,
+          width: 70,
           align: 'right',
           render: (_, r) => (
-            <Link
-              to={`/submissions/${r.id}`}
-              target="_blank"
-              onClick={(e) => e.stopPropagation()}
-              style={{ fontSize: 12, fontWeight: 500 }}
-            >
-              Xem bài ↗
+            <Link to={`/submissions/${r.id}`} target="_blank" onClick={(e) => e.stopPropagation()} style={{ fontSize: 12, fontWeight: 500 }}>
+              Xem ↗
             </Link>
           ),
         },
@@ -180,7 +165,205 @@ function MySubmissions({ problemId, userId, contestId, onPick, refreshKey }) {
   )
 }
 
-/** contest/label có giá trị khi làm bài trong kỳ thi (route /contests/:cid/problems/:label). */
+/** Panel testcase: chọn case + nhập input */
+function TestcasePanel({ problem, input, setInput, selectedCase, setSelectedCase, onRun, running }) {
+  const samples = problem?.samples || []
+
+  const pickSample = (idx) => {
+    setSelectedCase(idx)
+    setInput(samples[idx]?.input || '')
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 10, paddingTop: 4 }}>
+      {/* Case tabs + Run button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', flex: 1 }}>
+          {samples.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`test-chip${selectedCase === idx ? ' selected' : ''}`}
+              style={{
+                background: selectedCase === idx ? 'var(--primary-soft)' : 'var(--inset)',
+                borderColor: selectedCase === idx ? 'var(--primary)' : 'var(--border)',
+                color: selectedCase === idx ? 'var(--primary)' : 'var(--text)',
+              }}
+              onClick={() => pickSample(idx)}
+            >
+              Case {idx + 1}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`test-chip${selectedCase === 'custom' ? ' selected' : ''}`}
+            style={{
+              background: selectedCase === 'custom' ? 'var(--primary-soft)' : 'var(--inset)',
+              borderColor: selectedCase === 'custom' ? 'var(--primary)' : 'var(--border)',
+              color: selectedCase === 'custom' ? 'var(--primary)' : 'var(--text)',
+            }}
+            onClick={() => setSelectedCase('custom')}
+          >
+            <PlusOutlined style={{ fontSize: 10, marginRight: 3 }} />
+            Tự nhập
+          </button>
+          {typeof selectedCase === 'number' && samples[selectedCase] && (
+            <Tooltip title="Khôi phục dữ liệu ban đầu">
+              <Button size="small" type="text" icon={<RedoOutlined />} onClick={() => pickSample(selectedCase)} />
+            </Tooltip>
+          )}
+        </div>
+        <Button type="primary" size="small" icon={<CaretRightOutlined />} loading={running} onClick={onRun}>
+          {running ? 'Đang chạy…' : 'Chạy thử'}
+        </Button>
+      </div>
+
+      {/* Input */}
+      <div>
+        <div style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500, marginBottom: 5 }}>Input</div>
+        <textarea
+          className="custom-test-editor"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Nhập stdin cho chương trình…"
+          rows={5}
+          spellCheck={false}
+        />
+      </div>
+    </div>
+  )
+}
+
+function DiffText({ output, expected }) {
+  if (!expected) return output
+  const a = (output || '').split(/(\s+)/)
+  const b = (expected || '').split(/(\s+)/)
+  return a.map((tok, i) =>
+    tok.trim() && tok !== b[i] ? <span key={i} className="diff-bad">{tok}</span> : tok,
+  )
+}
+
+/** Panel kết quả: hiện kết quả chạy thử HOẶC kết quả nộp bài */
+function TestResultPanel({ mode, running, testResult, active, submitting, problem, code, setCode, message }) {
+  if (running) {
+    return (
+      <div className="result-summary tone-running" style={{ marginTop: 4 }}>
+        <div className="result-title"><LoadingOutlined /> Đang biên dịch và chạy…</div>
+      </div>
+    )
+  }
+
+  // Kết quả nộp bài
+  if (mode === 'submit') {
+    if (submitting || (active && active.status !== 'FINISHED')) {
+      return (
+        <div className="result-summary tone-running" style={{ marginTop: 4 }}>
+          <div className="result-title">
+            <LoadingOutlined /> {submitting ? 'Đang gửi bài…' : active?.status === 'IN_QUEUE' ? 'Đang chờ chấm…' : 'Đang chấm…'}
+          </div>
+        </div>
+      )
+    }
+    if (active) {
+      return (
+        <Space direction="vertical" size={10} style={{ width: '100%', paddingTop: 4 }}>
+          <Space size={8} wrap>
+            {active.sourceCode && (
+              <Button size="small" onClick={() => {
+                setCode(active.sourceCode)
+                message.success(`Đã nạp lại mã bài nộp #${active.id}`)
+              }}>
+                Nạp code vào editor
+              </Button>
+            )}
+            <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
+              Xem toàn bộ bài nộp ↗
+            </Link>
+          </Space>
+          <TestResults submission={active} />
+        </Space>
+      )
+    }
+  }
+
+  // Kết quả chạy thử
+  if (mode === 'run' && testResult) {
+    const meta = testResult.verdict ? VERDICTS[testResult.verdict] : null
+    const isWA = testResult.verdict === 'WA'
+    const isCE = testResult.verdict === 'CE'
+    const isSEC = testResult.verdict === 'SEC'
+    const hasExpected = !!testResult.hasExpected && !!testResult.expectedOutput
+
+    return (
+      <Space direction="vertical" size={10} style={{ width: '100%', paddingTop: 4 }}>
+        <div className={`result-summary tone-${meta?.tone || 'ac'}`}>
+          <div className="result-main">
+            <div className="result-title">
+              {hasExpected ? (meta?.label || testResult.verdict) : (testResult.verdict === 'AC' ? 'Thực thi thành công' : (meta?.label || testResult.verdict))}
+            </div>
+            <div style={{ fontSize: 13 }}>
+              {testResult.verdict === 'AC' && (hasExpected ? 'Khớp kết quả mẫu.' : 'Chương trình đã chạy xong.')}
+              {testResult.verdict === 'WA' && 'Kết quả không khớp đáp án mẫu.'}
+              {testResult.verdict === 'TLE' && `Vượt giới hạn thời gian (${(problem?.timeLimitMs || 1000) / 1000}s).`}
+              {testResult.verdict === 'MLE' && `Vượt giới hạn bộ nhớ (${problem?.memoryLimitMb || 256}MB).`}
+              {testResult.verdict === 'RTE' && 'Lỗi khi chạy (Runtime Error).'}
+              {testResult.verdict === 'CE' && 'Biên dịch thất bại.'}
+              {testResult.verdict === 'SEC' && `Vi phạm bảo mật: ${testResult.securityMessage}`}
+            </div>
+          </div>
+          {!isCE && !isSEC && (
+            <div className="result-side">
+              <div className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                {formatTime(testResult.timeMs)} · {formatMemory(testResult.memoryKb)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {isCE && <CompilerErrorExplainer compileLog={testResult.compileLog} />}
+
+        {!isCE && !isSEC && (
+          <div className={hasExpected ? 'io-grid' : ''}>
+            <div className={`io-box ${isWA ? 'bad' : 'good'}`}>
+              <div className="io-box-head">Output</div>
+              <pre>
+                {testResult.output == null || testResult.output === '' ? (
+                  <span className="muted">(Chương trình không in ra gì)</span>
+                ) : isWA && testResult.expectedOutput ? (
+                  <DiffText output={testResult.output} expected={testResult.expectedOutput} />
+                ) : (
+                  testResult.output
+                )}
+              </pre>
+            </div>
+            {hasExpected && testResult.expectedOutput && (
+              <div className="io-box">
+                <div className="io-box-head">Đáp án mẫu</div>
+                <pre>{testResult.expectedOutput}</pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {testResult.stderr && (
+          <div className="io-box bad">
+            <div className="io-box-head">stderr</div>
+            <pre>{testResult.stderr}</pre>
+          </div>
+        )}
+      </Space>
+    )
+  }
+
+  return (
+    <Empty
+      image={Empty.PRESENTED_IMAGE_SIMPLE}
+      description="Bấm 'Chạy thử' để xem kết quả hoặc 'Nộp bài' để chấm điểm"
+      style={{ marginTop: 16 }}
+    />
+  )
+}
+
 export function Workspace({ id, contest, label }) {
   const { user } = useAuth()
   const { message, modal } = App.useApp()
@@ -190,9 +373,12 @@ export function Workspace({ id, contest, label }) {
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
   const [submitting, setSubmitting] = useState(false)
   const [activeId, setActiveId] = useState(null)
-  const [tab, setTab] = useState('testcase')
+  const [leftTab, setLeftTab] = useState('statement')
+  const [bottomTab, setBottomTab] = useState('testcase')
+  const [resultMode, setResultMode] = useState(null) // 'run' | 'submit'
   const [refreshKey, setRefreshKey] = useState(0)
   const [language, setLanguage] = useState('cpp17')
+  const [selectedCase, setSelectedCase] = useState(0)
   const [customInput, setCustomInput] = useState(null)
   const [runningTest, setRunningTest] = useState(false)
   const [testResult, setTestResult] = useState(null)
@@ -203,16 +389,11 @@ export function Workspace({ id, contest, label }) {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      try {
-        localStorage.setItem(draftKey(id, user.id), code)
-      } catch {
-        /* ignore */
-      }
+      try { localStorage.setItem(draftKey(id, user.id), code) } catch { /* ignore */ }
     }, 400)
     return () => clearTimeout(t)
   }, [code, id, user.id])
 
-  // Làm mới lịch sử nộp khi một bài của chính mình chấm xong.
   useSocket(
     useCallback(
       (msg) => {
@@ -233,21 +414,13 @@ export function Workspace({ id, contest, label }) {
         okButtonProps: { danger: true },
         content: (
           <div style={{ marginTop: 8 }}>
-            <p style={{ color: '#ef4444', fontWeight: 600 }}>
-              Hệ thống phát hiện bạn vừa rời khỏi màn hình làm bài thi!
-            </p>
+            <p style={{ color: '#ef4444', fontWeight: 600 }}>Hệ thống phát hiện bạn vừa rời khỏi màn hình làm bài thi!</p>
             <ul style={{ paddingLeft: 20, margin: '8px 0', color: 'var(--text-2)' }}>
-              <li>
-                Hành vi:{' '}
-                <b>{type === 'TAB_SWITCH' ? 'Chuyển tab / Thu nhỏ trình duyệt' : 'Mất tiêu điểm cửa sổ làm bài'}</b>
-              </li>
-              <li>
-                Số lần vi phạm đã ghi nhận: <b style={{ color: '#ef4444', fontSize: 16 }}>{count}</b> lần
-              </li>
+              <li>Hành vi: <b>{type === 'TAB_SWITCH' ? 'Chuyển tab / Thu nhỏ trình duyệt' : 'Mất tiêu điểm cửa sổ làm bài'}</b></li>
+              <li>Số lần vi phạm: <b style={{ color: '#ef4444', fontSize: 16 }}>{count}</b> lần</li>
             </ul>
             <p style={{ fontSize: 12, color: 'var(--muted)', margin: 0 }}>
               Hành vi này đã được gửi trực tiếp tới Giám thị phòng thi theo thời gian thực.
-              Vui lòng không chuyển tab hoặc mở ứng dụng khác để tránh bị huỷ tư cách dự thi.
             </p>
           </div>
         ),
@@ -264,21 +437,15 @@ export function Workspace({ id, contest, label }) {
   })
 
   const submit = async () => {
-    if (!code.trim()) {
-      message.warning('Mã nguồn đang trống')
-      return
-    }
-    if (contest && Date.now() > contest.endAt) {
-      message.error('Kỳ thi đã kết thúc, không thể nộp bài')
-      return
-    }
+    if (!code.trim()) { message.warning('Mã nguồn đang trống'); return }
+    if (contest && Date.now() > contest.endAt) { message.error('Kỳ thi đã kết thúc, không thể nộp bài'); return }
     setSubmitting(true)
     setActiveId(null)
-    setTab('result')
+    setResultMode('submit')
+    setBottomTab('testresult')
     try {
       const s = await api.submit({ problemId: Number(id), language, sourceCode: code, contestId: contest?.id }, user)
       setActiveId(s.id)
-      setTab('result')
       setRefreshKey((k) => k + 1)
     } catch (e) {
       message.error(e.message)
@@ -287,23 +454,16 @@ export function Workspace({ id, contest, label }) {
     }
   }
 
-  const runTest = async (overrideInput, overrideExpected) => {
-    if (!code.trim()) {
-      message.warning('Mã nguồn đang trống')
-      return
-    }
+  const runTest = async () => {
+    if (!code.trim()) { message.warning('Mã nguồn đang trống'); return }
     setRunningTest(true)
-    setTab('testcase')
-    const inVal = overrideInput !== undefined ? overrideInput : activeInput
-    const expVal = overrideExpected !== undefined ? overrideExpected : ''
+    setResultMode('run')
+    setBottomTab('testresult')
+    const expected = typeof selectedCase === 'number' && problem?.samples?.[selectedCase]
+      ? problem.samples[selectedCase].output
+      : ''
     try {
-      const res = await api.runTest({
-        problemId: Number(id),
-        language,
-        sourceCode: code,
-        input: inVal,
-        expectedOutput: expVal,
-      })
+      const res = await api.runTest({ problemId: Number(id), language, sourceCode: code, input: activeInput, expectedOutput: expected })
       setTestResult(res)
     } catch (e) {
       message.error(e.message || 'Lỗi khi chạy thử')
@@ -312,73 +472,43 @@ export function Workspace({ id, contest, label }) {
     }
   }
 
-  const LANG_EXT = {
-    cpp17: /\.(cpp|cc|cxx|h|hpp)$/i,
-  }
+  const LANG_EXT = { cpp17: /\.(cpp|cc|cxx|h|hpp)$/i }
   const loadFile = (file) => {
     const pattern = LANG_EXT[language] || LANG_EXT.cpp17
-    if (!pattern.test(file.name)) {
-      message.error(`Ngôn ngữ ${language} không nhận tệp này`)
-      return Upload.LIST_IGNORE
-    }
-    if (file.size > 256 * 1024) {
-      message.error('Tệp vượt quá 256 KB')
-      return Upload.LIST_IGNORE
-    }
-    file.text().then((text) => {
-      setCode(text.replace(/\r\n/g, '\n'))
-      message.success(`Đã nạp ${file.name}`)
-    })
+    if (!pattern.test(file.name)) { message.error(`Ngôn ngữ ${language} không nhận tệp này`); return Upload.LIST_IGNORE }
+    if (file.size > 256 * 1024) { message.error('Tệp vượt quá 256 KB'); return Upload.LIST_IGNORE }
+    file.text().then((text) => { setCode(text.replace(/\r\n/g, '\n')); message.success(`Đã nạp ${file.name}`) })
     return false
   }
 
-  const resetCode = () =>
-    modal.confirm({
-      title: 'Khôi phục mã ban đầu?',
-      content: 'Mã hiện tại trong trình soạn thảo sẽ bị thay thế.',
-      okText: 'Khôi phục',
-      cancelText: 'Huỷ',
-      onOk: () => setCode(STARTER_CODE),
-    })
-
-  if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
+if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
   if (error)
     return (
-      <Result
-        status="404"
-        title="Không tìm thấy đề bài"
-        extra={<Button onClick={() => navigate('/problems')}>Về danh sách</Button>}
-      />
+      <Result status="404" title="Không tìm thấy đề bài"
+        extra={<Button onClick={() => navigate('/problems')}>Về danh sách</Button>} />
     )
 
-  const marked =
-    active?.verdict === 'CE' ? [...(active.compileLog || '').matchAll(/solution\.cpp:(\d+):/g)].map((m) => Number(m[1])) : []
+  const marked = active?.verdict === 'CE'
+    ? [...(active.compileLog || '').matchAll(/solution\.cpp:(\d+):/g)].map((m) => Number(m[1]))
+    : []
   const judging = active && active.status !== 'FINISHED'
 
   return (
     <div className="workspace">
+      {/* ── Top bar ── */}
       <div className="workspace-bar">
         <Tooltip title={contest ? 'Về trang kỳ thi' : 'Danh sách bài'}>
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={() => navigate(contest ? `/contests/${contest.id}` : '/problems')}
-          />
+          <Button type="text" icon={<ArrowLeftOutlined />}
+            onClick={() => navigate(contest ? `/contests/${contest.id}` : '/problems')} />
         </Tooltip>
         {contest ? (
           <>
-            <span className="title">
-              <b>{label}.</b> {problem.title}
-            </span>
-            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>
-              {contest.title}
-            </Typography.Text>
+            <span className="title"><b>{label}.</b> {problem.title}</span>
+            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>{contest.title}</Typography.Text>
           </>
         ) : (
           <>
-            <span className="title">
-              <span className="mono muted">#{problem.id}</span> {problem.title}
-            </span>
+            <span className="title"><span className="mono muted">#{problem.id}</span> {problem.title}</span>
             <span className={`diff-pill diff-pill-${problem.difficulty}`} style={{ margin: 0 }}>
               {DIFFICULTIES[problem.difficulty].label}
             </span>
@@ -389,15 +519,11 @@ export function Workspace({ id, contest, label }) {
           <Space size={8}>
             {violationCount > 0 ? (
               <Tooltip title={`Hệ thống ghi nhận bạn đã rời màn hình thi ${violationCount} lần`}>
-                <Tag color="error" icon={<WarningOutlined />} style={{ fontWeight: 600 }}>
-                  Vi phạm: {violationCount} lần
-                </Tag>
+                <Tag color="error" icon={<WarningOutlined />} style={{ fontWeight: 600 }}>Vi phạm: {violationCount} lần</Tag>
               </Tooltip>
             ) : (
               <Tooltip title="Chế độ giám sát thi đang bật">
-                <Tag color="success" icon={<SafetyCertificateOutlined />}>
-                  Giám sát: Nghiêm túc
-                </Tag>
+                <Tag color="success" icon={<SafetyCertificateOutlined />}>Giám sát: Nghiêm túc</Tag>
               </Tooltip>
             )}
             <ContestClock contest={contest} compact />
@@ -410,16 +536,54 @@ export function Workspace({ id, contest, label }) {
         </Tooltip>
       </div>
 
+      {/* ── Main 3-panel layout ── */}
       <Splitter style={{ flex: 1, minHeight: 0 }}>
+
+        {/* LEFT: Đề bài + Bài nộp */}
         <Splitter.Panel defaultSize="42%" min="24%" collapsible>
           <div className="pane">
-            <div className="pane-body">
-              <Statement problem={problem} />
+            <Tabs
+              activeKey={leftTab}
+              onChange={setLeftTab}
+              size="small"
+              style={{ padding: '0 12px' }}
+              items={[
+                { key: 'statement', label: 'Đề bài' },
+                {
+                  key: 'submissions',
+                  label: (
+                    <Badge dot={judging} offset={[6, 0]}>
+                      Bài nộp
+                    </Badge>
+                  ),
+                },
+              ]}
+            />
+            <div className="pane-body" style={{ padding: leftTab === 'submissions' ? '0 8px 12px' : undefined }}>
+              {leftTab === 'statement' ? (
+                <Statement problem={problem} />
+              ) : (
+                <MySubmissions
+                  problemId={problem.id}
+                  userId={user.id}
+                  contestId={contest?.id}
+                  refreshKey={refreshKey}
+                  onPick={(sid) => {
+                    setActiveId(sid)
+                    setResultMode('submit')
+                    setBottomTab('testresult')
+                  }}
+                />
+              )}
             </div>
           </div>
         </Splitter.Panel>
+
+        {/* RIGHT: Editor + Testcase/Result */}
         <Splitter.Panel min="30%">
           <Splitter orientation="vertical">
+
+            {/* Editor */}
             <Splitter.Panel defaultSize="58%" min="20%">
               <div className="pane">
                 <div className="pane-head">
@@ -440,11 +604,7 @@ export function Workspace({ id, contest, label }) {
                         onClick: ({ key }) => setLanguage(key),
                       }}
                     >
-                      <Typography.Text
-                        className="mono"
-                        style={{ fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-                        title="Chọn ngôn ngữ"
-                      >
+                      <Typography.Text className="mono" style={{ fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }} title="Chọn ngôn ngữ">
                         {(availableLanguages || []).find((l) => l.code === language)?.label ?? 'C++17'}
                         <span className="muted" style={{ fontWeight: 400, marginLeft: 4 }}>▾</span>
                       </Typography.Text>
@@ -455,33 +615,8 @@ export function Workspace({ id, contest, label }) {
                       Dòng {cursor.line}, Cột {cursor.col}
                     </Typography.Text>
                     <Upload accept=".cpp,.cc,.cxx" showUploadList={false} beforeUpload={loadFile}>
-                      <Button size="small" type="text" icon={<FolderOpenOutlined />}>
-                        Tải tệp .cpp
-                      </Button>
+                      <Button size="small" type="text" icon={<FolderOpenOutlined />}>Tải tệp .cpp</Button>
                     </Upload>
-                    <Dropdown
-                      trigger={['click']}
-                      menu={{
-                        items: [
-                          {
-                            key: 'samples',
-                            label: 'Nạp mã mẫu',
-                            children: Object.keys(SAMPLE_SOURCES).map((k) => ({
-                              key: k,
-                              label: <span className="mono">{k}</span>,
-                            })),
-                          },
-                          { type: 'divider' },
-                          { key: 'reset', label: 'Khôi phục mã ban đầu', danger: true },
-                        ],
-                        onClick: ({ key }) => {
-                          if (key === 'reset') resetCode()
-                          else setCode(SAMPLE_SOURCES[key])
-                        },
-                      }}
-                    >
-                      <Button size="small" type="text" icon={<EllipsisOutlined />} aria-label="Thao tác khác" />
-                    </Dropdown>
                   </Space>
                 </div>
                 <div className="pane-body" style={{ overflow: 'hidden' }}>
@@ -489,11 +624,13 @@ export function Workspace({ id, contest, label }) {
                 </div>
               </div>
             </Splitter.Panel>
+
+            {/* Bottom: Testcase / Test Result */}
             <Splitter.Panel min="15%">
               <div className="pane">
                 <Tabs
-                  activeKey={tab}
-                  onChange={setTab}
+                  activeKey={bottomTab}
+                  onChange={setBottomTab}
                   size="small"
                   style={{ padding: '0 12px' }}
                   items={[
@@ -501,94 +638,57 @@ export function Workspace({ id, contest, label }) {
                       key: 'testcase',
                       label: (
                         <span>
-                          <CaretRightOutlined style={{ marginRight: 4, color: 'var(--primary)' }} />
-                          Chạy thử
+                          <CaretRightOutlined style={{ marginRight: 4, color: 'var(--primary)', fontSize: 11 }} />
+                          Testcase
                         </span>
                       ),
                     },
                     {
-                      key: 'result',
+                      key: 'testresult',
                       label: (
-                        <Badge dot={!!judging} offset={[6, 0]}>
-                          Kết quả nộp
+                        <Badge dot={runningTest || judging} offset={[6, 0]}>
+                          Test Result
                         </Badge>
                       ),
                     },
-                    { key: 'history', label: 'Lịch sử nộp' },
                   ]}
                 />
                 <div className="pane-body" style={{ padding: '0 14px 14px' }}>
-                  {tab === 'testcase' ? (
-                    <CustomTestRunner
+                  {bottomTab === 'testcase' ? (
+                    <TestcasePanel
                       problem={problem}
-                      running={runningTest}
-                      result={testResult}
-                      onRun={runTest}
                       input={activeInput}
                       setInput={setCustomInput}
+                      selectedCase={selectedCase}
+                      setSelectedCase={setSelectedCase}
+                      onRun={runTest}
+                      running={runningTest}
                     />
-                  ) : tab === 'result' ? (
-                    active ? (
-                      <Space orientation="vertical" size={14} style={{ width: '100%' }}>
-                        {active.status !== 'FINISHED' && (
-                          <div className="result-summary tone-running">
-                            <div className="result-title">
-                              <LoadingOutlined /> {active.status === 'IN_QUEUE' ? 'Đang chờ chấm…' : 'Đang chấm…'}
-                            </div>
-                          </div>
-                        )}
-                        {active.status === 'FINISHED' && (
-                          <Space size={8} wrap style={{ padding: '4px 0' }}>
-                            {active.sourceCode && (
-                              <Button
-                                size="small"
-                                onClick={() => {
-                                  setCode(active.sourceCode)
-                                  message.success(`Đã nạp lại mã của bài nộp #${active.id} vào trình soạn thảo`)
-                                }}
-                              >
-                                Nạp code này vào editor
-                              </Button>
-                            )}
-                            <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
-                              Xem toàn bộ bài nộp ↗
-                            </Link>
-                          </Space>
-                        )}
-                        <TestResults submission={active} />
-                      </Space>
-                    ) : submitting || activeId ? (
-                      <div className="result-summary tone-running">
-                        <div className="result-title">
-                          <LoadingOutlined /> Đang gửi bài…
-                        </div>
-                      </div>
-                    ) : (
-                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Kết quả chấm sẽ hiện ở đây sau khi bạn nộp bài" />
-                    )
                   ) : (
-                    <MySubmissions
-                      problemId={problem.id}
-                      userId={user.id}
-                      contestId={contest?.id}
-                      refreshKey={refreshKey}
-                      onPick={(sid) => {
-                        setActiveId(sid)
-                        setTab('result')
-                      }}
+                    <TestResultPanel
+                      mode={resultMode}
+                      running={runningTest}
+                      testResult={testResult}
+                      active={active}
+                      submitting={submitting}
+                      problem={problem}
+                      code={code}
+                      setCode={setCode}
+                      message={message}
                     />
                   )}
                 </div>
               </div>
             </Splitter.Panel>
+
           </Splitter>
         </Splitter.Panel>
+
       </Splitter>
     </div>
   )
 }
 
-// key={id} để reset trình soạn thảo khi chuyển sang đề khác.
 export default function WorkspacePage() {
   const { id } = useParams()
   return <Workspace key={id} id={id} />

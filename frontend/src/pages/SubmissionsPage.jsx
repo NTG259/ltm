@@ -256,20 +256,24 @@ export default function SubmissionsPage({ admin }) {
               width: 100,
               render: (v) => <span className="mono">{formatMemory(v)}</span>,
             },
-            {
-              title: 'Worker',
-              dataIndex: 'workerId',
-              width: 120,
-              render: (w, s) =>
-                w ? (
-                  <Tag icon={<CloudServerOutlined />} className="mono">
-                    {w}
-                    {s.attempts > 1 ? ` ×${s.attempts}` : ''}
-                  </Tag>
-                ) : (
-                  '—'
-                ),
-            },
+            ...(admin
+              ? [
+                  {
+                    title: 'Worker',
+                    dataIndex: 'workerId',
+                    width: 120,
+                    render: (w, s) =>
+                      w ? (
+                        <Tag icon={<CloudServerOutlined />} className="mono">
+                          {w}
+                          {s.attempts > 1 ? ` ×${s.attempts}` : ''}
+                        </Tag>
+                      ) : (
+                        '—'
+                      ),
+                  },
+                ]
+              : []),
           ]}
         />
       </Card>

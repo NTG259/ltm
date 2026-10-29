@@ -24,7 +24,6 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
-import { USE_MOCK } from '../../api'
 import { formatClock } from '../../lib/format'
 
 const HEARTBEAT_TIMEOUT = 15000
@@ -209,7 +208,7 @@ export const WorkerCard = memo(function WorkerCard({ worker, now, onKill, onRevi
       </div>
       <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
         {worker.status === 'DEAD' ? (
-          <Button size="small" icon={<ApiOutlined />} onClick={() => onRevive(worker.id)} disabled={!USE_MOCK}>
+          <Button size="small" icon={<ApiOutlined />} onClick={() => onRevive(worker.id)} disabled>
             Kết nối lại
           </Button>
         ) : (
