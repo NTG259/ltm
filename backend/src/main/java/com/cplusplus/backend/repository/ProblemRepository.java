@@ -42,7 +42,7 @@ public interface ProblemRepository extends JpaRepository<Problem, Long> {
     /** Tìm kiếm có phân trang (dùng cho GET /api/problems với page param). */
     @Query("select p from Problem p where p.deletedAt is null " +
            "and (:adminMode = true or p.publicVisible = true) " +
-           "and (:q is null or lower(p.title) like lower(concat('%', :q, '%'))) " +
+           "and (:q is null or lower(p.title) like lower(concat('%', cast(:q as string), '%'))) " +
            "and (:difficulty is null or p.difficulty = :difficulty) " +
            "order by p.id")
     Page<Problem> searchProblems(@Param("adminMode") boolean adminMode,

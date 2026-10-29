@@ -47,6 +47,9 @@ spring:
           max-idle: 4
           min-idle: 1
 
+app:
+  upload-dir: ${UPLOAD_DIR:./uploads/course-files}
+
 # Master Server: HTTP REST :8000 (WebSocket :8001 và TCP Worker :9000 sẽ do các server riêng mở).
 server:
   port: ${SERVER_PORT:8082}

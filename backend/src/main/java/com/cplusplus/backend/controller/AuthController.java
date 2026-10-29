@@ -36,7 +36,7 @@ public class AuthController {
                 "user", Map.of(
                         "id", res.user().getUsername(),
                         "name", res.user().getFullName(),
-                        "role", res.user().isAdmin() ? "admin" : "student"
+                        "role", res.user().isAdmin() ? "admin" : res.user().isLecturer() ? "lecturer" : "student"
                 )
         ));
     }

@@ -361,13 +361,6 @@ export default function AdminClassroomDetailPage() {
                     Tổng số: <b>{(students || []).length}</b> sinh viên
                   </Typography.Text>
                 </div>
-                <Alert
-                  type="info"
-                  showIcon
-                  message="Định dạng file: mssv,password"
-                  description="Mật khẩu ban đầu từ CSV được lưu để admin xem lại bằng nút hiện/ẩn. Cột này không cập nhật khi mật khẩu tài khoản thay đổi. Các lần import cũ hiển thị Chưa lưu. MSSV đã có mật khẩu sẽ không bị ghi đè."
-                  style={{ marginBottom: 16 }}
-                />
 
                 <Table
                   rowKey="userId"

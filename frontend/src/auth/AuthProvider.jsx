@@ -22,7 +22,13 @@ export default function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user: session?.user ?? null, isAdmin: session?.user?.role === 'admin', login, logout }),
+    () => ({
+      user: session?.user ?? null,
+      isAdmin: session?.user?.role === 'admin',
+      isLecturer: session?.user?.role === 'lecturer',
+      login,
+      logout,
+    }),
     [session, login, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

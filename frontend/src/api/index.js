@@ -233,6 +233,12 @@ const mockApi = {
       if (payload.password !== ADMIN_PASSWORD) throw new Error('Sai mật khẩu quản trị')
       return delay({ token: 'mock-admin-token', user: { id: 'admin', name: 'Quản trị viên', role: 'admin' } })
     }
+    // Lecturer accounts: GV001..GV999 with password "gv123456"
+    if (/^GV\d{3}$/i.test(username)) {
+      if (payload.password !== 'gv123456') throw new Error('Tài khoản hoặc mật khẩu không chính xác')
+      const gvId = username.toUpperCase()
+      return delay({ token: `mock-${gvId}`, user: { id: gvId, name: `Giảng viên ${gvId}`, role: 'lecturer' } })
+    }
     if (!/^[A-Z]\d{2}[A-Z]{4}\d{3}$/i.test(username)) throw new Error('Tài khoản hoặc mật khẩu không chính xác')
     const studentId = username.toUpperCase()
     const accounts = getMockAccounts()
@@ -311,6 +317,7 @@ const mockApi = {
   compareSubmissions: () => delay({ similarityScore: 95.0, verdictLevel: 'HIGH_RISK', submissionA: { id: 1, username: 'A', sourceCode: '// code A' }, submissionB: { id: 2, username: 'B', sourceCode: '// code B' } }),
   // ---- Lớp học (mock stub) ----
   listClassrooms: () => delay([]),
+  getClassroom: (id) => delay({ id, name: 'Lớp mẫu', semester: '2024-2025', contests: [] }),
   createClassroom: (data) => delay({ id: Date.now(), ...data, createdAt: Date.now() }),
   updateClassroom: (_id, data) => delay(data),
   deleteClassroom: () => delay(null),
@@ -355,6 +362,28 @@ const mockApi = {
   listClassroomContests: () => delay([]),
   assignClassroomContest: (_id, contestId) => delay({ contestId, title: '(mock)' }),
   unassignClassroomContest: () => delay(null),
+  // ---- Classroom course ----
+  getClassroomCourse: (classroomId) => {
+    const key = `cj.classroom_course.${classroomId}`
+    const raw = localStorage.getItem(key)
+    if (!raw) return Promise.reject(new Error('Chưa gán khóa học'))
+    try {
+      const saved = JSON.parse(raw)
+      return mockApi.getCourse(saved.courseId).then((course) => ({ ...course, courseId: course.id }))
+    } catch {
+      return Promise.reject(new Error('Chưa gán khóa học'))
+    }
+  },
+  assignClassroomCourse: (classroomId, courseId) => {
+    localStorage.setItem(`cj.classroom_course.${classroomId}`, JSON.stringify({ courseId }))
+    return delay({ classroomId, courseId })
+  },
+  unassignClassroomCourse: (classroomId) => {
+    localStorage.removeItem(`cj.classroom_course.${classroomId}`)
+    return delay(null)
+  },
+  uploadUnitFile: (_unitId, file) => delay({ id: Date.now(), filename: file.name, fileSize: file.size }),
+  deleteUnitFile: () => delay(null),
   // ---- Admin ----
   adminOverview: () =>
     delay({ workers: engine.workers(), queue: engine.queue(), logs: engine.logs(), submissions: engine.submissions().length, throughput: [] }),
@@ -653,6 +682,7 @@ const realApi = {
   adminLogs: (level) => http('GET', level ? `/admin/logs?level=${level}` : '/admin/logs'),
   // ---- Lớp học ----
   listClassrooms: () => http('GET', '/classrooms'),
+  getClassroom: (id) => http('GET', `/classrooms/${id}`),
   createClassroom: (data) => http('POST', '/classrooms', data),
   updateClassroom: (id, data) => http('PUT', `/classrooms/${id}`, data),
   deleteClassroom: (id) => http('DELETE', `/classrooms/${id}`),
@@ -717,6 +747,25 @@ const realApi = {
   listClassroomContests: (id) => http('GET', `/classrooms/${id}/contests`),
   assignClassroomContest: (id, contestId) => http('POST', `/classrooms/${id}/contests`, { contestId }),
   unassignClassroomContest: (classroomId, contestId) => http('DELETE', `/classrooms/${classroomId}/contests/${contestId}`),
+  // ---- Classroom course ----
+  getClassroomCourse: (classroomId) => http('GET', `/classrooms/${classroomId}/course`),
+  assignClassroomCourse: (classroomId, courseId) => http('PUT', `/classrooms/${classroomId}/course/${courseId}`),
+  unassignClassroomCourse: (classroomId) => http('DELETE', `/classrooms/${classroomId}/course`),
+  uploadUnitFile: (unitId, file) => {
+    const token = storageGet(TOKEN_KEY)
+    const form = new FormData()
+    form.append('file', file)
+    return fetch(`${API_BASE}/courses/units/${unitId}/files`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    }).then(async (res) => {
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      return data
+    })
+  },
+  deleteUnitFile: (unitId, fileId) => http('DELETE', `/courses/units/${unitId}/files/${fileId}`),
   // ---- Monitor ----
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),
   getContestMonitor: (cid, kid) => http('GET', `/classrooms/${cid}/contests/${kid}/monitor`),

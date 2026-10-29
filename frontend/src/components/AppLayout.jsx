@@ -7,10 +7,8 @@ import {
   LogoutOutlined,
   OrderedListOutlined,
   ProfileOutlined,
-  ReadOutlined,
   FlagOutlined,
   TeamOutlined,
-  ThunderboltOutlined,
   TrophyOutlined,
   UserOutlined,
   UsergroupAddOutlined,
@@ -53,8 +51,6 @@ export default function AppLayout() {
           { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
         ]
       : [
-          { key: '/courses', icon: <ReadOutlined />, label: <Link to="/courses">Khóa học</Link> },
-          { key: '/playground', icon: <ThunderboltOutlined />, label: <Link to="/playground">Chạy thử</Link> },
           { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
           { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
           { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp</Link> },

@@ -38,7 +38,6 @@ import { formatMemory, formatRelative, formatTime } from '../lib/format'
 import { SAMPLE_SOURCES, STARTER_CODE } from '../api/mock/data'
 import CodeEditor from '../components/CodeEditor'
 import CustomTestRunner from '../components/CustomTestRunner'
-import ResultSummary from '../components/ResultSummary'
 import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
 import ContestClock from '../components/ContestClock'
@@ -531,30 +530,31 @@ export function Workspace({ id, contest, label }) {
                   ) : tab === 'result' ? (
                     active ? (
                       <Space orientation="vertical" size={14} style={{ width: '100%' }}>
-                        <ResultSummary
-                          submission={active}
-                          problem={problem}
-                          extra={
-                            active.status === 'FINISHED' && (
-                              <Space size={8} wrap>
-                                {active.sourceCode && (
-                                  <Button
-                                    size="small"
-                                    onClick={() => {
-                                      setCode(active.sourceCode)
-                                      message.success(`Đã nạp lại mã của bài nộp #${active.id} vào trình soạn thảo`)
-                                    }}
-                                  >
-                                    Nạp code này vào editor
-                                  </Button>
-                                )}
-                                <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
-                                  Xem toàn bộ bài nộp ↗
-                                </Link>
-                              </Space>
-                            )
-                          }
-                        />
+                        {active.status !== 'FINISHED' && (
+                          <div className="result-summary tone-running">
+                            <div className="result-title">
+                              <LoadingOutlined /> {active.status === 'IN_QUEUE' ? 'Đang chờ chấm…' : 'Đang chấm…'}
+                            </div>
+                          </div>
+                        )}
+                        {active.status === 'FINISHED' && (
+                          <Space size={8} wrap style={{ padding: '4px 0' }}>
+                            {active.sourceCode && (
+                              <Button
+                                size="small"
+                                onClick={() => {
+                                  setCode(active.sourceCode)
+                                  message.success(`Đã nạp lại mã của bài nộp #${active.id} vào trình soạn thảo`)
+                                }}
+                              >
+                                Nạp code này vào editor
+                              </Button>
+                            )}
+                            <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
+                              Xem toàn bộ bài nộp ↗
+                            </Link>
+                          </Space>
+                        )}
                         <TestResults submission={active} />
                       </Space>
                     ) : submitting || activeId ? (

@@ -10,4 +10,7 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
     /** Lớp học mà sinh viên (userId) đang thuộc. */
     @Query("select cs.classroom from ClassroomStudent cs where cs.user.id = :userId")
     List<Classroom> findByStudentUserId(Long userId);
+
+    /** Lớp học do giảng viên (createdBy) tạo. */
+    List<Classroom> findByCreatedById(Long createdById);
 }

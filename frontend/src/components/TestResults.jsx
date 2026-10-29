@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Space, Tooltip, Typography } from 'antd'
+import { Progress, Space, Tooltip, Typography } from 'antd'
 import { testStatusLabel, testTone, VERDICTS } from '../lib/verdicts'
 import { formatMemory, formatTime } from '../lib/format'
+import { useAuth } from '../auth/context'
 import CompilerErrorExplainer from './CompilerErrorExplainer'
 
 function DiffLine({ actual, expected }) {
@@ -79,8 +80,9 @@ function TestDetail({ test }) {
   )
 }
 
-/** Danh sách test case (ô màu theo kết quả) và chi tiết test đang chọn. Trạng thái tổng nằm ở ResultSummary. */
+/** Danh sách test case (ô màu theo kết quả) và chi tiết test đang chọn. Admin thấy đủ; sinh viên chỉ thấy số đúng/tổng. */
 export default function TestResults({ submission: s }) {
+  const { isAdmin } = useAuth()
   const [picked, setPicked] = useState(null)
   if (!s) return null
 
@@ -98,6 +100,29 @@ export default function TestResults({ submission: s }) {
   }
   if (!s.tests?.length) return null
 
+  const total = s.tests.length
+  const passed = s.tests.filter((t) => t.status === 'AC').length
+  const pct = total ? Math.round((passed / total) * 100) : 0
+
+  // Sinh viên chỉ thấy tổng đúng/sai, không thấy test nào sai
+  if (!isAdmin) {
+    return (
+      <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        <Typography.Text>
+          <b>{passed}/{total}</b> test đúng
+        </Typography.Text>
+        <Progress
+          percent={pct}
+          strokeColor={passed === total ? '#52c41a' : '#f5222d'}
+          showInfo={false}
+          size="small"
+          style={{ margin: 0 }}
+        />
+      </Space>
+    )
+  }
+
+  // Admin: đầy đủ chip + chi tiết
   const firstFail = s.tests.find((t) => VERDICTS[t.status] && t.status !== 'AC')
   const lastRun = [...s.tests].reverse().find((t) => t.status !== 'PENDING' && t.status !== 'SKIPPED')
   const selected = s.tests.find((t) => t.index === picked) || firstFail || lastRun || s.tests[0]

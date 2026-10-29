@@ -30,7 +30,8 @@ export default function LoginPage() {
     try {
       const user = await login(values)
       message.success(`Xin chào, ${user.name}`)
-      navigate(user.role === 'admin' ? '/admin' : '/problems', { replace: true })
+      const dest = user.role === 'admin' ? '/admin' : user.role === 'lecturer' ? '/teacher/classrooms' : '/problems'
+      navigate(dest, { replace: true })
     } catch (e) {
       message.error(e.message)
     } finally {
