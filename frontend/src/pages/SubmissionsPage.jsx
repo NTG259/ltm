@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { Card, Input, Select, Space, Statistic, Table, Tag, Typography } from 'antd'
 import { CloudServerOutlined, SearchOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -8,6 +8,8 @@ import { useFetch, useNow, useSocket } from '../lib/hooks'
 import { VERDICT_KEYS, VERDICTS } from '../lib/verdicts'
 import { formatDateTime, formatMemory, formatRelative, formatTime } from '../lib/format'
 import VerdictTag from '../components/VerdictTag'
+
+const PAGE_SIZE = 50
 
 /** Danh sách bài nộp: thí sinh thấy bài của mình; admin tra cứu & lọc toàn trường. Cập nhật realtime. */
 export default function SubmissionsPage({ admin }) {
@@ -19,35 +21,36 @@ export default function SubmissionsPage({ admin }) {
   const verdict = searchParams.get('verdict') || null
   const problemId = searchParams.get('problemId') ? Number(searchParams.get('problemId')) : null
   const student = searchParams.get('student') || ''
+  const page = searchParams.get('page') ? Number(searchParams.get('page')) : 0
+  const debounceRef = useRef(null)
 
-  const onProblemChange = (val) => {
+  const setParam = (key, val) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
-      if (val) next.set('problemId', val)
-      else next.delete('problemId')
+      if (val) next.set(key, val)
+      else next.delete(key)
+      if (key !== 'page') next.delete('page')
       return next
     }, { replace: true })
   }
 
   const onStudentChange = (val) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      if (val) next.set('student', val)
-      else next.delete('student')
-      return next
-    }, { replace: true })
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setParam('student', val), 300)
   }
 
-  const onVerdictChange = (val) => {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      if (val) next.set('verdict', val)
-      else next.delete('verdict')
-      return next
-    }, { replace: true })
-  }
+  // Admin mode: server-side filtering + pagination
+  // Student mode: load own submissions (usually small), filter client-side
+  const adminQuery = admin
+    ? { userId: student || undefined, problemId: problemId || undefined, verdict: verdict || undefined, page, size: PAGE_SIZE }
+    : null
 
-  const subs = useFetch(() => api.listSubmissions(admin ? {} : { userId: user.id }), [admin, user.id])
+  const subs = useFetch(
+    () => admin
+      ? api.listSubmissions(adminQuery)
+      : api.listSubmissions({ userId: user.id }),
+    admin ? [student, problemId, verdict, page] : [user.id],
+  )
   const problems = useFetch(() => api.listProblems(), [])
   const { setData } = subs
 
@@ -59,35 +62,44 @@ export default function SubmissionsPage({ admin }) {
         if (!admin && s.userId !== user.id) return
         // eslint-disable-next-line no-unused-vars
         const { sourceCode, tests, history, ...row } = s
-        setData((list) => {
-          if (!list) return list
+        setData((prev) => {
+          if (!prev) return prev
+          const list = Array.isArray(prev) ? prev : (prev.submissions || [])
           const i = list.findIndex((x) => x.id === s.id)
-          if (i < 0) return [row, ...list]
-          const next = [...list]
-          next[i] = { ...next[i], ...row }
-          return next
+          const next = i < 0 ? [row, ...list] : list.map((x, idx) => idx === i ? { ...x, ...row } : x)
+          return Array.isArray(prev) ? next : { ...prev, submissions: next }
         })
       },
       [admin, user.id, setData],
     ),
   )
 
-  const all = useMemo(() => subs.data || [], [subs.data])
-  const rows = all.filter(
-    (s) =>
-      (!verdict || (verdict === 'PENDING' ? s.status !== 'FINISHED' : s.verdict === verdict)) &&
-      (!problemId || s.problemId === problemId) &&
-      (!student || `${s.userId} ${s.userName}`.toLowerCase().includes(student.toLowerCase())),
-  )
-  const stats = useMemo(() => {
-    const finished = all.filter((s) => s.status === 'FINISHED')
-    return {
-      total: all.length,
-      pending: all.length - finished.length,
-      ac: finished.filter((s) => s.verdict === 'AC').length,
-      students: new Set(all.map((s) => s.userId)).size,
+  // Normalize: backend returns { total, submissions } for paginated, plain array otherwise
+  const { rows, total } = useMemo(() => {
+    const d = subs.data
+    if (!d) return { rows: [], total: 0 }
+    if (Array.isArray(d)) {
+      const filtered = d.filter(
+        (s) =>
+          (!verdict || (verdict === 'PENDING' ? s.status !== 'FINISHED' : s.verdict === verdict)) &&
+          (!problemId || s.problemId === problemId) &&
+          (!student || `${s.userId} ${s.userName}`.toLowerCase().includes(student.toLowerCase())),
+      )
+      return { rows: filtered, total: filtered.length }
     }
-  }, [all])
+    return { rows: d.submissions || [], total: d.total || 0 }
+  }, [subs.data, verdict, problemId, student])
+
+  const stats = useMemo(() => {
+    const list = Array.isArray(subs.data) ? (subs.data || []) : (subs.data?.submissions || [])
+    const finished = list.filter((s) => s.status === 'FINISHED')
+    return {
+      total: admin ? total : list.length,
+      pending: list.length - finished.length,
+      ac: finished.filter((s) => s.verdict === 'AC').length,
+      students: new Set(list.map((s) => s.userId)).size,
+    }
+  }, [subs.data, total, admin])
 
   return (
     <div className="page">
@@ -126,7 +138,7 @@ export default function SubmissionsPage({ admin }) {
               allowClear
               prefix={<SearchOutlined />}
               placeholder="MSSV hoặc họ tên"
-              value={student}
+              defaultValue={student}
               onChange={(e) => onStudentChange(e.target.value)}
               style={{ width: 220 }}
             />
@@ -135,30 +147,33 @@ export default function SubmissionsPage({ admin }) {
             allowClear
             placeholder="Đề bài"
             value={problemId}
-            onChange={onProblemChange}
+            onChange={(val) => setParam('problemId', val)}
             style={{ width: 260 }}
             showSearch={{ optionFilterProp: 'label' }}
-            options={(problems.data || []).map((p) => ({ value: p.id, label: `#${p.id} ${p.title}` }))}
+            options={(Array.isArray(problems.data) ? problems.data : (problems.data?.problems || [])).map((p) => ({ value: p.id, label: `#${p.id} ${p.title}` }))}
           />
           <Select
             allowClear
             placeholder="Kết quả"
             value={verdict}
-            onChange={onVerdictChange}
+            onChange={(val) => setParam('verdict', val)}
             style={{ width: 220 }}
             options={[
               { value: 'PENDING', label: 'Đang chờ / đang chấm' },
               ...VERDICT_KEYS.map((v) => ({ value: v, label: `${v} – ${VERDICTS[v].label}` })),
             ]}
           />
-          <Typography.Text type="secondary">{rows.length} kết quả</Typography.Text>
+          <Typography.Text type="secondary">{admin ? `${total} kết quả` : `${rows.length} kết quả`}</Typography.Text>
         </Space>
         <Table
           rowKey="id"
           loading={subs.loading}
           dataSource={rows}
           scroll={{ x: 920 }}
-          pagination={{ pageSize: 15, showSizeChanger: false }}
+          pagination={admin
+            ? { current: page + 1, pageSize: PAGE_SIZE, total, showSizeChanger: false,
+                onChange: (p) => setParam('page', p - 1 || null) }
+            : { pageSize: 15, showSizeChanger: false }}
           onRow={(s) => ({
             style: { cursor: 'pointer' },
             onClick: (e) => {

@@ -6,6 +6,7 @@ import {
   ClusterSummary,
   MasterLogPanel,
   QueuePanel,
+  ThroughputChart,
   WorkerCard,
 } from '../../components/admin/JudgeClusterPanels'
 import { useFetch, useNow, useSocket } from '../../lib/hooks'
@@ -25,13 +26,16 @@ export default function AdminDashboardPage() {
     }, []),
   )
 
-  const base = overview.data || { workers: [], queue: [], logs: [], submissions: 0 }
+  const [logLevel, setLogLevel] = useState('')
+
+  const base = overview.data || { workers: [], queue: [], logs: [], submissions: 0, throughput: [] }
   const workers = live.workers || base.workers
   const logs = useMemo(
     () => (live.logs ? [...live.logs, ...base.logs.filter((entry) => !live.logs.some((item) => item.id === entry.id))] : base.logs),
     [base.logs, live.logs],
   )
   const queue = live.queue || base.queue
+  const throughput = base.throughput || []
   const alive = workers.filter((w) => w.status !== 'DEAD').length
   const busy = workers.filter((w) => w.status === 'BUSY').length
 
@@ -75,11 +79,17 @@ export default function AdminDashboardPage() {
           </Row>
 
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col xs={24}>
+              <ThroughputChart throughput={throughput} />
+            </Col>
+          </Row>
+
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col xs={24} lg={10}>
               <QueuePanel queue={queue} />
             </Col>
             <Col xs={24} lg={14}>
-              <MasterLogPanel logs={logs} />
+              <MasterLogPanel logs={logs} levelFilter={logLevel} onLevelChange={setLogLevel} />
             </Col>
           </Row>
         </>

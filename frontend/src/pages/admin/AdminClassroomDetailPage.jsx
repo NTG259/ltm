@@ -23,6 +23,7 @@ import {
   EyeOutlined,
   FileTextOutlined,
   IdcardOutlined,
+  KeyOutlined,
   ProfileOutlined,
   UploadOutlined,
   UserAddOutlined,
@@ -52,6 +53,11 @@ export default function AdminClassroomDetailPage() {
   const [deletingSelected, setDeletingSelected] = useState(false)
   const [selectedContest, setSelectedContest] = useState(null)
   const [assigning, setAssigning] = useState(false)
+
+  // State cho Modal reset mật khẩu
+  const [resetTarget, setResetTarget] = useState(null) // { userId, username }
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   // State cho Modal thêm sinh viên thủ công
   const [addModalVisible, setAddModalVisible] = useState(false)
@@ -198,6 +204,25 @@ export default function AdminClassroomDetailPage() {
     }
   }
 
+  const handleResetPassword = async () => {
+    if (!resetTarget) return
+    if (!resetPassword || resetPassword.length < 8) {
+      message.warning('Mật khẩu phải có ít nhất 8 ký tự')
+      return
+    }
+    setResetting(true)
+    try {
+      await api.resetStudentPassword(resetTarget.userId, resetPassword)
+      message.success(`Đã đặt lại mật khẩu cho ${resetTarget.username}`)
+      setResetTarget(null)
+      setResetPassword('')
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setResetting(false)
+    }
+  }
+
   const studentColumns = [
     {
       title: 'MSSV',
@@ -234,13 +259,20 @@ export default function AdminClassroomDetailPage() {
     {
       title: 'Hành động',
       key: 'actions',
-      width: 110,
+      width: 140,
       render: (_, row) => (
         <Space size={6}>
           <Tooltip title={`Xem bài nộp của ${row.username}`}>
             <Link to={`/admin/submissions?student=${row.username}`}>
               <Button size="small" icon={<ProfileOutlined />} />
             </Link>
+          </Tooltip>
+          <Tooltip title="Đặt lại mật khẩu">
+            <Button
+              size="small"
+              icon={<KeyOutlined />}
+              onClick={() => { setResetTarget({ userId: row.userId, username: row.username }); setResetPassword('') }}
+            />
           </Tooltip>
           <Popconfirm
             title="Xóa khỏi lớp?"
@@ -363,13 +395,6 @@ export default function AdminClassroomDetailPage() {
                     Tổng số: <b>{(students || []).length}</b> sinh viên
                   </Typography.Text>
                 </div>
-                <Alert
-                  type="info"
-                  showIcon
-                  message="Định dạng file: mssv,password"
-                  description="Mật khẩu ban đầu từ CSV được lưu để admin xem lại bằng nút hiện/ẩn. Cột này không cập nhật khi mật khẩu tài khoản thay đổi. Các lần import cũ hiển thị Chưa lưu. MSSV đã có mật khẩu sẽ không bị ghi đè."
-                  style={{ marginBottom: 16 }}
-                />
 
                 <Table
                   rowKey="userId"
@@ -584,6 +609,41 @@ export default function AdminClassroomDetailPage() {
               </Button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Modal reset mật khẩu sinh viên */}
+      <Modal
+        title={
+          <Space>
+            <KeyOutlined style={{ color: '#f59e0b' }} />
+            <span>Đặt lại mật khẩu</span>
+          </Space>
+        }
+        open={!!resetTarget}
+        onCancel={() => { setResetTarget(null); setResetPassword('') }}
+        onOk={handleResetPassword}
+        okText="Xác nhận"
+        cancelText="Hủy"
+        confirmLoading={resetting}
+        destroyOnClose
+        centered
+        width={400}
+      >
+        {resetTarget && (
+          <>
+            <Typography.Text>
+              Đặt mật khẩu mới cho sinh viên <strong>{resetTarget.username}</strong>:
+            </Typography.Text>
+            <Input.Password
+              style={{ marginTop: 12 }}
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              placeholder="Nhập mật khẩu mới (ít nhất 8 ký tự)"
+              autoFocus
+              onPressEnter={handleResetPassword}
+            />
+          </>
         )}
       </Modal>
     </div>

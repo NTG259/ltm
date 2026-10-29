@@ -5,7 +5,6 @@ import { useAuth } from '../auth/context'
 import { useLiveSubmission } from '../lib/hooks'
 import { formatClock, formatDateTime } from '../lib/format'
 import CodeEditor from '../components/CodeEditor'
-import ResultSummary from '../components/ResultSummary'
 import TestResults from '../components/TestResults'
 
 const HISTORY_COLOR = {
@@ -64,7 +63,6 @@ export default function SubmissionDetailPage() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
           <Space orientation="vertical" size={16} style={{ width: '100%' }}>
-            <ResultSummary submission={s} />
             {(s.tests?.length > 0 || ['CE', 'SEC'].includes(s.verdict)) && (
               <Card title="Test case">
                 <TestResults submission={s} />

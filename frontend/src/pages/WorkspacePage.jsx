@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import {
   App,
   Badge,
@@ -37,7 +38,6 @@ import { formatMemory, formatRelative, formatTime } from '../lib/format'
 import { SAMPLE_SOURCES, STARTER_CODE } from '../api/mock/data'
 import CodeEditor from '../components/CodeEditor'
 import CustomTestRunner from '../components/CustomTestRunner'
-import ResultSummary from '../components/ResultSummary'
 import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
 import ContestClock from '../components/ContestClock'
@@ -60,13 +60,7 @@ function readDraft(pid, uid) {
 
 /** Hiển thị đoạn văn có `code` inline. */
 function Rich({ text }) {
-  return text
-    .split('\n\n')
-    .map((para, i) => (
-      <p key={i}>
-        {para.split(/(`[^`]+`)/).map((part, j) => (part.startsWith('`') ? <code key={j}>{part.slice(1, -1)}</code> : part))}
-      </p>
-    ))
+  return <ReactMarkdown>{text || ''}</ReactMarkdown>
 }
 
 function Statement({ problem }) {
@@ -198,9 +192,11 @@ export function Workspace({ id, contest, label }) {
   const [activeId, setActiveId] = useState(null)
   const [tab, setTab] = useState('testcase')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [language, setLanguage] = useState('cpp17')
   const [customInput, setCustomInput] = useState(null)
   const [runningTest, setRunningTest] = useState(false)
   const [testResult, setTestResult] = useState(null)
+  const { data: availableLanguages } = useFetch(() => api.languages(), [])
   const { sub: active } = useLiveSubmission(activeId)
 
   const activeInput = customInput ?? (problem?.samples?.[0]?.input || '')
@@ -280,7 +276,7 @@ export function Workspace({ id, contest, label }) {
     setActiveId(null)
     setTab('result')
     try {
-      const s = await api.submit({ problemId: Number(id), language: 'cpp17', sourceCode: code, contestId: contest?.id }, user)
+      const s = await api.submit({ problemId: Number(id), language, sourceCode: code, contestId: contest?.id }, user)
       setActiveId(s.id)
       setTab('result')
       setRefreshKey((k) => k + 1)
@@ -303,6 +299,7 @@ export function Workspace({ id, contest, label }) {
     try {
       const res = await api.runTest({
         problemId: Number(id),
+        language,
         sourceCode: code,
         input: inVal,
         expectedOutput: expVal,
@@ -315,9 +312,13 @@ export function Workspace({ id, contest, label }) {
     }
   }
 
+  const LANG_EXT = {
+    cpp17: /\.(cpp|cc|cxx|h|hpp)$/i,
+  }
   const loadFile = (file) => {
-    if (!/\.(cpp|cc|cxx|h|hpp)$/i.test(file.name)) {
-      message.error('Chỉ chấp nhận tệp .cpp')
+    const pattern = LANG_EXT[language] || LANG_EXT.cpp17
+    if (!pattern.test(file.name)) {
+      message.error(`Ngôn ngữ ${language} không nhận tệp này`)
       return Upload.LIST_IGNORE
     }
     if (file.size > 256 * 1024) {
@@ -428,9 +429,26 @@ export function Workspace({ id, contest, label }) {
                       <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#f59e0b', opacity: 0.8 }} />
                       <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#10b981', opacity: 0.8 }} />
                     </div>
-                    <Typography.Text className="mono" style={{ fontSize: 12.5, fontWeight: 600 }}>
-                      solution.cpp <span className="muted" style={{ fontWeight: 400 }}>· C++17</span>
-                    </Typography.Text>
+                    <Dropdown
+                      trigger={['click']}
+                      menu={{
+                        items: (availableLanguages || [{ code: 'cpp17', label: 'C++17' }]).map((l) => ({
+                          key: l.code,
+                          label: <span className="mono">{l.label}</span>,
+                        })),
+                        selectedKeys: [language],
+                        onClick: ({ key }) => setLanguage(key),
+                      }}
+                    >
+                      <Typography.Text
+                        className="mono"
+                        style={{ fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                        title="Chọn ngôn ngữ"
+                      >
+                        {(availableLanguages || []).find((l) => l.code === language)?.label ?? 'C++17'}
+                        <span className="muted" style={{ fontWeight: 400, marginLeft: 4 }}>▾</span>
+                      </Typography.Text>
+                    </Dropdown>
                   </div>
                   <Space size={4}>
                     <Typography.Text type="secondary" className="mono" style={{ fontSize: 12, marginInlineEnd: 4 }}>
@@ -512,30 +530,31 @@ export function Workspace({ id, contest, label }) {
                   ) : tab === 'result' ? (
                     active ? (
                       <Space orientation="vertical" size={14} style={{ width: '100%' }}>
-                        <ResultSummary
-                          submission={active}
-                          problem={problem}
-                          extra={
-                            active.status === 'FINISHED' && (
-                              <Space size={8} wrap>
-                                {active.sourceCode && (
-                                  <Button
-                                    size="small"
-                                    onClick={() => {
-                                      setCode(active.sourceCode)
-                                      message.success(`Đã nạp lại mã của bài nộp #${active.id} vào trình soạn thảo`)
-                                    }}
-                                  >
-                                    Nạp code này vào editor
-                                  </Button>
-                                )}
-                                <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
-                                  Xem toàn bộ bài nộp ↗
-                                </Link>
-                              </Space>
-                            )
-                          }
-                        />
+                        {active.status !== 'FINISHED' && (
+                          <div className="result-summary tone-running">
+                            <div className="result-title">
+                              <LoadingOutlined /> {active.status === 'IN_QUEUE' ? 'Đang chờ chấm…' : 'Đang chấm…'}
+                            </div>
+                          </div>
+                        )}
+                        {active.status === 'FINISHED' && (
+                          <Space size={8} wrap style={{ padding: '4px 0' }}>
+                            {active.sourceCode && (
+                              <Button
+                                size="small"
+                                onClick={() => {
+                                  setCode(active.sourceCode)
+                                  message.success(`Đã nạp lại mã của bài nộp #${active.id} vào trình soạn thảo`)
+                                }}
+                              >
+                                Nạp code này vào editor
+                              </Button>
+                            )}
+                            <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
+                              Xem toàn bộ bài nộp ↗
+                            </Link>
+                          </Space>
+                        )}
                         <TestResults submission={active} />
                       </Space>
                     ) : submitting || activeId ? (

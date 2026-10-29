@@ -26,8 +26,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneral(Exception ex) {
-        log.error("Internal Server Error: {}", ex.getMessage(), ex);
+        log.error("Internal Server Error", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("message", ex.getMessage() != null ? ex.getMessage() : "Lỗi máy chủ nội bộ"));
+                .body(Map.of("message", "Lỗi máy chủ nội bộ"));
     }
 }

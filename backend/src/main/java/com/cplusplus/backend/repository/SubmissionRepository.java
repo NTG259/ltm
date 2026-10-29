@@ -104,6 +104,16 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
             """)
     List<Summary> search(String username, Long problemId, Long contestId, Verdict verdict, Pageable page);
 
+    @Query("""
+            select count(s)
+            from Submission s join s.user u join s.problem p
+            where (:username is null or upper(u.username) = upper(cast(:username as string)))
+              and (:problemId is null or p.id = :problemId)
+              and (:contestId is null or s.contest.id = :contestId)
+              and (:verdict is null or s.verdict = :verdict)
+            """)
+    long countSearch(String username, Long problemId, Long contestId, Verdict verdict);
+
     @Query(value = """
             select rank, user_id as userId, username, full_name as fullName, solved, score, attempts
             from v_leaderboard order by rank, username
@@ -126,4 +136,25 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     List<Submission> findAllByContestIdWithDetails(Long contestId);
 
     boolean existsByUserIdAndProblemIdAndVerdict(Long userId, Long problemId, Verdict verdict);
+
+    /** Thống kê throughput: số bài finish theo bucket 5 phút trong khoảng [since, now]. */
+    interface ThroughputBucket {
+        Long getBucket();   // epoch seconds, aligned to 5-minute boundary
+        long getTotal();
+        long getAccepted();
+    }
+
+    @Query(value = """
+            select
+              extract(epoch from date_trunc('minute', finished_at) -
+                interval '1 minute' * (extract(minute from finished_at)::int % 5))::bigint as bucket,
+              count(*) as total,
+              sum(case when verdict = 'AC' then 1 else 0 end) as accepted
+            from submissions
+            where status = 'FINISHED'
+              and finished_at >= :since
+            group by 1
+            order by 1
+            """, nativeQuery = true)
+    List<ThroughputBucket> findThroughput(Instant since);
 }

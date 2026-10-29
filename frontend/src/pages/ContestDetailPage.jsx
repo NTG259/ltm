@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { App, Breadcrumb, Button, Card, Empty, Result, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from 'antd'
+import { App, Breadcrumb, Button, Card, Empty, Popconfirm, Result, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from 'antd'
 import { CheckCircleFilled, DiffOutlined, ExclamationCircleFilled, LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
@@ -123,6 +123,7 @@ export default function ContestDetailPage() {
   const now = useNow(1000)
   const [tab, setTab] = useState('problems')
   const [registering, setRegistering] = useState(false)
+  const [unregistering, setUnregistering] = useState(false)
   const contest = useFetch(() => api.getContest(id, user), [id, user])
   const standings = useFetch(() => api.contestStandings(id), [id])
   const subs = useFetch(
@@ -181,6 +182,20 @@ export default function ContestDetailPage() {
     }
   }
 
+  const unregister = async () => {
+    setUnregistering(true)
+    try {
+      await api.unregisterContest(c.id)
+      message.success('Đã hủy đăng ký')
+      reloadContest()
+      reloadStandings()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setUnregistering(false)
+    }
+  }
+
   const canSolve = isAdmin || status === 'ENDED' || (status === 'RUNNING' && c.registered)
   const myRow = standings.data?.rows.find((r) => r.userId === user.id)
 
@@ -214,10 +229,24 @@ export default function ContestDetailPage() {
           </div>
           <div style={{ display: 'grid', gap: 10, justifyItems: 'end' }}>
             <ContestClock contest={c} />
-            {!isAdmin && !c.registered && status !== 'ENDED' && (
+            {!isAdmin && !c.registered && status === 'UPCOMING' && (
               <Button type="primary" size="large" loading={registering} onClick={register}>
                 Đăng ký tham gia
               </Button>
+            )}
+            {!isAdmin && c.registered && status === 'UPCOMING' && (
+              <Popconfirm
+                title="Hủy đăng ký kỳ thi?"
+                description="Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu."
+                okText="Hủy đăng ký"
+                cancelText="Giữ lại"
+                okButtonProps={{ danger: true }}
+                onConfirm={unregister}
+              >
+                <Button size="large" loading={unregistering} danger>
+                  Hủy đăng ký
+                </Button>
+              </Popconfirm>
             )}
           </div>
         </div>
@@ -253,6 +282,7 @@ export default function ContestDetailPage() {
                   loading={standings.loading && !standings.data}
                   currentUserId={user.id}
                   problems={c.problems}
+                  contestTitle={c.title}
                 />
               ),
             },

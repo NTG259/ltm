@@ -15,6 +15,7 @@ import {
   Row,
   Select,
   Space,
+  Switch,
   Table,
   Tabs,
   Tag,
@@ -40,9 +41,16 @@ import { DIFFICULTIES } from '../../lib/verdicts'
 import { percent } from '../../lib/format'
 
 const DIFF_COLOR = { easy: 'green', medium: 'gold', hard: 'red' }
+const CHECKER_OPTIONS = [
+  { value: 'lines', label: 'Lines (so từng dòng, bỏ trailing whitespace)' },
+  { value: 'tokens', label: 'Tokens (so từng token, bỏ khoảng trắng)' },
+  { value: 'exact', label: 'Exact (so chính xác từng ký tự)' },
+]
+
 const EMPTY = {
   title: '',
   difficulty: 'easy',
+  checker: 'lines',
   tags: [],
   timeLimitMs: 1000,
   memoryLimitMb: 256,
@@ -173,19 +181,24 @@ function ProblemDrawer({ open, problem, onClose, onSaved }) {
                     <Input />
                   </Form.Item>
                   <Row gutter={12}>
-                    <Col xs={24} sm={8}>
+                    <Col xs={24} sm={6}>
                       <Form.Item name="difficulty" label="Độ khó">
                         <Select options={Object.entries(DIFFICULTIES).map(([k, v]) => ({ value: k, label: v.label }))} />
                       </Form.Item>
                     </Col>
-                    <Col xs={12} sm={8}>
+                    <Col xs={12} sm={6}>
                       <Form.Item name="timeLimitMs" label="Giới hạn thời gian (ms)" rules={[{ required: true }]}>
                         <InputNumber min={100} max={10000} step={100} style={{ width: '100%' }} />
                       </Form.Item>
                     </Col>
-                    <Col xs={12} sm={8}>
+                    <Col xs={12} sm={6}>
                       <Form.Item name="memoryLimitMb" label="Giới hạn bộ nhớ (MB)" rules={[{ required: true }]}>
                         <InputNumber min={16} max={1024} step={16} style={{ width: '100%' }} />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={6}>
+                      <Form.Item name="checker" label="Checker">
+                        <Select options={CHECKER_OPTIONS} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -400,6 +413,15 @@ export default function AdminProblemsPage() {
     list.reload()
   }
 
+  const toggleVisibility = async (id, visible) => {
+    try {
+      await api.toggleProblemVisibility(id, visible)
+      list.reload()
+    } catch (e) {
+      message.error(e.message)
+    }
+  }
+
   return (
     <div className="page">
       <AdminPageHeader
@@ -451,6 +473,17 @@ export default function AdminProblemsPage() {
               ),
             },
             { title: 'Số test', dataIndex: 'testCount', width: 80, align: 'center' },
+            {
+              title: 'Công khai',
+              dataIndex: 'publicVisible',
+              width: 90,
+              align: 'center',
+              render: (val, p) => (
+                <Tooltip title={val ? 'Đang công khai — bấm để ẩn' : 'Đang ẩn — bấm để công khai'}>
+                  <Switch size="small" checked={val} onChange={(v) => toggleVisibility(p.id, v)} />
+                </Tooltip>
+              ),
+            },
             {
               title: 'Bài nộp (AC)',
               width: 140,

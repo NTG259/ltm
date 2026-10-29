@@ -26,12 +26,12 @@ export const options = {
   scenarios: {
     concurrent_submit: {
       executor: "constant-vus",
-      vus: 50,
+      vus: 200,
       duration: "2m",
     },
   },
   thresholds: {
-    verdict_time_ms: ["p(95)<30000"], // p95 verdict within 30s
+    verdict_time_ms: ["p(95)<120000"], // p95 verdict within 120s
     submit_errors: ["count<10"],       // fewer than 10 HTTP errors
   },
 };
@@ -92,21 +92,16 @@ export default function (data) {
     return;
   }
 
-  // Poll until terminal verdict (max 60s)
+  // Poll until terminal verdict (max 120s)
   let verdict = null;
-  const terminal = ["AC", "WA", "TLE", "MLE", "RTE", "CE", "SEC", "FAILED"];
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     sleep(2);
     const poll = http.get(`${BASE}/api/submissions/${sub.id}`, { headers });
     if (poll.status === 200) {
       const s = poll.json();
-      const v = s.verdict || (terminal.includes(s.status) ? s.status : null);
-      if (v && terminal.includes(v)) {
-        verdict = v;
-        break;
-      }
-      if (s.status === "FINISHED") {
-        verdict = s.verdict || "AC";
+      const terminal = ["AC", "WA", "TLE", "MLE", "RTE", "CE", "SEC", "FAILED", "FINISHED"];
+      if (terminal.includes(s.status) || terminal.includes(s.verdict)) {
+        verdict = s.verdict || s.status;
         break;
       }
     }

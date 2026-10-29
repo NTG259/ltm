@@ -1,25 +1,72 @@
-import { useCallback } from 'react'
-import { Card, Table, Tooltip } from 'antd'
+import { useCallback, useState } from 'react'
+import { Button, Card, Select, Space, Table, Tooltip, Typography } from 'antd'
+import { DownloadOutlined } from '@ant-design/icons'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useSocket } from '../lib/hooks'
+import { downloadCsv } from '../lib/exportCsv'
 
 export default function LeaderboardPage() {
-  const { user } = useAuth()
-  const lb = useFetch(() => api.leaderboard(), [])
+  const { user, isAdmin } = useAuth()
+  const [classroomId, setClassroomId] = useState(null)
+
+  const lb = useFetch(() => api.leaderboard(classroomId), [classroomId])
   const { reload } = lb
 
-  // Bảng xếp hạng tự làm mới khi có bài chấm xong.
+  const classrooms = useFetch(() => api.listClassrooms(), [])
+
   useSocket(useCallback((msg) => msg.type === 'SUBMISSION_UPDATE' && msg.submission.status === 'FINISHED' && reload(), [reload]))
 
   const data = lb.data || { problems: [], rows: [] }
+
+  const classroomOptions = [
+    { value: null, label: 'Toàn hệ thống' },
+    ...((classrooms.data || []).map((c) => ({ value: c.id, label: c.name }))),
+  ]
+
+  const exportCsv = () => {
+    if (!data.rows?.length) return
+    const problemHeaders = data.problems.map((p) => ({
+      label: `#${p.id} ${p.title}`,
+      value: (r) => {
+        const c = r.cells[p.id]
+        if (!c) return ''
+        if (c.solved) return `AC (${c.tries} lần)`
+        return c.best > 0 ? `${c.best}đ (${c.tries} lần)` : `${c.tries} lần sai`
+      },
+    }))
+    const headers = [
+      { key: 'rank', label: 'Hạng' },
+      { key: 'userId', label: 'MSSV' },
+      { key: 'userName', label: 'Họ tên' },
+      { key: 'solved', label: 'Số bài AC' },
+      { key: 'score', label: 'Điểm' },
+      ...problemHeaders,
+    ]
+    const label = classroomOptions.find((o) => o.value === classroomId)?.label || 'toan-he-thong'
+    downloadCsv(data.rows, headers, `leaderboard-${label.replace(/\s+/g, '-')}.csv`)
+  }
+
   return (
     <div className="page">
       <div className="page-head">
         <div>
           <h1>Bảng xếp hạng</h1>
-          <p>Xếp theo số bài đúng, điểm và số lần nộp.</p>
+          <p>Xếp theo số bài đúng (AC), điểm và số lần nộp.</p>
         </div>
+        <Space>
+          <Typography.Text type="secondary" style={{ fontSize: 13 }}>Phạm vi:</Typography.Text>
+          <Select
+            value={classroomId}
+            onChange={setClassroomId}
+            options={classroomOptions}
+            style={{ minWidth: 180 }}
+            loading={classrooms.loading}
+          />
+          <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={!data.rows?.length}>
+            Xuất CSV
+          </Button>
+        </Space>
       </div>
 
       <Card styles={{ body: { padding: 0 } }}>
@@ -27,7 +74,7 @@ export default function LeaderboardPage() {
           rowKey="userId"
           loading={lb.loading && !lb.data}
           dataSource={data.rows}
-          pagination={{ pageSize: 20, hideOnSinglePage: true }}
+          pagination={{ pageSize: 25, hideOnSinglePage: true }}
           scroll={{ x: 520 + data.problems.length * 80 }}
           rowClassName={(r) => (r.userId === user.id ? 'ant-table-row-selected' : '')}
           columns={[

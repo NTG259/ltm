@@ -54,9 +54,30 @@ export function useSocket(handler) {
 }
 
 export function useSocketStatus() {
-  const [status, setStatus] = useState('connecting')
+  const [status, setStatus] = useState('disconnected')
   useEffect(() => onSocketStatus(setStatus), [])
   return status
+}
+
+/** Số người dùng (student) đang online — cập nhật realtime qua PRESENCE_UPDATE. */
+export function useOnlineCount() {
+  const [count, setCount] = useState(null)
+  useEffect(() => {
+    let alive = true
+    api.onlineCount().then((d) => { if (alive) setCount(d.count) }).catch(() => {})
+    const off = subscribe((msg) => {
+      if (msg.type === 'PRESENCE_UPDATE') {
+        setCount((n) => {
+          const base = n ?? 0
+          if (msg.status === 'ONLINE') return base + 1
+          if (msg.status === 'OFFLINE') return Math.max(0, base - 1)
+          return base
+        })
+      }
+    })
+    return () => { alive = false; off() }
+  }, [])
+  return count
 }
 
 /** Đồng hồ cập nhật định kỳ để hiển thị thời gian tương đối. */

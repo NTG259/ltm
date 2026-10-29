@@ -12,13 +12,23 @@ export default function AuthProvider({ children }) {
     return s.user
   }, [])
 
-  const logout = useCallback(() => {
-    storeSession(null)
-    setSession(null)
+  const logout = useCallback(async () => {
+    try {
+      await api.logout()
+    } finally {
+      storeSession(null)
+      setSession(null)
+    }
   }, [])
 
   const value = useMemo(
-    () => ({ user: session?.user ?? null, isAdmin: session?.user?.role === 'admin', login, logout }),
+    () => ({
+      user: session?.user ?? null,
+      isAdmin: session?.user?.role === 'admin',
+      isLecturer: session?.user?.role === 'lecturer',
+      login,
+      logout,
+    }),
     [session, login, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

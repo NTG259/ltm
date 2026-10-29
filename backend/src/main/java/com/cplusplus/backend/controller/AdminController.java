@@ -1,10 +1,12 @@
 package com.cplusplus.backend.controller;
 
 import com.cplusplus.backend.domain.contest.Contest;
+import com.cplusplus.backend.domain.problem.CheckerType;
 import com.cplusplus.backend.domain.problem.Difficulty;
 import com.cplusplus.backend.domain.problem.Problem;
 import com.cplusplus.backend.domain.problem.TestCase;
 import com.cplusplus.backend.domain.user.User;
+import com.cplusplus.backend.domain.worker.LogLevel;
 import com.cplusplus.backend.domain.worker.SystemLog;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.master.service.JudgeMasterService;
@@ -12,12 +14,16 @@ import com.cplusplus.backend.repository.ContestRepository;
 import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import com.cplusplus.backend.repository.SystemLogRepository;
+import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.security.AuthInterceptor;
+import com.cplusplus.backend.security.SecurityService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.MediaType;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.cplusplus.backend.service.TestCaseZipImporter;
@@ -37,6 +43,8 @@ public class AdminController {
     private final ContestRepository contestRepository;
     private final SystemLogRepository systemLogRepository;
     private final TestCaseZipImporter testCaseZipImporter;
+    private final UserRepository userRepository;
+    private final SecurityService securityService;
 
     public AdminController(
             JudgeMasterService judgeMasterService,
@@ -44,13 +52,17 @@ public class AdminController {
             ProblemRepository problemRepository,
             ContestRepository contestRepository,
             SystemLogRepository systemLogRepository,
-            TestCaseZipImporter testCaseZipImporter) {
+            TestCaseZipImporter testCaseZipImporter,
+            UserRepository userRepository,
+            SecurityService securityService) {
         this.judgeMasterService = judgeMasterService;
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.contestRepository = contestRepository;
         this.systemLogRepository = systemLogRepository;
         this.testCaseZipImporter = testCaseZipImporter;
+        this.userRepository = userRepository;
+        this.securityService = securityService;
     }
 
     public record TestCaseRequest(String input, String output, Boolean sample) {}
@@ -66,7 +78,8 @@ public class AdminController {
             String inputSpec,
             String outputSpec,
             List<TestCaseRequest> samples,
-            List<TestCaseRequest> tests
+            List<TestCaseRequest> tests,
+            String checker
     ) {}
 
     public record ContestSaveRequest(
@@ -81,7 +94,7 @@ public class AdminController {
     private void requireAdmin(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         if (user == null || !user.isAdmin()) {
-            throw new IllegalArgumentException("Yêu cầu quyền quản trị viên");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Yêu cầu quyền quản trị viên");
         }
     }
 
@@ -94,21 +107,51 @@ public class AdminController {
         long subCount = submissionRepository.count();
 
         List<SystemLog> dbLogs = systemLogRepository.findTop200ByOrderByCreatedAtDesc();
-        List<Map<String, Object>> logs = dbLogs.stream().map(l -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", l.getId());
-            map.put("time", l.getCreatedAt().toEpochMilli());
-            map.put("level", l.getLevel().code());
-            map.put("message", l.getMessage());
-            return map;
+        List<Map<String, Object>> logs = dbLogs.stream().map(AdminController::logToMap).toList();
+
+        // Throughput: last 60 minutes, 5-min buckets
+        Instant since = Instant.now().minus(Duration.ofHours(1));
+        List<Map<String, Object>> throughput = submissionRepository.findThroughput(since).stream().map(b -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("bucket", b.getBucket());
+            m.put("total", b.getTotal());
+            m.put("accepted", b.getAccepted());
+            return m;
         }).toList();
 
         return ResponseEntity.ok(Map.of(
                 "workers", workers,
                 "queue", queue,
                 "submissions", subCount,
-                "logs", logs
+                "logs", logs,
+                "throughput", throughput
         ));
+    }
+
+    @GetMapping("/logs")
+    public ResponseEntity<?> getLogs(@RequestParam(required = false) String level, HttpServletRequest req) {
+        requireAdmin(req);
+        List<SystemLog> dbLogs;
+        if (level != null && !level.isBlank()) {
+            try {
+                LogLevel lv = LogLevel.valueOf(level.toUpperCase(java.util.Locale.ROOT));
+                dbLogs = systemLogRepository.findTop200ByLevelOrderByCreatedAtDesc(lv, PageRequest.of(0, 200));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "level không hợp lệ"));
+            }
+        } else {
+            dbLogs = systemLogRepository.findTop200ByOrderByCreatedAtDesc();
+        }
+        return ResponseEntity.ok(dbLogs.stream().map(AdminController::logToMap).toList());
+    }
+
+    private static Map<String, Object> logToMap(SystemLog l) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("id", l.getId());
+        map.put("time", l.getCreatedAt().toEpochMilli());
+        map.put("level", l.getLevel().code());
+        map.put("message", l.getMessage());
+        return map;
     }
 
     @PostMapping("/workers/{id}/disconnect")
@@ -152,6 +195,20 @@ public class AdminController {
 
         problem = problemRepository.save(problem);
         return ResponseEntity.ok(DtoMapper.toProblemMap(problem, true));
+    }
+
+    @PatchMapping("/problems/{id}/visibility")
+    @Transactional
+    public ResponseEntity<?> toggleProblemVisibility(@PathVariable Long id, @RequestBody Map<String, Boolean> body, HttpServletRequest req) {
+        requireAdmin(req);
+        Problem problem = problemRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
+        Boolean visible = body.get("publicVisible");
+        if (visible != null) {
+            problem.setPublicVisible(visible);
+            problemRepository.save(problem);
+        }
+        return ResponseEntity.ok(Map.of("publicVisible", problem.isPublicVisible()));
     }
 
     @DeleteMapping("/problems/{id}")
@@ -231,6 +288,12 @@ public class AdminController {
         if (req.difficulty() != null) {
             try {
                 problem.setDifficulty(Difficulty.valueOf(req.difficulty().toUpperCase(Locale.ROOT)));
+            } catch (Exception ignored) {
+            }
+        }
+        if (req.checker() != null) {
+            try {
+                problem.setChecker(CheckerType.valueOf(req.checker().toUpperCase(Locale.ROOT)));
             } catch (Exception ignored) {
             }
         }
@@ -350,5 +413,26 @@ public class AdminController {
         contestRepository.deleteById(id);
         judgeMasterService.broadcastContestUpdate(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ---------------------------------------------------- Student management
+    @PostMapping("/students/{id}/reset-password")
+    @Transactional
+    public ResponseEntity<?> resetStudentPassword(@PathVariable Long id,
+                                                  @RequestBody Map<String, String> body,
+                                                  HttpServletRequest req) {
+        requireAdmin(req);
+        User student = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng #" + id));
+        if (student.isAdmin()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Không thể reset mật khẩu admin qua API này"));
+        }
+        String newPassword = body.get("password");
+        if (newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Mật khẩu phải có ít nhất 8 ký tự"));
+        }
+        student.setPasswordHash(securityService.hashPassword(newPassword));
+        userRepository.save(student);
+        return ResponseEntity.ok(Map.of("message", "Đã đặt lại mật khẩu thành công"));
     }
 }

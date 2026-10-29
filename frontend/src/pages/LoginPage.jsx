@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { App, Button, Card, Form, Input, Tooltip, Typography } from 'antd'
 import {
   LockOutlined,
@@ -10,9 +10,15 @@ import {
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
+import { api } from '../api'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
+  const [onlineCount, setOnlineCount] = useState(null)
+
+  useEffect(() => {
+    api.onlineCount().then((r) => setOnlineCount(r?.count ?? 0)).catch(() => {})
+  }, [])
   const [form] = Form.useForm()
   const { login } = useAuth()
   const { mode, toggle } = useThemeMode()
@@ -24,7 +30,8 @@ export default function LoginPage() {
     try {
       const user = await login(values)
       message.success(`Xin chào, ${user.name}`)
-      navigate(user.role === 'admin' ? '/admin' : '/problems', { replace: true })
+      const dest = user.role === 'admin' ? '/admin' : user.role === 'lecturer' ? '/teacher/classrooms' : '/problems'
+      navigate(dest, { replace: true })
     } catch (e) {
       message.error(e.message)
     } finally {
@@ -49,7 +56,7 @@ export default function LoginPage() {
         <div className="login-top-bar">
           <div className="server-status-chip">
             <span className="status-dot"></span>
-            <span>Master :8082 Online</span>
+            <span>{onlineCount === null ? 'Đang kết nối…' : `${onlineCount} sinh viên online`}</span>
           </div>
 
           <Tooltip title={mode === 'dark' ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối'}>
