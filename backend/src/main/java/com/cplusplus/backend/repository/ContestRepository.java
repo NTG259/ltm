@@ -46,6 +46,12 @@ public interface ContestRepository extends JpaRepository<Contest, Long> {
     List<Contest> findAllByOrderByStartAtDesc();
 
     @EntityGraph(attributePaths = {"problems", "problems.problem"})
+    List<Contest> findByCreatedByIdOrderByStartAtDesc(Long createdById);
+
+    @EntityGraph(attributePaths = {"problems", "problems.problem"})
+    Optional<Contest> findByIdAndCreatedById(Long id, Long createdById);
+
+    @EntityGraph(attributePaths = {"problems", "problems.problem"})
     @Query("select c from Contest c where c.id = :id")
     Optional<Contest> findWithProblems(Long id);
 

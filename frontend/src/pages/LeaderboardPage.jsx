@@ -81,11 +81,10 @@ export default function LeaderboardPage() {
     rows.sort((a, b) => sortMode === 'acceptanceRate'
       ? a.acceptanceRate - b.acceptanceRate || b.attemptedUsers - a.attemptedUsers || a.problemId - b.problemId
       : b[sortMode] - a[sortMode] || a.problemId - b.problemId)
-    let rank = 0
-    return rows.map((row, index) => {
-      if (index === 0 || row[sortMode] !== rows[index - 1][sortMode]) rank = index + 1
-      return { ...row, rank }
-    }).filter((r) => !q || r.title.toLocaleLowerCase('vi-VN').includes(q) || String(r.problemId).includes(q))
+    return rows.map((row) => ({
+      ...row,
+      rank: rows.findIndex((candidate) => candidate[sortMode] === row[sortMode]) + 1,
+    })).filter((r) => !q || r.title.toLocaleLowerCase('vi-VN').includes(q) || String(r.problemId).includes(q))
   }, [problemRank.data, search, sortMode])
 
   const studentColumns = [

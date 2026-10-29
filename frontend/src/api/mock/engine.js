@@ -669,6 +669,16 @@ export const engine = {
     schedule()
   },
 
+  removeDisconnectedWorkers() {
+    const previousCount = workers.length
+    for (let i = workers.length - 1; i >= 0; i--) {
+      if (workers[i].status === 'DEAD') workers.splice(i, 1)
+    }
+    const removed = previousCount - workers.length
+    emitWorkers()
+    return { removed }
+  },
+
   saveProblem(data) {
     if (data.id) {
       const i = problems.findIndex((p) => p.id === data.id)

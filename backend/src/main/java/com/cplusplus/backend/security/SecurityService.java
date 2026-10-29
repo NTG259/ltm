@@ -1,6 +1,7 @@
 package com.cplusplus.backend.security;
 
 import com.cplusplus.backend.domain.user.User;
+import com.cplusplus.backend.repository.ClassroomStudentRepository;
 import com.cplusplus.backend.domain.user.UserSession;
 import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.repository.UserSessionRepository;
@@ -24,12 +25,15 @@ public class SecurityService {
     private static final Pattern STUDENT_CODE_PATTERN = Pattern.compile("^[A-Z][0-9]{2}[A-Z]{4}[0-9]{3}$");
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
+    private final ClassroomStudentRepository classroomStudentRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public SecurityService(UserRepository userRepository, UserSessionRepository userSessionRepository) {
+    public SecurityService(UserRepository userRepository, UserSessionRepository userSessionRepository,
+                           ClassroomStudentRepository classroomStudentRepository) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
+        this.classroomStudentRepository = classroomStudentRepository;
     }
 
     public record AuthResult(String token, User user) {}
@@ -62,7 +66,7 @@ public class SecurityService {
         }
         String normalizedCode = studentCode.toUpperCase().trim();
         User user = userRepository.findByUsernameIgnoreCase(normalizedCode).orElse(null);
-        if (user == null || user.isAdmin() || user.getPasswordHash() == null ||
+        if (user == null || user.getRole() != com.cplusplus.backend.domain.user.Role.STUDENT || user.getPasswordHash() == null ||
                 !passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new IllegalArgumentException("MSSV hoặc mật khẩu không chính xác");
         }
@@ -78,6 +82,21 @@ public class SecurityService {
             throw new IllegalArgumentException("Mật khẩu phải có ít nhất 8 ký tự");
         }
         return passwordEncoder.encode(password);
+    }
+
+    @Transactional
+    public void changePassword(User user, String currentPassword, String newPassword) {
+        if (user == null || user.isAdmin() || user.getPasswordHash() == null
+                || !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu hiện tại không chính xác");
+        }
+        user.setPasswordHash(hashPassword(newPassword));
+        user.setInitialPassword(null);
+        if (!user.isLecturer()) {
+            classroomStudentRepository.findByUserId(user.getId())
+                    .ifPresent(enrollment -> enrollment.setImportedPassword(null));
+        }
+        userRepository.save(user);
     }
 
     @Transactional

@@ -1,0 +1,2 @@
+ALTER TABLE courses
+    ADD COLUMN created_by BIGINT REFERENCES users(id) ON DELETE SET NULL;

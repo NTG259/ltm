@@ -70,9 +70,10 @@ class LeaderboardControllerTest {
     void limitsStudentsAndLecturersToAssignedClasses() {
         User student = users.save(User.student("B99DCCN004", "Sinh viên D"));
         User lecturer = users.save(User.lecturer("lecturer_test", "Giảng viên", "hash"));
-        Long allowed = jdbc.queryForObject("INSERT INTO classrooms (name, created_by) VALUES ('Lớp được xem', ?) RETURNING id", Long.class, lecturer.getId());
+        Long allowed = jdbc.queryForObject("INSERT INTO classrooms (name) VALUES ('Lớp được xem') RETURNING id", Long.class);
         Long denied = jdbc.queryForObject("INSERT INTO classrooms (name) VALUES ('Lớp khác') RETURNING id", Long.class);
         jdbc.update("INSERT INTO classroom_students (classroom_id, user_id) VALUES (?, ?)", allowed, student.getId());
+        jdbc.update("INSERT INTO classroom_lecturers (classroom_id, user_id) VALUES (?, ?)", allowed, lecturer.getId());
 
         assertThat(leaderboard.classrooms(request(student))).extracting(r -> r.get("id")).containsExactly(allowed);
         assertThat(leaderboard.classrooms(request(lecturer))).extracting(r -> r.get("id")).containsExactly(allowed);

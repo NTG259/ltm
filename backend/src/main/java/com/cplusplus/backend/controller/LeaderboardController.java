@@ -32,7 +32,9 @@ public class LeaderboardController {
         String sql = """
                 SELECT c.id, c.name, c.semester FROM classrooms c
                 WHERE :isAdmin
-                   OR (:isLecturer AND c.created_by = :userId)
+                   OR (:isLecturer AND (c.created_by = :userId OR EXISTS (
+                        SELECT 1 FROM classroom_lecturers cl
+                        WHERE cl.classroom_id = c.id AND cl.user_id = :userId)))
                    OR (:isStudent AND EXISTS (SELECT 1 FROM classroom_students cs
                                               WHERE cs.classroom_id = c.id AND cs.user_id = :userId))
                 ORDER BY c.name, c.id
@@ -191,9 +193,15 @@ public class LeaderboardController {
             return;
         }
         String sql = user.isLecturer()
-                ? "SELECT EXISTS (SELECT 1 FROM classrooms WHERE id = ? AND created_by = ?)"
+                ? """
+                  SELECT EXISTS (SELECT 1 FROM classrooms c WHERE c.id = ? AND
+                    (c.created_by = ? OR EXISTS (SELECT 1 FROM classroom_lecturers cl
+                     WHERE cl.classroom_id = c.id AND cl.user_id = ?)))
+                  """
                 : "SELECT EXISTS (SELECT 1 FROM classroom_students WHERE classroom_id = ? AND user_id = ?)";
-        Boolean permitted = jdbc.getJdbcTemplate().queryForObject(sql, Boolean.class, classroomId, user.getId());
+        Boolean permitted = user.isLecturer()
+                ? jdbc.getJdbcTemplate().queryForObject(sql, Boolean.class, classroomId, user.getId(), user.getId())
+                : jdbc.getJdbcTemplate().queryForObject(sql, Boolean.class, classroomId, user.getId());
         if (!Boolean.TRUE.equals(permitted)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không thuộc lớp này");
     }
 }

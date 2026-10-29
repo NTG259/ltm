@@ -11,6 +11,7 @@ import com.cplusplus.backend.domain.worker.SystemLog;
 import com.cplusplus.backend.dto.DtoMapper;
 import com.cplusplus.backend.master.service.JudgeMasterService;
 import com.cplusplus.backend.repository.ContestRepository;
+import com.cplusplus.backend.repository.ClassroomRepository;
 import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import com.cplusplus.backend.repository.SystemLogRepository;
@@ -27,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.cplusplus.backend.service.TestCaseZipImporter;
+import com.cplusplus.backend.service.LecturerCsvImporter;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -41,28 +43,34 @@ public class AdminController {
     private final SubmissionRepository submissionRepository;
     private final ProblemRepository problemRepository;
     private final ContestRepository contestRepository;
+    private final ClassroomRepository classroomRepository;
     private final SystemLogRepository systemLogRepository;
     private final TestCaseZipImporter testCaseZipImporter;
     private final UserRepository userRepository;
     private final SecurityService securityService;
+    private final LecturerCsvImporter lecturerCsvImporter;
 
     public AdminController(
             JudgeMasterService judgeMasterService,
             SubmissionRepository submissionRepository,
             ProblemRepository problemRepository,
             ContestRepository contestRepository,
+            ClassroomRepository classroomRepository,
             SystemLogRepository systemLogRepository,
             TestCaseZipImporter testCaseZipImporter,
             UserRepository userRepository,
-            SecurityService securityService) {
+            SecurityService securityService,
+            LecturerCsvImporter lecturerCsvImporter) {
         this.judgeMasterService = judgeMasterService;
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
         this.contestRepository = contestRepository;
+        this.classroomRepository = classroomRepository;
         this.systemLogRepository = systemLogRepository;
         this.testCaseZipImporter = testCaseZipImporter;
         this.userRepository = userRepository;
         this.securityService = securityService;
+        this.lecturerCsvImporter = lecturerCsvImporter;
     }
 
     public record TestCaseRequest(String input, String output, Boolean sample) {}
@@ -90,6 +98,8 @@ public class AdminController {
             Integer durationMin,
             List<Long> problemIds
     ) {}
+
+    public record LecturerCreateRequest(String staffId, String username, String fullName, String password) {}
 
     private void requireAdmin(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
@@ -128,6 +138,84 @@ public class AdminController {
         ));
     }
 
+    @GetMapping("/lecturers")
+    public ResponseEntity<?> listLecturers(HttpServletRequest req) {
+        requireAdmin(req);
+        List<Map<String, Object>> result = userRepository.findAll().stream()
+                .filter(User::isLecturer)
+                .sorted(Comparator.comparing(User::getUsername, String.CASE_INSENSITIVE_ORDER))
+                .map(user -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("id", user.getId());
+                    map.put("username", user.getUsername());
+                    map.put("staffId", user.getUsername());
+                    map.put("fullName", user.getFullName());
+                    map.put("initialPassword", user.getInitialPassword() == null ? "" : user.getInitialPassword());
+                    map.put("classroomCount", classroomRepository.countByLecturerId(user.getId()));
+                    map.put("createdAt", user.getCreatedAt().toEpochMilli());
+                    return map;
+                })
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/lecturers")
+    @Transactional
+    public ResponseEntity<?> createLecturer(@RequestBody LecturerCreateRequest body, HttpServletRequest req) {
+        requireAdmin(req);
+        String staffId = body.staffId() != null && !body.staffId().isBlank()
+                ? body.staffId().trim()
+                : body.username() != null ? body.username().trim() : "";
+        String fullName = body.fullName() == null ? "" : body.fullName().trim();
+        if (!staffId.matches("^[A-Za-z0-9._-]{3,32}$")) {
+            throw new IllegalArgumentException("Mã giảng viên chỉ gồm chữ, số, dấu chấm, gạch ngang hoặc gạch dưới (3–32 ký tự)");
+        }
+        if (fullName.isBlank() || fullName.length() > 100) throw new IllegalArgumentException("Nhập họ tên giảng viên (tối đa 100 ký tự)");
+        if (body.password() == null || body.password().length() < 8) throw new IllegalArgumentException("Mật khẩu phải có ít nhất 8 ký tự");
+        if (userRepository.findByUsernameIgnoreCase(staffId).isPresent()) throw new IllegalArgumentException("Mã giảng viên đã tồn tại");
+        User lecturer = userRepository.save(User.lecturer(staffId, fullName, securityService.hashPassword(body.password())));
+        lecturer.setInitialPassword(body.password());
+        lecturer = userRepository.save(lecturer);
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "id", lecturer.getId(), "staffId", lecturer.getUsername(), "fullName", lecturer.getFullName(),
+                "createdAt", lecturer.getCreatedAt().toEpochMilli()));
+    }
+
+    @PostMapping(value = "/lecturers/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> importLecturers(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        requireAdmin(req);
+        return ResponseEntity.ok(lecturerCsvImporter.importFile(file));
+    }
+
+    @DeleteMapping("/lecturers")
+    @Transactional
+    public ResponseEntity<?> deleteLecturers(@RequestBody Map<String, List<Long>> body, HttpServletRequest req) {
+        requireAdmin(req);
+        List<Long> ids = body.getOrDefault("ids", List.of()).stream().filter(Objects::nonNull).distinct().toList();
+        List<User> lecturers = userRepository.findAllById(ids).stream().filter(User::isLecturer).toList();
+        userRepository.deleteAll(lecturers);
+        return ResponseEntity.ok(Map.of("deleted", lecturers.size()));
+    }
+
+    @PostMapping("/lecturers/{id}/reset-password")
+    @Transactional
+    public ResponseEntity<?> resetLecturerPassword(@PathVariable Long id,
+                                                   @RequestBody Map<String, String> body,
+                                                   HttpServletRequest req) {
+        requireAdmin(req);
+        User lecturer = userRepository.findById(id)
+                .filter(User::isLecturer)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tài khoản giảng viên #" + id));
+        String newPassword = body.get("password");
+        if (newPassword == null || newPassword.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Mật khẩu phải có ít nhất 8 ký tự"));
+        }
+        lecturer.setPasswordHash(securityService.hashPassword(newPassword));
+        lecturer.setInitialPassword(newPassword);
+        userRepository.save(lecturer);
+        return ResponseEntity.ok(Map.of("message", "Đã đặt lại mật khẩu thành công"));
+    }
+
     @GetMapping("/logs")
     public ResponseEntity<?> getLogs(@RequestParam(required = false) String level, HttpServletRequest req) {
         requireAdmin(req);
@@ -159,6 +247,13 @@ public class AdminController {
         requireAdmin(req);
         judgeMasterService.disconnectWorker(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/workers/disconnected")
+    public ResponseEntity<?> removeDisconnectedWorkers(HttpServletRequest req) {
+        requireAdmin(req);
+        int removed = judgeMasterService.removeDisconnectedWorkers();
+        return ResponseEntity.ok(Map.of("removed", removed));
     }
 
     // ---------------------------------------------------- Problem CRUD

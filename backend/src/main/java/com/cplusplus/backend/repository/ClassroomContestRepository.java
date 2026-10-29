@@ -11,4 +11,8 @@ public interface ClassroomContestRepository extends JpaRepository<ClassroomConte
     List<ClassroomContest> findAllWithContestByClassroomId(Long classroomId);
 
     boolean existsByClassroomIdAndContestId(Long classroomId, Long contestId);
+
+    List<ClassroomContest> findByContestId(Long contestId);
+
+    void deleteByClassroomIdAndContestId(Long classroomId, Long contestId);
 }

@@ -81,7 +81,7 @@ public class ClassroomController {
         if (user.isAdmin()) {
             list = classroomRepository.findAll();
         } else if (user.isLecturer()) {
-            list = classroomRepository.findByCreatedById(user.getId());
+            list = classroomRepository.findByLecturerUserId(user.getId());
         } else {
             list = classroomRepository.findByStudentUserId(user.getId());
         }
@@ -121,7 +121,7 @@ public class ClassroomController {
                                              HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
-        if (!user.isAdminOrLecturer()) return forbidden();
+        if (!user.isAdmin()) return forbidden();
 
         String name = body.get("name");
         if (name == null || name.isBlank()) {
@@ -129,6 +129,7 @@ public class ClassroomController {
         }
         Classroom classroom = classroomRepository.save(
                 new Classroom(name.trim(), body.get("semester"), user));
+        classroom.setLecturer(findLecturer(body.get("lecturerId")));
         return ResponseEntity.status(HttpStatus.CREATED).body(DtoMapper.toClassroomMap(classroom));
     }
 
@@ -149,6 +150,9 @@ public class ClassroomController {
         }
         if (body.containsKey("semester")) {
             classroom.setSemester(body.get("semester"));
+        }
+        if (user.isAdmin() && body.containsKey("lecturerId")) {
+            classroom.setLecturer(findLecturer(body.get("lecturerId")));
         }
         return ResponseEntity.ok(DtoMapper.toClassroomMap(classroom));
     }
@@ -311,6 +315,10 @@ public class ClassroomController {
         Contest contest = contestRepository.findById(contestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + contestId));
 
+        if (user.isLecturer() && contest.getCreatedBy() != null && !contest.getCreatedBy().isAdmin()
+                && !contest.getCreatedBy().getId().equals(user.getId())) {
+            return forbidden();
+        }
         if (classroomContestRepository.existsByClassroomIdAndContestId(id, contestId)) {
             return ResponseEntity.ok(Map.of("message", "Kỳ thi đã được gán cho lớp này"));
         }
@@ -425,6 +433,10 @@ public class ClassroomController {
 
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy khóa học #" + courseId));
+        if (user.isLecturer() && course.getCreatedBy() != null && !course.getCreatedBy().isAdmin()
+                && !course.getCreatedBy().getId().equals(user.getId())) {
+            return forbidden();
+        }
 
         classroomCourseRepository.findByClassroomId(id).ifPresentOrElse(
                 existing -> existing.setCourse(course),
@@ -455,19 +467,32 @@ public class ClassroomController {
     /** Admin thấy tất cả; Lecturer thấy lớp của mình; Sinh viên thấy lớp mình thuộc về. */
     private boolean canViewClassroom(Classroom classroom, User user) {
         if (user.isAdmin()) return true;
-        if (user.isLecturer()) return isOwner(classroom, user);
+        if (user.isLecturer()) return isOwner(classroom, user)
+                || classroomRepository.isLecturerAssigned(classroom.getId(), user.getId());
         return classroomStudentRepository.existsByClassroomIdAndUserId(classroom.getId(), user.getId());
     }
 
     /** Admin hoặc Lecturer sở hữu lớp mới được chỉnh sửa. */
     private boolean canManageClassroom(Classroom classroom, User user) {
         if (user.isAdmin()) return true;
-        if (user.isLecturer()) return isOwner(classroom, user);
+        if (user.isLecturer()) return isOwner(classroom, user)
+                || classroomRepository.isLecturerAssigned(classroom.getId(), user.getId());
         return false;
     }
 
     private boolean isOwner(Classroom classroom, User user) {
-        return classroom.getCreatedBy() != null && classroom.getCreatedBy().getId().equals(user.getId());
+        return classroom.getLecturer() != null && classroom.getLecturer().getId().equals(user.getId());
+    }
+
+    private User findLecturer(String lecturerId) {
+        if (lecturerId == null || lecturerId.isBlank()) return null;
+        try {
+            return userRepository.findById(Long.parseLong(lecturerId))
+                    .filter(User::isLecturer)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giảng viên được chọn"));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Mã giảng viên không hợp lệ");
+        }
     }
 
     private User currentUser(HttpServletRequest req) {

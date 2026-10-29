@@ -126,7 +126,7 @@ services:
       TZ: Asia/Ho_Chi_Minh
     networks: [default, judge]
     deploy:
-      replicas: 10
+      replicas: 4
 
   # Nạp dữ liệu demo sau khi Flyway (trong backend) đã tạo bảng. Xóa sạch dữ liệu cũ!
   seed:

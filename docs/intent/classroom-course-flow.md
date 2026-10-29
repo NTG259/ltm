@@ -1,6 +1,6 @@
 # Intent: Luồng Lớp học – Khóa học (Sinh viên)
 
-**Ngày:** 2026-10-29  
+**Ngày:** 2026-10-29
 **Trạng thái:** Đã xác nhận
 
 ## Vấn đề

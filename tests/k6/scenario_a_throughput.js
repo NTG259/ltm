@@ -47,10 +47,25 @@ int main(){
 }
 `;
 
-export default function () {
+export function setup() {
+  if (TOKEN) return { token: TOKEN };
+  const res = http.post(
+    `${BASE}/api/auth/login`,
+    JSON.stringify({ username: "admin", password: "admin123" }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+  if (res.status === 200 || res.status === 201) {
+    const data = res.json();
+    return { token: data.token || (data.data && data.data.token) || "" };
+  }
+  return { token: "" };
+}
+
+export default function (data) {
+  const token = (data && data.token) || TOKEN;
   const headers = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${TOKEN}`,
+    Authorization: `Bearer ${token}`,
   };
 
   // Submit

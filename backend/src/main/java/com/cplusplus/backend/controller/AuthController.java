@@ -1,6 +1,8 @@
 package com.cplusplus.backend.controller;
 
 import com.cplusplus.backend.security.SecurityService;
+import com.cplusplus.backend.domain.user.User;
+import com.cplusplus.backend.security.AuthInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,7 @@ public class AuthController {
     }
 
     public record LoginRequest(String username, String password) {}
+    public record ChangePasswordRequest(String currentPassword, String newPassword) {}
 
     @DeleteMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request) {
@@ -39,5 +42,14 @@ public class AuthController {
                         "role", res.user().isAdmin() ? "admin" : res.user().isLecturer() ? "lecturer" : "student"
                 )
         ));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest req, HttpServletRequest request) {
+        User user = (User) request.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("message", "Vui lòng đăng nhập"));
+        if (user.isAdmin()) return ResponseEntity.status(403).body(Map.of("message", "Quản trị viên không dùng chức năng này"));
+        securityService.changePassword(user, req.currentPassword(), req.newPassword());
+        return ResponseEntity.ok(Map.of("success", true));
     }
 }

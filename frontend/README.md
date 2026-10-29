@@ -37,6 +37,7 @@ Mật khẩu admin là `admin123`. Trong trang làm bài, menu **Mã mẫu** n�
 | `#/contests/:id` | Tất cả | Trang kỳ thi: đồng hồ, đề bài A/B/C…, bảng xếp hạng ICPC, bài nộp, thể lệ |
 | `#/contests/:id/problems/:label` | Thí sinh | Làm bài trong kỳ thi (nộp kèm `contestId`) |
 | `#/admin` | Admin | Giám sát Worker (Heartbeat, bận/rảnh, độ trễ), hàng đợi FIFO, nhật ký Master, giả lập sự cố |
+| `#/admin/overview` | Admin | Tổng quan cụm Judge, bài nộp, verdict và hoạt động gần đây |
 | `#/admin/problems` | Admin | CRUD đề bài + ví dụ + bộ test chấm |
 | `#/admin/submissions` | Admin | Tra cứu, lọc toàn bộ bài nộp |
 | `#/admin/contests` | Admin | Tạo / sửa / xoá kỳ thi, chọn bộ đề và lịch thi |
@@ -57,6 +58,8 @@ Mọi request (trừ login) gửi header `Authorization: Bearer <token>`. Lỗi 
 | GET | `/api/leaderboard/students` | `?classroomId=` | `{rows:[{rank,userId,userName,solved,attempts}],updatedAt}` |
 | GET | `/api/leaderboard/problems` | `?classroomId=` | `{rows:[{problemId,title,submissions,attemptedUsers,acceptedUsers,acceptanceRate}],updatedAt}`; chỉ admin/giảng viên |
 | GET | `/api/leaderboard/problems/:id/details` | `?classroomId=` | Danh sách sinh viên đã nộp bài; chỉ admin/giảng viên |
+| GET/POST | `/api/admin/lecturers` | Tạo hoặc liệt kê tài khoản giảng viên |
+| GET/POST/DELETE | `/api/admin/lecturers/classrooms/:classroomId[/:lecturerId]` | Xem, phân công hoặc bỏ phân công giảng viên |
 | GET | `/api/contests` | – | `Contest[]` |
 | GET | `/api/contests/:id` | – | `Contest` (`problems` rỗng với thí sinh khi chưa bắt đầu) |
 | POST | `/api/contests/:id/register` | – | `Contest` |

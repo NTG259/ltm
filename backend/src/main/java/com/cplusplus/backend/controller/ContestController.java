@@ -52,7 +52,9 @@ public class ContestController {
         User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         List<Contest> list = contestRepository.findAllByOrderByStartAtDesc();
 
-        List<Map<String, Object>> result = list.stream().map(c -> toContestMap(c, currentUser)).toList();
+        List<Map<String, Object>> result = list.stream()
+                .filter(c -> canViewContest(c, currentUser))
+                .map(c -> toContestMap(c, currentUser)).toList();
         return ResponseEntity.ok(result);
     }
 
@@ -62,6 +64,7 @@ public class ContestController {
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(toContestMap(contest, currentUser));
     }
 
@@ -77,6 +80,7 @@ public class ContestController {
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
         contest.register(currentUser, Instant.now());
         contestRepository.save(contest);
 
@@ -95,6 +99,9 @@ public class ContestController {
         Contest contest = contestRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        if (contest.getCreatedBy() != null && contest.getCreatedBy().isLecturer()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Ká»³ thi nÃ y Ä‘Æ°á»£c gÃ¡n theo lá»›p, khÃ´ng thá»ƒ há»§y Ä‘Äƒng kÃ½"));
+        }
         if (contest.phaseAt(Instant.now()) != com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
             return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể hủy đăng ký khi kỳ thi chưa bắt đầu"));
         }
@@ -106,10 +113,12 @@ public class ContestController {
     }
 
     @GetMapping("/{id}/standings")
-    public ResponseEntity<?> getStandings(@PathVariable Long id) {
+    public ResponseEntity<?> getStandings(@PathVariable Long id, HttpServletRequest req) {
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
+        User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
         List<String> labels = contest.getProblems().stream().map(ContestProblem::getLabel).toList();
         List<ContestRepository.StandingRow> rows = contestRepository.findStandings(id);
         List<ContestRepository.StandingCell> cells = contestRepository.findStandingCells(id);
@@ -142,6 +151,14 @@ public class ContestController {
                 "penaltyPerWrong", 20,
                 "rows", standingRows
         ));
+    }
+
+    private boolean canViewContest(Contest contest, User user) {
+        User owner = contest.getCreatedBy();
+        if (owner == null || owner.isAdmin()) return true;
+        if (user == null) return false;
+        if (user.isAdmin() || owner.getId().equals(user.getId())) return true;
+        return contestRepository.isRegistered(contest.getId(), user.getId());
     }
 
     private Map<String, Object> toContestMap(Contest c, User user) {

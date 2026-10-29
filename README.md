@@ -8,7 +8,7 @@
 
 ## 1.1. Project Name
 
-**CodeJudge – Distributed Real-time C++ Online Judge System**  
+**CodeJudge – Distributed Real-time C++ Online Judge System**
 *(Hệ thống chấm bài lập trình C++ phân tán và giám sát trực tuyến theo thời gian thực)*
 
 ## 1.2. Topic
@@ -35,7 +35,7 @@
 
 ## 2.1. Problem
 
-Trong các kỳ thi lập trình trực tuyến (như ICPC, Olympic Tin học) hoặc các buổi thực hành lập trình tại trường đại học, hàng trăm sinh viên thường nộp bài đồng thời trong một khoảng thời gian ngắn (traffic burst). 
+Trong các kỳ thi lập trình trực tuyến (như ICPC, Olympic Tin học) hoặc các buổi thực hành lập trình tại trường đại học, hàng trăm sinh viên thường nộp bài đồng thời trong một khoảng thời gian ngắn (traffic burst).
 
 Các hệ thống chấm bài truyền thống xây dựng theo mô hình nguyên khối (monolithic) thường gặp các vấn đề nghiêm trọng:
 1. **Nghẽn cổ chai (Bottleneck) & Tăng độ trễ (Latency):** Việc vừa phục vụ web vừa biên dịch mã nguồn C++ (`g++`) ngốn nhiều CPU/RAM, làm chậm hoặc tê liệt toàn bộ cổng nộp bài.
@@ -111,6 +111,8 @@ Hệ thống **CodeJudge** hoạt động theo mô hình mạng phân tán phân
 | **Chấm C++ & Phân loại 7 Verdicts** | Nhận diện chính xác `AC`, `WA`, `TLE`, `MLE`, `RTE`, `CE`, `SEC` | Done |
 | **Kỳ thi trực tuyến (ICPC Contest)** | Tự động tính điểm phạt theo thời gian nộp và hiển thị Bảng xếp hạng (Leaderboard) realtime | Done |
 | **Quản lý lớp học (LMS)** | Quản lý sinh viên, gán kỳ thi theo lớp, bảng theo dõi tiến độ sinh viên | Done |
+| **Bảng xếp hạng theo lớp** | Xếp hạng sinh viên theo AC/Submit, thống kê bài tập và phân công nhiều giảng viên cho lớp | Done |
+| **Tổng quan quản trị** | Tổng hợp tình trạng cụm Judge, bài nộp gần đây, phân bố verdict và lối tắt quản trị | Done |
 | **Phát hiện sao chép (Winnowing)** | Thuật toán băm mã nguồn phát hiện gian lận giữa các bài nộp trong kỳ thi | Done |
 | **Giám sát thi cử (Proctoring)** | Phát hiện chuyển tab hoặc rời màn hình làm bài, lưu lịch sử vi phạm | Done |
 
