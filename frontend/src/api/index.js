@@ -723,8 +723,6 @@ const realApi = {
   leaderboardStudents: ({ classroomId }) => http('GET', `/leaderboard/students${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
   leaderboardProblems: ({ classroomId }) => http('GET', `/leaderboard/problems${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
   leaderboardProblemDetails: (problemId, { classroomId }) => http('GET', `/leaderboard/problems/${problemId}/details${classroomId == null ? '' : `?classroomId=${classroomId}`}`),
-  listLecturers: () => http('GET', '/admin/lecturers'),
-  createLecturer: (data) => http('POST', '/admin/lecturers', data),
   listClassroomLecturers: (id) => http('GET', `/admin/lecturers/classrooms/${id}`),
   assignClassroomLecturer: (classroomId, lecturerId) => http('POST', `/admin/lecturers/classrooms/${classroomId}/${lecturerId}`),
   unassignClassroomLecturer: (classroomId, lecturerId) => http('DELETE', `/admin/lecturers/classrooms/${classroomId}/${lecturerId}`),

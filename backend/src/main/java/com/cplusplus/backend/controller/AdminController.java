@@ -99,7 +99,7 @@ public class AdminController {
             List<Long> problemIds
     ) {}
 
-    public record LecturerCreateRequest(String staffId, String fullName, String password) {}
+    public record LecturerCreateRequest(String staffId, String username, String fullName, String password) {}
 
     private void requireAdmin(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
@@ -144,13 +144,17 @@ public class AdminController {
         List<Map<String, Object>> result = userRepository.findAll().stream()
                 .filter(User::isLecturer)
                 .sorted(Comparator.comparing(User::getUsername, String.CASE_INSENSITIVE_ORDER))
-                .map(user -> Map.<String, Object>of(
-                        "id", user.getId(),
-                        "staffId", user.getUsername(),
-                        "fullName", user.getFullName(),
-                        "initialPassword", user.getInitialPassword() == null ? "" : user.getInitialPassword(),
-                        "classroomCount", classroomRepository.countByLecturerId(user.getId()),
-                        "createdAt", user.getCreatedAt().toEpochMilli()))
+                .map(user -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("id", user.getId());
+                    map.put("username", user.getUsername());
+                    map.put("staffId", user.getUsername());
+                    map.put("fullName", user.getFullName());
+                    map.put("initialPassword", user.getInitialPassword() == null ? "" : user.getInitialPassword());
+                    map.put("classroomCount", classroomRepository.countByLecturerId(user.getId()));
+                    map.put("createdAt", user.getCreatedAt().toEpochMilli());
+                    return map;
+                })
                 .toList();
         return ResponseEntity.ok(result);
     }
@@ -159,7 +163,9 @@ public class AdminController {
     @Transactional
     public ResponseEntity<?> createLecturer(@RequestBody LecturerCreateRequest body, HttpServletRequest req) {
         requireAdmin(req);
-        String staffId = body.staffId() == null ? "" : body.staffId().trim();
+        String staffId = body.staffId() != null && !body.staffId().isBlank()
+                ? body.staffId().trim()
+                : body.username() != null ? body.username().trim() : "";
         String fullName = body.fullName() == null ? "" : body.fullName().trim();
         if (!staffId.matches("^[A-Za-z0-9._-]{3,32}$")) {
             throw new IllegalArgumentException("Mã giảng viên chỉ gồm chữ, số, dấu chấm, gạch ngang hoặc gạch dưới (3–32 ký tự)");

@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,30 +30,6 @@ public class LecturerAdminController {
         this.users = users;
         this.security = security;
         this.jdbc = jdbc;
-    }
-
-    public record NewLecturer(String username, String fullName, String password) {}
-
-    @GetMapping
-    public List<Map<String, Object>> list(HttpServletRequest request) {
-        requireAdmin(request);
-        return users.findByRoleOrderByFullNameAsc(Role.LECTURER).stream()
-                .map(u -> Map.<String, Object>of("id", u.getId(), "username", u.getUsername(),
-                        "fullName", u.getFullName())).toList();
-    }
-
-    @PostMapping
-    @Transactional
-    public Map<String, Object> create(@RequestBody NewLecturer body, HttpServletRequest request) {
-        requireAdmin(request);
-        if (body.username() == null || !body.username().trim().matches("[A-Za-z][A-Za-z0-9._-]{2,31}"))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tài khoản cần 3–32 ký tự chữ, số, dấu chấm, gạch dưới hoặc gạch ngang");
-        if (body.fullName() == null || body.fullName().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần nhập họ tên giảng viên");
-        if (users.findByUsernameIgnoreCase(body.username().trim()).isPresent())
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tài khoản đã tồn tại");
-        User lecturer = users.save(User.lecturer(body.username(), body.fullName(), security.hashPassword(body.password())));
-        return Map.of("id", lecturer.getId(), "username", lecturer.getUsername(), "fullName", lecturer.getFullName());
     }
 
     @GetMapping("/classrooms/{classroomId}")
