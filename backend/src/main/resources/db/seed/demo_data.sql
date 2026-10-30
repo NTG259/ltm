@@ -253,3 +253,5 @@ SELECT setval(pg_get_serial_sequence('contests', 'id'), (SELECT max(id) FROM con
 
 COMMIT;
 
+-- Tự động nạp thêm lớp học, giảng viên và bài nộp thực tế cho demo
+\i /seed/realistic_data.sql

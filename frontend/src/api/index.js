@@ -3,9 +3,13 @@ const getWsUrl = () => {
   if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
   if (typeof window === 'undefined') return 'ws://localhost:18001'
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const host = window.location.hostname
-  const port = window.location.port === '18080' || window.location.port === '5173' ? 18001 : (window.location.port || 8001)
-  return `${protocol}//${host}:${port}`
+  if (window.location.port === '18080') {
+    return `${protocol}//${window.location.host}/ws`
+  }
+  if (window.location.port === '5173') {
+    return `${protocol}//${window.location.hostname}:18001`
+  }
+  return `${protocol}//${window.location.host}/ws`
 }
 const WS_URL = getWsUrl()
 const TOKEN_KEY = 'cj.token'
