@@ -26,6 +26,8 @@ import {
   CheckCircleFilled,
   CheckCircleOutlined,
   CodeOutlined,
+  DownloadOutlined,
+  FilePdfOutlined,
   CopyOutlined,
   LeftOutlined,
   LockOutlined,
@@ -54,7 +56,7 @@ export default function CourseLearnPage() {
   // Sidebar trạng thái thu gọn
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isLecturer } = useAuth()
   const { data: mySubmissions } = useFetch(
     () => (user?.id ? api.listSubmissions({ userId: user.id }) : Promise.resolve([])),
     [user?.id]
@@ -153,16 +155,19 @@ export default function CourseLearnPage() {
       return Promise.all([
         api.getLesson(unitIdKey),
         api.getUnitProblems(unitIdKey),
-      ]).then(([resLesson, resProblems]) => ({
+        api.listUnitFiles(unitIdKey).catch(() => []),
+      ]).then(([resLesson, resProblems, resFiles]) => ({
         theoryContent: resLesson?.theoryContent || '',
         sampleCode: resLesson?.sampleCode || '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code của bạn ở đây\n    return 0;\n}',
         sampleInput: resLesson?.sampleInput || '',
         problems: resProblems || [],
+        files: resFiles || [],
       })).catch(() => ({
         theoryContent: '',
         sampleCode: '#include <iostream>\nusing namespace std;\n\nint main() {\n    // Viết code của bạn ở đây\n    return 0;\n}',
         sampleInput: '',
         problems: [],
+        files: [],
       }))
     },
     [unitIdKey]
@@ -170,6 +175,7 @@ export default function CourseLearnPage() {
 
   const lessonData = lessonBundle || null
   const unitProblems = lessonBundle?.problems || []
+  const unitFiles = lessonBundle?.files || []
 
   // Quản lý code & input khi người dùng gõ
   const [editedCode, setEditedCode] = useState(null)
@@ -284,7 +290,7 @@ export default function CourseLearnPage() {
     )
   }
 
-  if (!course.published && !isAdmin) {
+  if (!course.published && !isAdmin && !isLecturer) {
     return (
       <Result
         status="403"
@@ -566,6 +572,14 @@ export default function CourseLearnPage() {
                     label: (
                       <span>
                         <RocketOutlined /> Bài tập thực hành ({unitProblems.length})
+                      </span>
+                    ),
+                  },
+                  {
+                    key: 'files',
+                    label: (
+                      <span>
+                        <FilePdfOutlined /> Tài liệu ({unitFiles.length})
                       </span>
                     ),
                   },
@@ -861,6 +875,55 @@ export default function CourseLearnPage() {
                             )
                           }}
                         />
+                      )}
+                    </div>
+                  )}
+                  {/* TAB 4: TÀI LIỆU ĐÍNH KÈM */}
+                  {activeTab === 'files' && (
+                    <div style={{ maxWidth: 960, margin: '0 auto' }}>
+                      {unitFiles.length === 0 ? (
+                        <Card style={{ textAlign: 'center', padding: '40px 0', background: 'var(--surface)', borderRadius: 12 }}>
+                          <Empty
+                            image={<FilePdfOutlined style={{ fontSize: 48, color: 'var(--muted)' }} />}
+                            description={<span style={{ color: 'var(--muted)' }}>Chưa có tài liệu hoặc slide bài giảng đính kèm cho chủ đề này</span>}
+                          />
+                        </Card>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {unitFiles.map((f) => (
+                            <Card
+                              key={f.id}
+                              style={{
+                                borderRadius: 10,
+                                border: '1px solid var(--border)',
+                                background: 'var(--surface)',
+                              }}
+                              styles={{ body: { padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' } }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                <div style={{
+                                  width: 44, height: 44, borderRadius: 8,
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  color: '#ef4444', fontSize: 22,
+                                }}>
+                                  <FilePdfOutlined />
+                                </div>
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{f.fileName}</div>
+                                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                                    {f.fileSize ? `${(f.fileSize / 1024).toFixed(1)} KB` : 'Tài liệu học tập'} · Tải lên ngày {f.createdAt ? new Date(f.createdAt).toLocaleDateString('vi-VN') : '—'}
+                                  </div>
+                                </div>
+                              </div>
+                              <Space>
+                                <a href={`/api/courses/units/${unitIdKey}/files/${f.id}`} download={f.fileName} target="_blank" rel="noreferrer">
+                                  <Button type="primary" icon={<DownloadOutlined />}>Tải về máy</Button>
+                                </a>
+                              </Space>
+                            </Card>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}

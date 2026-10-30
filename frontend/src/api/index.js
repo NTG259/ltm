@@ -45,6 +45,9 @@ export function getStoredSession() {
 export function storeSession(session) {
   storageSet(TOKEN_KEY, session?.token ?? null)
   storageSet(USER_KEY, session ? JSON.stringify(session.user) : null)
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('cj:session-change'))
+  }
 }
 
 async function http(method, path, body) {
@@ -58,7 +61,13 @@ async function http(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const data = res.status === 204 ? null : await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+  if (!res.ok) {
+    if (res.status === 401) {
+      storeSession(null)
+      window.location.hash = '#/login'
+    }
+    throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
+  }
   return data
 }
 
@@ -133,7 +142,13 @@ export const api = {
       body: form,
     }).then(async (res) => {
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      if (!res.ok) {
+        if (res.status === 401) {
+          storeSession(null)
+          window.location.hash = '#/login'
+        }
+        throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
+      }
       return data
     })
   },
@@ -151,7 +166,7 @@ export const api = {
       body: form,
     }).then(async (res) => {
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
       return data
     })
   },
@@ -165,7 +180,7 @@ export const api = {
       body: form,
     }).then(async (res) => {
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
       return data
     })
   },
@@ -222,7 +237,7 @@ export const api = {
       body: form,
     }).then(async (res) => {
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
       return data
     })
   },
@@ -246,10 +261,11 @@ export const api = {
       body: form,
     }).then(async (res) => {
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
       return data
     })
   },
+  listUnitFiles: (unitId) => http('GET', `/courses/units/${unitId}/files`),
   deleteUnitFile: (unitId, fileId) => http('DELETE', `/courses/units/${unitId}/files/${fileId}`),
   // ---- Monitor ----
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),

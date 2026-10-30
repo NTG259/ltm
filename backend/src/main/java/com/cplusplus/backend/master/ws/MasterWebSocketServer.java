@@ -27,7 +27,9 @@ public class MasterWebSocketServer extends WebSocketServer {
     private final Map<WebSocket, Long> connUserIds = new ConcurrentHashMap<>();
     // conn → username (để broadcast OFFLINE sau khi conn đóng)
     private final Map<WebSocket, String> connUsernames = new ConcurrentHashMap<>();
-    // conn → isAdmin
+    // conn → role (STUDENT, LECTURER, ADMIN)
+    private final Map<WebSocket, Role> connRoles = new ConcurrentHashMap<>();
+    // conn → isStaff (Admin or Lecturer)
     private final Map<WebSocket, Boolean> connAdmins = new ConcurrentHashMap<>();
 
     public MasterWebSocketServer(int port, SecurityService securityService, ObjectMapper objectMapper) {
@@ -50,8 +52,9 @@ public class MasterWebSocketServer extends WebSocketServer {
         if (conn != null) {
             Long userId = connUserIds.remove(conn);
             String username = connUsernames.remove(conn);
-            Boolean isAdmin = connAdmins.remove(conn);
-            if (userId != null && Boolean.FALSE.equals(isAdmin)) {
+            Role role = connRoles.remove(conn);
+            connAdmins.remove(conn);
+            if (userId != null && role == Role.STUDENT) {
                 broadcastPresenceEvent("OFFLINE", userId, username);
             }
         }
@@ -104,20 +107,21 @@ public class MasterWebSocketServer extends WebSocketServer {
     /** Trả về userId của tất cả student đang kết nối (không bao gồm admin). */
     public Set<Long> getOnlineUserIds() {
         return connUserIds.entrySet().stream()
-                .filter(e -> Boolean.FALSE.equals(connAdmins.get(e.getKey())))
+                .filter(e -> connRoles.get(e.getKey()) == Role.STUDENT)
                 .map(Map.Entry::getValue)
                 .collect(Collectors.toSet());
     }
 
     private void handleAuth(WebSocket conn, User user) {
-        boolean isAdmin = user.getRole() == Role.ADMIN;
+        boolean isStaff = user.getRole() == Role.ADMIN || user.getRole() == Role.LECTURER;
         connUserIds.put(conn, user.getId());
         connUsernames.put(conn, user.getUsername());
-        connAdmins.put(conn, isAdmin);
-        if (!isAdmin) {
+        connRoles.put(conn, user.getRole());
+        connAdmins.put(conn, isStaff);
+        if (user.getRole() == Role.STUDENT) {
             broadcastPresenceEvent("ONLINE", user.getId(), user.getUsername());
         }
-        log.debug("WebSocket AUTH OK: {} (admin={})", user.getUsername(), isAdmin);
+        log.debug("WebSocket AUTH OK: {} (role={})", user.getUsername(), user.getRole());
     }
 
     private void broadcastPresenceEvent(String status, Long userId, String username) {

@@ -21,6 +21,7 @@ import com.cplusplus.backend.security.SecurityService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.MediaType;
@@ -49,6 +50,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final SecurityService securityService;
     private final LecturerCsvImporter lecturerCsvImporter;
+    private final JdbcTemplate jdbc;
 
     public AdminController(
             JudgeMasterService judgeMasterService,
@@ -60,7 +62,8 @@ public class AdminController {
             TestCaseZipImporter testCaseZipImporter,
             UserRepository userRepository,
             SecurityService securityService,
-            LecturerCsvImporter lecturerCsvImporter) {
+            LecturerCsvImporter lecturerCsvImporter,
+            JdbcTemplate jdbc) {
         this.judgeMasterService = judgeMasterService;
         this.submissionRepository = submissionRepository;
         this.problemRepository = problemRepository;
@@ -71,6 +74,7 @@ public class AdminController {
         this.userRepository = userRepository;
         this.securityService = securityService;
         this.lecturerCsvImporter = lecturerCsvImporter;
+        this.jdbc = jdbc;
     }
 
     public record TestCaseRequest(String input, String output, Boolean sample) {}
@@ -103,14 +107,28 @@ public class AdminController {
 
     private void requireAdmin(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        if (user == null || !user.isAdmin()) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        }
+        if (!user.isAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Yêu cầu quyền quản trị viên");
         }
     }
 
+    private User requireAdminOrLecturer(HttpServletRequest req) {
+        User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        }
+        if (!user.isAdmin() && !user.isLecturer()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Yêu cầu quyền quản trị viên hoặc giảng viên");
+        }
+        return user;
+    }
+
     @GetMapping("/overview")
     public ResponseEntity<?> overview(HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
 
         List<Map<String, Object>> workers = judgeMasterService.getWorkerSummaries();
         List<Long> queue = judgeMasterService.getQueue();
@@ -202,8 +220,43 @@ public class AdminController {
         requireAdmin(req);
         List<Long> ids = body.getOrDefault("ids", List.of()).stream().filter(Objects::nonNull).distinct().toList();
         List<User> lecturers = userRepository.findAllById(ids).stream().filter(User::isLecturer).toList();
-        userRepository.deleteAll(lecturers);
+        if (!lecturers.isEmpty()) {
+            List<Long> lecturerIds = lecturers.stream().map(User::getId).toList();
+            String inClause = lecturerIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+            jdbc.update("DELETE FROM submissions WHERE user_id IN (" + inClause + ")");
+            jdbc.update("UPDATE classrooms SET lecturer_id = NULL WHERE lecturer_id IN (" + inClause + ")");
+            jdbc.update("DELETE FROM classroom_lecturers WHERE user_id IN (" + inClause + ")");
+            userRepository.deleteAll(lecturers);
+        }
         return ResponseEntity.ok(Map.of("deleted", lecturers.size()));
+    }
+
+    @DeleteMapping("/lecturers/{id}")
+    @Transactional
+    public ResponseEntity<?> deleteLecturer(@PathVariable Long id, HttpServletRequest req) {
+        requireAdmin(req);
+        User lecturer = userRepository.findById(id)
+                .filter(User::isLecturer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy giảng viên #" + id));
+        jdbc.update("DELETE FROM submissions WHERE user_id = ?", id);
+        jdbc.update("UPDATE classrooms SET lecturer_id = NULL WHERE lecturer_id = ?", id);
+        jdbc.update("DELETE FROM classroom_lecturers WHERE user_id = ?", id);
+        userRepository.delete(lecturer);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/lecturers/{id}/classrooms")
+    public ResponseEntity<?> getLecturerClassrooms(@PathVariable Long id, HttpServletRequest req) {
+        requireAdmin(req);
+        List<com.cplusplus.backend.domain.classroom.Classroom> classrooms = classroomRepository.findByLecturerUserId(id);
+        List<Map<String, Object>> classroomDtos = classrooms.stream().map(cls -> {
+            Map<String, Object> cmap = new LinkedHashMap<>();
+            cmap.put("id", cls.getId());
+            cmap.put("name", cls.getName());
+            cmap.put("semester", cls.getSemester() != null ? cls.getSemester() : "");
+            return cmap;
+        }).toList();
+        return ResponseEntity.ok(classroomDtos);
     }
 
     @PostMapping("/lecturers/{id}/reset-password")
@@ -227,7 +280,7 @@ public class AdminController {
 
     @GetMapping("/logs")
     public ResponseEntity<?> getLogs(@RequestParam(required = false) String level, HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
         List<SystemLog> dbLogs;
         if (level != null && !level.isBlank()) {
             try {
@@ -269,8 +322,7 @@ public class AdminController {
     @PostMapping("/problems")
     @Transactional
     public ResponseEntity<?> createProblem(@RequestBody ProblemSaveRequest req, HttpServletRequest servletReq) {
-        requireAdmin(servletReq);
-        User user = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        User user = requireAdminOrLecturer(servletReq);
 
         if (req.title() == null || req.title().isBlank()) {
             throw new IllegalArgumentException("Tên đề bài không được để trống");
@@ -287,7 +339,7 @@ public class AdminController {
     @PutMapping("/problems/{id}")
     @Transactional
     public ResponseEntity<?> updateProblem(@PathVariable Long id, @RequestBody ProblemSaveRequest req, HttpServletRequest servletReq) {
-        requireAdmin(servletReq);
+        requireAdminOrLecturer(servletReq);
 
         Problem problem = problemRepository.findWithTestCases(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
@@ -304,7 +356,7 @@ public class AdminController {
     @PatchMapping("/problems/{id}/visibility")
     @Transactional
     public ResponseEntity<?> toggleProblemVisibility(@PathVariable Long id, @RequestBody Map<String, Boolean> body, HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
         Boolean visible = body.get("publicVisible");
@@ -318,7 +370,7 @@ public class AdminController {
     @DeleteMapping("/problems/{id}")
     @Transactional
     public ResponseEntity<?> deleteProblem(@PathVariable Long id, HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
         Problem p = problemRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
         p.softDelete(Instant.now());
@@ -333,7 +385,7 @@ public class AdminController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "keepSamples", defaultValue = "true") boolean keepSamples,
             HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
 
         Problem problem = problemRepository.findWithTestCases(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));
@@ -357,7 +409,7 @@ public class AdminController {
     public ResponseEntity<?> parseTestCasesZip(
             @RequestParam("file") MultipartFile file,
             HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
 
         TestCaseZipImporter.ParseResult result = testCaseZipImporter.parse(file);
         Map<String, Object> resp = new LinkedHashMap<>();
@@ -435,8 +487,7 @@ public class AdminController {
     @PostMapping("/contests")
     @Transactional
     public ResponseEntity<?> createContest(@RequestBody ContestSaveRequest req, HttpServletRequest servletReq) {
-        requireAdmin(servletReq);
-        User user = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        User user = requireAdminOrLecturer(servletReq);
 
         if (req.title() == null || req.title().isBlank()) {
             throw new IllegalArgumentException("Tên kỳ thi không được để trống");
@@ -473,7 +524,7 @@ public class AdminController {
     @PutMapping("/contests/{id}")
     @Transactional
     public ResponseEntity<?> updateContest(@PathVariable Long id, @RequestBody ContestSaveRequest req, HttpServletRequest servletReq) {
-        requireAdmin(servletReq);
+        requireAdminOrLecturer(servletReq);
 
         Contest contest = contestRepository.findWithProblems(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
@@ -513,7 +564,7 @@ public class AdminController {
     @DeleteMapping("/contests/{id}")
     @Transactional
     public ResponseEntity<?> deleteContest(@PathVariable Long id, HttpServletRequest req) {
-        requireAdmin(req);
+        requireAdminOrLecturer(req);
         contestRepository.deleteById(id);
         judgeMasterService.broadcastContestUpdate(id);
         return ResponseEntity.noContent().build();

@@ -146,4 +146,89 @@ SELECT 'GV001', 'Giảng viên mẫu', 'LECTURER',
        '$2a$10$DGCyct6YxT0BMVh5Sds7hu2NhzXQhwOEWMnewxCvX36.kh/n5pBZq', 'gv123456'
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE upper(username) = 'GV001');
 
+-- Gán tài khoản giảng viên mẫu GV001 vào lớp để kiểm thử ngay
+INSERT INTO classroom_lecturers(classroom_id, user_id, assigned_at)
+SELECT c.id, u.id, now() - interval '40 days'
+FROM classrooms c, users u
+WHERE u.username = 'GV001'
+  AND c.name IN ('D24CQCN01-B · Lập trình C++', 'D23CQCN01-B · Cấu trúc dữ liệu')
+ON CONFLICT DO NOTHING;
+
+-- Bổ sung bài nộp luyện tập (contest_id IS NULL) để bảng xếp hạng luyện tập có số liệu
+INSERT INTO submissions(user_id, problem_id, contest_id, source_code, time_limit_ms, memory_limit_mb,
+ status, verdict, score, time_ms, memory_kb, passed_tests, total_tests, attempts, created_at, started_at, finished_at)
+SELECT s.user_id, s.problem_id, NULL, s.source_code, s.time_limit_ms, s.memory_limit_mb,
+ s.status, s.verdict, s.score, s.time_ms, s.memory_kb, s.passed_tests, s.total_tests, s.attempts,
+ s.created_at - interval '2 days', s.started_at - interval '2 days', s.finished_at - interval '2 days'
+FROM submissions s
+WHERE s.contest_id IN (4, 7)
+ON CONFLICT DO NOTHING;
+
+-- Khôi phục và đảm bảo 4 khóa học, 20 chủ đề bài học luôn sẵn sàng
+INSERT INTO courses (id, title, description, is_published, created_by, created_at) VALUES
+(1, 'Lập trình C++ Cơ bản (C++ Fundamentals)', 'Lộ trình nhập môn toàn diện: cú pháp, biến, điều kiện, vòng lặp, hàm và mảng.', true, (SELECT id FROM users WHERE username = 'admin'), NOW() - INTERVAL '5 days'),
+(2, 'Cấu trúc Dữ liệu & Giải thuật C++ (DSA)', 'Thư viện STL nâng cao (Vector, Map, Set), ngăn xếp, hàng đợi, đệ quy và quy hoạch động.', true, (SELECT id FROM users WHERE username = 'admin'), NOW() - INTERVAL '3 days'),
+(3, 'Lập trình Hướng đối tượng C++ (OOP)', 'Nắm vững 4 tính chất OOP: Đóng gói, Kế thừa, Đa hình và Trừu tượng hóa.', true, (SELECT id FROM users WHERE username = 'GV001'), NOW() - INTERVAL '1 days'),
+(4, 'Kỹ thuật Lập trình C++ Nâng cao (Bản nháp)', 'Quản lý con trỏ thông minh (Smart Pointers), Move Semantics và Concurrency đa luồng.', false, (SELECT id FROM users WHERE username = 'admin'), NOW())
+ON CONFLICT (id) DO UPDATE SET created_by = EXCLUDED.created_by, is_published = EXCLUDED.is_published;
+
+INSERT INTO course_units (course_id, title, order_index, created_at) VALUES
+(1, 'Chủ đề 1: Cấu trúc chương trình C++ và Nhập xuất (cin / cout)', 1, NOW()),
+(1, 'Chủ đề 2: Biến, Kiểu dữ liệu nguyên thủy và Ép kiểu', 2, NOW()),
+(1, 'Chủ đề 3: Các phép toán số học, logic và bitwise', 3, NOW()),
+(1, 'Chủ đề 4: Cấu trúc rẽ nhánh if - else và switch - case', 4, NOW()),
+(1, 'Chủ đề 5: Vòng lặp for, while, do-while và lệnh break / continue', 5, NOW()),
+(1, 'Chủ đề 6: Hàm, truyền tham trị và truyền tham chiếu (&)', 6, NOW()),
+(1, 'Chủ đề 7: Mảng 1 chiều và chuỗi ký tự cơ bản (std::string)', 7, NOW()),
+(2, 'Chủ đề 1: Thư viện chuẩn STL: std::vector và std::pair', 1, NOW()),
+(2, 'Chủ đề 2: Ngăn xếp (Stack) và Hàng đợi (Queue, Priority Queue)', 2, NOW()),
+(2, 'Chủ đề 3: Tập hợp (std::set) và Bảng ánh xạ (std::map, unordered_map)', 3, NOW()),
+(2, 'Chủ đề 4: Kỹ thuật đệ quy và Quay lui (Backtracking)', 4, NOW()),
+(2, 'Chủ đề 5: Thuật toán sắp xếp và Tìm kiếm nhị phân (Binary Search)', 5, NOW()),
+(2, 'Chủ đề 6: Quy hoạch động 1 chiều (1D Dynamic Programming)', 6, NOW()),
+(3, 'Chủ đề 1: Lớp (Class), Đối tượng (Object) và Phạm vi truy cập', 1, NOW()),
+(3, 'Chủ đề 2: Hàm khởi tạo (Constructor) và Hàm hủy (Destructor)', 2, NOW()),
+(3, 'Chủ đề 3: Tính đóng gói (Encapsulation) và Tính kế thừa (Inheritance)', 3, NOW()),
+(3, 'Chủ đề 4: Tính đa hình (Polymorphism) và Hàm ảo (Virtual Functions)', 4, NOW()),
+(3, 'Chủ đề 5: Nạp chồng toán tử (Operator Overloading)', 5, NOW()),
+(4, 'Chủ đề 1: Con trỏ thô (Raw Pointers) và Vùng nhớ Heap', 1, NOW()),
+(4, 'Chủ đề 2: Smart Pointers (unique_ptr, shared_ptr, weak_ptr)', 2, NOW())
+ON CONFLICT (course_id, order_index) DO NOTHING;
+
+SELECT setval('courses_id_seq', (SELECT COALESCE(MAX(id), 1) FROM courses));
+
+-- Gán khóa học vào lớp học mẫu
+INSERT INTO classroom_courses (classroom_id, course_id, assigned_at)
+SELECT c.id, 1, NOW()
+FROM classrooms c WHERE c.name = 'D24CQCN01-B · Lập trình C++'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO classroom_courses (classroom_id, course_id, assigned_at)
+SELECT c.id, 2, NOW()
+FROM classrooms c WHERE c.name = 'D23CQCN01-B · Cấu trúc dữ liệu'
+ON CONFLICT DO NOTHING;
+
+
+-- Real practice problems linked to course units
+INSERT INTO course_unit_problems (unit_id, problem_id, order_index)
+SELECT u.id, p.id, 1
+FROM course_units u
+JOIN courses c ON c.id = u.course_id
+JOIN problems p ON (
+    (c.id = 1 AND u.order_index = 1 AND p.id = 1) OR
+    (c.id = 1 AND u.order_index = 2 AND p.id = 4) OR
+    (c.id = 1 AND u.order_index = 3 AND p.id = 3) OR
+    (c.id = 1 AND u.order_index = 4 AND p.id = 5) OR
+    (c.id = 1 AND u.order_index = 5 AND p.id = 6) OR
+    (c.id = 1 AND u.order_index = 6 AND p.id = 2) OR
+    (c.id = 1 AND u.order_index = 7 AND p.id = 7) OR
+    (c.id = 2 AND u.order_index = 1 AND p.id = 8) OR
+    (c.id = 2 AND u.order_index = 2 AND p.id = 9) OR
+    (c.id = 2 AND u.order_index = 3 AND p.id = 10) OR
+    (c.id = 2 AND u.order_index = 4 AND p.id = 2) OR
+    (c.id = 2 AND u.order_index = 5 AND p.id = 7) OR
+    (c.id = 2 AND u.order_index = 6 AND p.id = 8)
+)
+ON CONFLICT (unit_id, problem_id) DO NOTHING;
+
 COMMIT;

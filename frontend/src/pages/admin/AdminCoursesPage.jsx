@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Switch, Table, Tag, Typography } from 'antd'
+import { App, Button, Card, Form, Input, Modal, Popconfirm, Segmented, Space, Switch, Table, Tag, Typography } from 'antd'
 import { BookOutlined, DeleteOutlined, EditOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
@@ -11,7 +11,12 @@ export default function AdminCoursesPage({ teacher = false }) {
   const { message } = App.useApp()
   const { user } = useAuth()
   const { data: allCourses, loading, reload: refetch } = useFetch(() => api.listCourses(), [])
-  const courses = teacher ? (allCourses || []).filter((course) => course.createdBy === user?.id) : allCourses || []
+  const [filterMode, setFilterMode] = useState('my')
+  const courses = teacher
+    ? filterMode === 'my'
+      ? (allCourses || []).filter((course) => course.createdBy === user?.id)
+      : allCourses || []
+    : allCourses || []
   const basePath = teacher ? '/teacher/courses' : '/admin/courses'
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -110,6 +115,7 @@ export default function AdminCoursesPage({ teacher = false }) {
         <Space>
           <Switch
             size="small"
+            disabled={teacher && row.createdBy !== user?.id}
             checked={published}
             onChange={() => togglePublish(row)}
           />
@@ -131,26 +137,31 @@ export default function AdminCoursesPage({ teacher = false }) {
       key: 'actions',
       width: 160,
       align: 'right',
-      render: (_, row) => (
-        <Space>
-          <Link to={`${basePath}/${row.id}`}>
-            <Button size="small" icon={<UnorderedListOutlined />}>
-              Chủ đề
-            </Button>
-          </Link>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />
-          <Popconfirm
-            title="Xóa khóa học này?"
-            description="Tất cả chủ đề bên trong cũng sẽ bị xóa vĩnh viễn."
-            onConfirm={() => remove(row.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_, row) => {
+        const canManage = !teacher || row.createdBy === user?.id
+        return (
+          <Space>
+            <Link to={`${basePath}/${row.id}`}>
+              <Button size="small" icon={<UnorderedListOutlined />}>
+                Chủ đề
+              </Button>
+            </Link>
+            {canManage && <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />}
+            {canManage && (
+              <Popconfirm
+                title="Xóa khóa học này?"
+                description="Tất cả chủ đề bên trong cũng sẽ bị xóa vĩnh viễn."
+                onConfirm={() => remove(row.id)}
+                okText="Xóa"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            )}
+          </Space>
+        )
+      },
     },
   ]
 
@@ -161,9 +172,21 @@ export default function AdminCoursesPage({ teacher = false }) {
         description={teacher ? 'Tạo khóa học và soạn nội dung bằng các đề có sẵn trong kho chung.' : 'Xây dựng lộ trình học C++, sắp xếp các chủ đề lý thuyết và bài tập'}
         icon={<BookOutlined />}
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size="large">
-            Tạo khóa học mới
-          </Button>
+          <Space>
+            {teacher && (
+              <Segmented
+                value={filterMode}
+                onChange={setFilterMode}
+                options={[
+                  { label: 'Khóa học của tôi', value: 'my' },
+                  { label: 'Tất cả khóa học', value: 'all' },
+                ]}
+              />
+            )}
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} size="large">
+              Tạo khóa học mới
+            </Button>
+          </Space>
         }
       />
 

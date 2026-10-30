@@ -49,4 +49,5 @@ public class CourseUnitFile {
     public Long getFileSize() { return fileSize; }
     public int getOrderIndex() { return orderIndex; }
     public Instant getUploadedAt() { return uploadedAt; }
+    public Instant getCreatedAt() { return uploadedAt; }
 }

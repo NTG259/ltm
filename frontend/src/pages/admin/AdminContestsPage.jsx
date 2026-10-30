@@ -124,7 +124,7 @@ function ContestDrawer({ contest, open, onClose, onSaved }) {
   )
 }
 
-export default function AdminContestsPage() {
+export default function AdminContestsPage({ teacher = false }) {
   const { user } = useAuth()
   const { message } = App.useApp()
   const navigate = useNavigate()
@@ -144,7 +144,7 @@ export default function AdminContestsPage() {
     <div className="page">
       <AdminPageHeader
         title="Quản lý kỳ thi"
-        description="Tạo kỳ thi từ ngân hàng đề, đặt lịch và theo dõi bảng xếp hạng trực tiếp."
+        description={teacher ? "Tổ chức và quản lý các kỳ thi lập trình, giám sát thí sinh và phát hiện gian lận." : "Tạo kỳ thi từ ngân hàng đề, đặt lịch và theo dõi bảng xếp hạng trực tiếp."}
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing({})}>
             Tạo kỳ thi
@@ -168,7 +168,7 @@ export default function AdminContestsPage() {
                   </Link>
                   <div>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {c.problems.map((p) => p.label).join(' · ')} ({c.problems.length} bài)
+                      {(c.problems || []).map((p) => p.label).join(' · ')} ({(c.problems || []).length} bài)
                     </Typography.Text>
                   </div>
                 </div>

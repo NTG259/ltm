@@ -1,6 +1,7 @@
 import { Avatar, Button, Dropdown, Layout, Menu, Typography } from 'antd'
 import {
   CodeOutlined,
+  KeyOutlined,
   LogoutOutlined,
   TeamOutlined,
   UserOutlined,
@@ -77,6 +78,12 @@ export default function TeacherLayout() {
                   ),
                 },
                 { type: 'divider' },
+                {
+                  key: 'change-password',
+                  icon: <KeyOutlined />,
+                  label: 'Đổi mật khẩu',
+                  onClick: () => navigate('/teacher/change-password'),
+                },
                 {
                   key: 'logout', icon: <LogoutOutlined />, danger: true, label: 'Đăng xuất',
                   onClick: async () => { await logout(); navigate('/login') },

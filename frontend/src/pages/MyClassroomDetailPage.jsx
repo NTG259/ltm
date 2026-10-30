@@ -112,9 +112,18 @@ function CourseTab({ classroomId }) {
         {/* Nội dung chương */}
         {activeUnit ? (
           <div style={{ flex: 1, padding: 20, overflow: 'auto' }}>
-            <Typography.Title level={5} style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-              {activeUnit.title}
-            </Typography.Title>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
+              <Typography.Title level={5} style={{ margin: 0 }}>
+                {activeUnit.title}
+              </Typography.Title>
+              {courseData?.courseId && (
+                <Link to={`/courses/${courseData.courseId}/learn/${activeUnit.id}`}>
+                  <Button type="primary" icon={<PlayCircleOutlined />}>
+                    Vào học bài giảng
+                  </Button>
+                </Link>
+              )}
+            </div>
 
             {/* Files */}
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-2)', marginBottom: 8 }}>
@@ -186,8 +195,8 @@ export default function MyClassroomDetailPage() {
   const { data: classroom, loading } = useFetch(() => api.getClassroom(id), [id])
 
   const tabItems = [
-    { key: 'contests', label: '🏆 Kỳ thi', children: <ContestsTab classroom={classroom} loading={loading} /> },
-    { key: 'course', label: '📖 Khóa học', children: <CourseTab classroomId={id} /> },
+    { key: 'course', label: '📖 Khóa học & Bài giảng', children: <CourseTab classroomId={id} /> },
+    { key: 'contests', label: '🏆 Kỳ thi của lớp', children: <ContestsTab classroom={classroom} loading={loading} /> },
   ]
 
   return (
@@ -205,7 +214,7 @@ export default function MyClassroomDetailPage() {
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           <Tabs
             items={tabItems}
-            defaultActiveKey="contests"
+            defaultActiveKey="course"
             tabBarStyle={{ margin: 0, padding: '0 16px', background: 'var(--surface)' }}
             renderTabBar={(props, DefaultTabBar) => (
               <div style={{ borderBottom: '1px solid var(--border)' }}>

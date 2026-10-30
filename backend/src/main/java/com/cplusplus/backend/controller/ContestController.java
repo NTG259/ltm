@@ -181,14 +181,15 @@ public class ContestController {
         if (owner == null || owner.isAdmin()) return true;
         if (user == null) return false;
         if (user.isAdmin() || owner.getId().equals(user.getId())) return true;
+        if (isContestManager(contest, user)) return true;
         return contestRepository.isRegistered(contest.getId(), user.getId());
     }
 
     private Map<String, Object> toContestMap(Contest c, User user) {
-        boolean isAdmin = user != null && user.isAdmin();
+        boolean isStaff = user != null && (user.isAdmin() || isContestManager(c, user));
         boolean isRegistered = user != null && contestRepository.isRegistered(c.getId(), user.getId());
         long participantCount = contestRepository.countParticipants(c.getId());
-        return com.cplusplus.backend.dto.DtoMapper.toContestMap(c, isAdmin, isRegistered, participantCount);
+        return com.cplusplus.backend.dto.DtoMapper.toContestMap(c, isStaff, isRegistered, participantCount);
     }
 
     @PostMapping("/{id}/proctor/violation")

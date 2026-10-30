@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { Alert, Badge, Button, Card, Col, Empty, Row, Spin, Statistic, Typography } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
-import { api, USE_MOCK } from '../../api'
+import { api } from '../../api'
 import { useAuth } from '../../auth/context'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import { AdminOverviewAnalytics, AdminOverviewActivity } from '../../components/admin/AdminOverviewPanels'
@@ -77,10 +77,9 @@ export default function AdminOverviewPage() {
   const processing = recent?.filter((sub) => ['COMPILING', 'TESTING'].includes(sub.status)).length
   const activeContests = contests.data?.filter((contest) => contest.status === 'RUNNING').length
   const total = overview.data?.submissions
-  const connection = USE_MOCK ? { status: 'processing', text: 'Chế độ mô phỏng' }
-    : socketStatus === 'open' ? { status: 'success', text: 'Đã kết nối' }
-      : socketStatus === 'connecting' ? { status: 'warning', text: 'Đang kết nối' }
-        : { status: 'error', text: 'Mất kết nối' }
+  const connection = socketStatus === 'open' ? { status: 'success', text: 'Đã kết nối' }
+    : socketStatus === 'connecting' || socketStatus === 'reconnecting' ? { status: 'warning', text: 'Đang kết nối' }
+    : { status: 'error', text: 'Mất kết nối' }
   const warnings = logs.filter((entry) => ['warning', 'error'].includes(entry.level))
 
   const refresh = () => {

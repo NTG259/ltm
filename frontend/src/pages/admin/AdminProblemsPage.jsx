@@ -394,7 +394,7 @@ function QuickZipModal({ open, problem, onClose, onUploaded }) {
   )
 }
 
-export default function AdminProblemsPage() {
+export default function AdminProblemsPage({ teacher = false }) {
   const { message } = App.useApp()
   const list = useFetch(() => api.listProblems(), [])
   const [editing, setEditing] = useState(null)
@@ -425,8 +425,8 @@ export default function AdminProblemsPage() {
   return (
     <div className="page">
       <AdminPageHeader
-        title="Ngân hàng đề bài"
-        description="Thêm, sửa, xoá đề bài và bộ test case dùng để chấm."
+        title={teacher ? "Kho đề bài tập" : "Ngân hàng đề bài"}
+        description={teacher ? "Tạo và quản lý đề bài, bộ test case và tài liệu bài tập cho sinh viên." : "Thêm, sửa, xoá đề bài và bộ test case dùng để chấm."}
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
             Thêm đề bài
@@ -448,7 +448,7 @@ export default function AdminProblemsPage() {
                 <div>
                   <Link to={`/problems/${p.id}`}>{p.title}</Link>
                   <div style={{ marginTop: 4 }}>
-                    {p.tags.map((t) => (
+                    {(p.tags || []).map((t) => (
                       <Tag key={t} variant="filled" style={{ fontSize: 11 }}>
                         {t}
                       </Tag>
@@ -489,7 +489,7 @@ export default function AdminProblemsPage() {
               width: 140,
               render: (_, p) => (
                 <Tooltip title={`Xem toàn bộ bài nộp của đề #${p.id}`}>
-                  <Link to={`/admin/submissions?problemId=${p.id}`}>
+                  <Link to={teacher ? `/teacher/submissions?problemId=${p.id}` : `/admin/submissions?problemId=${p.id}`}>
                     <Tag color={p.totalSubmissions > 0 ? 'blue' : 'default'} style={{ cursor: 'pointer', margin: 0 }}>
                       <span className="mono" style={{ fontSize: 12 }}>
                         {p.acceptedSubmissions}/{p.totalSubmissions} ({percent(p.acceptedSubmissions, p.totalSubmissions)}%)
@@ -506,7 +506,7 @@ export default function AdminProblemsPage() {
               render: (_, p) => (
                 <Space>
                   <Tooltip title="Xem bài nộp của đề này">
-                    <Link to={`/admin/submissions?problemId=${p.id}`}>
+                    <Link to={teacher ? `/teacher/submissions?problemId=${p.id}` : `/admin/submissions?problemId=${p.id}`}>
                       <Button size="small" icon={<ProfileOutlined />} aria-label="Xem bài nộp" />
                     </Link>
                   </Tooltip>

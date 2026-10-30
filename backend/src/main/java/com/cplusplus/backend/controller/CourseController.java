@@ -121,7 +121,7 @@ public class CourseController {
         }
 
         String description = (String) body.get("description");
-        Boolean published = user.isAdmin() && body.get("published") instanceof Boolean b ? b : false;
+        Boolean published = (user.isAdmin() || user.isLecturer()) && body.get("published") instanceof Boolean b ? b : false;
 
         Course course = new Course(title.trim(), description, published);
         course.setCreatedBy(user);

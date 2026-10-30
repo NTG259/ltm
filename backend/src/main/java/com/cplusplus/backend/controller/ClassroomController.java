@@ -84,10 +84,14 @@ public class ClassroomController {
         if (classroomIds == null || classroomIds.isEmpty()) return Map.of();
         String inClause = classroomIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
         String sql = """
-                SELECT DISTINCT cl.classroom_id, u.id, u.username, u.full_name
-                FROM classroom_lecturers cl
-                JOIN users u ON u.id = cl.user_id
-                WHERE cl.classroom_id IN (%s)
+                SELECT DISTINCT c.id AS classroom_id, u.id, u.username, u.full_name
+                FROM classrooms c
+                JOIN users u ON (
+                    u.id = c.lecturer_id
+                    OR (c.created_by = u.id AND u.role = 'LECTURER')
+                    OR EXISTS (SELECT 1 FROM classroom_lecturers cl WHERE cl.classroom_id = c.id AND cl.user_id = u.id)
+                )
+                WHERE c.id IN (%s)
                 ORDER BY u.full_name, u.id
                 """.formatted(inClause);
 
@@ -190,7 +194,8 @@ public class ClassroomController {
         if (lecturer != null) {
             jdbc.update("INSERT INTO classroom_lecturers (classroom_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", classroom.getId(), lecturer.getId());
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(DtoMapper.toClassroomMap(classroom));
+        Map<Long, List<Map<String, Object>>> lecturersMap = loadAssignedLecturers(List.of(classroom.getId()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toClassroomDto(classroom, lecturersMap));
     }
 
     @PutMapping("/{id}")
@@ -214,11 +219,14 @@ public class ClassroomController {
         if (user.isAdmin() && body.containsKey("lecturerId")) {
             User lecturer = findLecturer(body.get("lecturerId"));
             classroom.setLecturer(lecturer);
+            jdbc.update("DELETE FROM classroom_lecturers WHERE classroom_id = ?", classroom.getId());
             if (lecturer != null) {
                 jdbc.update("INSERT INTO classroom_lecturers (classroom_id, user_id) VALUES (?, ?) ON CONFLICT DO NOTHING", classroom.getId(), lecturer.getId());
             }
         }
-        return ResponseEntity.ok(DtoMapper.toClassroomMap(classroom));
+        classroom = classroomRepository.save(classroom);
+        Map<Long, List<Map<String, Object>>> lecturersMap = loadAssignedLecturers(List.of(classroom.getId()));
+        return ResponseEntity.ok(toClassroomDto(classroom, lecturersMap));
     }
 
     @DeleteMapping("/{id}")
@@ -226,10 +234,10 @@ public class ClassroomController {
     public ResponseEntity<?> deleteClassroom(@PathVariable Long id, HttpServletRequest req) {
         User user = currentUser(req);
         if (user == null) return unauthorized();
+        if (!user.isAdmin()) return forbidden();
 
         Classroom classroom = classroomRepository.findById(id).orElse(null);
         if (classroom == null) return ResponseEntity.notFound().build();
-        if (!canManageClassroom(classroom, user)) return forbidden();
 
         classroomRepository.deleteById(id);
         return ResponseEntity.noContent().build();
@@ -619,7 +627,18 @@ public class ClassroomController {
 
         ClassroomStudent cs = new ClassroomStudent(classroom, studentUser, Instant.now());
         cs.setImportedPassword(studentUser.getInitialPassword() != null ? studentUser.getInitialPassword() : defaultPassword);
-        return classroomStudentRepository.save(cs);
+        ClassroomStudent saved = classroomStudentRepository.save(cs);
+
+        List<ClassroomContest> contests = classroomContestRepository.findAllWithContestByClassroomId(classroom.getId());
+        Instant now = Instant.now();
+        for (ClassroomContest cc : contests) {
+            ContestParticipant.Id pid = new ContestParticipant.Id(cc.getContest().getId(), studentUser.getId());
+            if (!contestParticipantRepository.existsById(pid)) {
+                contestParticipantRepository.save(new ContestParticipant(cc.getContest(), studentUser, now));
+            }
+        }
+
+        return saved;
     }
 
     @PostMapping("/{id}/students/{userId}/reset-password")

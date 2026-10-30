@@ -2,10 +2,15 @@ package com.cplusplus.backend.service;
 
 import com.cplusplus.backend.domain.classroom.Classroom;
 import com.cplusplus.backend.domain.classroom.ClassroomStudent;
+import com.cplusplus.backend.domain.classroom.ClassroomContest;
+import com.cplusplus.backend.domain.contest.ContestParticipant;
 import com.cplusplus.backend.domain.user.User;
+import com.cplusplus.backend.repository.ClassroomContestRepository;
+import com.cplusplus.backend.repository.ContestParticipantRepository;
 import com.cplusplus.backend.repository.ClassroomStudentRepository;
 import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.security.SecurityService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,13 +31,26 @@ public class ClassroomCsvImporter {
 
     private final UserRepository userRepository;
     private final ClassroomStudentRepository classroomStudentRepository;
+    private final ClassroomContestRepository classroomContestRepository;
+    private final ContestParticipantRepository contestParticipantRepository;
     private final SecurityService securityService;
 
     public ClassroomCsvImporter(UserRepository userRepository,
                                 ClassroomStudentRepository classroomStudentRepository,
                                 SecurityService securityService) {
+        this(userRepository, classroomStudentRepository, null, null, securityService);
+    }
+
+    @Autowired
+    public ClassroomCsvImporter(UserRepository userRepository,
+                                ClassroomStudentRepository classroomStudentRepository,
+                                ClassroomContestRepository classroomContestRepository,
+                                ContestParticipantRepository contestParticipantRepository,
+                                SecurityService securityService) {
         this.userRepository = userRepository;
         this.classroomStudentRepository = classroomStudentRepository;
+        this.classroomContestRepository = classroomContestRepository;
+        this.contestParticipantRepository = contestParticipantRepository;
         this.securityService = securityService;
     }
 
@@ -43,6 +61,11 @@ public class ClassroomCsvImporter {
         if (file == null || file.isEmpty() || file.getSize() > 1024 * 1024) {
             throw new IllegalArgumentException("File CSV phải có dữ liệu và không vượt quá 1 MB");
         }
+
+        List<ClassroomContest> classroomContests = classroomContestRepository != null
+                ? classroomContestRepository.findAllWithContestByClassroomId(classroom.getId())
+                : List.of();
+        Set<String> seenInFile = new HashSet<>();
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
@@ -78,12 +101,17 @@ public class ClassroomCsvImporter {
                     continue;
                 }
 
-                String mssv = (mssvIdx < cols.size()) ? cols.get(mssvIdx).trim().toUpperCase(Locale.ROOT) : "";
+                String mssv = (mssvIdx < cols.size()) ? cols.get(mssvIdx).replace("﻿", "").trim().toUpperCase(Locale.ROOT) : "";
                 String fullName = (fullNameIdx >= 0 && fullNameIdx < cols.size()) ? cols.get(fullNameIdx).trim() : "";
                 String password = (passwordIdx >= 0 && passwordIdx < cols.size()) ? cols.get(passwordIdx).trim() : "";
 
                 if (!STUDENT_CODE.matcher(mssv).matches()) {
                     skippedInvalid++;
+                    continue;
+                }
+
+                if (!seenInFile.add(mssv)) {
+                    alreadyEnrolled++;
                     continue;
                 }
 
@@ -119,6 +147,16 @@ public class ClassroomCsvImporter {
                 ClassroomStudent enrollment = new ClassroomStudent(classroom, user, Instant.now());
                 enrollment.setImportedPassword(user.getInitialPassword() != null ? user.getInitialPassword() : password);
                 classroomStudentRepository.save(enrollment);
+
+                if (contestParticipantRepository != null) {
+                    Instant now = Instant.now();
+                    for (ClassroomContest cc : classroomContests) {
+                        ContestParticipant.Id pid = new ContestParticipant.Id(cc.getContest().getId(), user.getId());
+                        if (!contestParticipantRepository.existsById(pid)) {
+                            contestParticipantRepository.save(new ContestParticipant(cc.getContest(), user, now));
+                        }
+                    }
+                }
                 imported++;
             }
         } catch (IOException e) {

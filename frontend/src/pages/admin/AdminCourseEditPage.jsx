@@ -20,9 +20,13 @@ import {
   Tag,
   Tooltip,
   Typography,
+  Upload,
 } from 'antd'
 import {
   ArrowDownOutlined,
+  DownloadOutlined,
+  FilePdfOutlined,
+  InboxOutlined,
   ArrowUpOutlined,
   BookOutlined,
   CodeOutlined,
@@ -36,13 +40,16 @@ import {
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../../api'
 import { useFetch } from '../../lib/hooks'
+import { useAuth } from '../../auth/context'
 import MarkdownViewer from '../../components/MarkdownViewer'
 import CodeEditor from '../../components/CodeEditor'
 
 export default function AdminCourseEditPage({ teacher = false }) {
   const { id } = useParams()
+  const { user } = useAuth()
   const { message } = App.useApp()
   const { data: course, loading, reload: refetch } = useFetch(() => api.getCourse(id), [id])
+  const canManage = !teacher || course?.createdBy === user?.id
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingUnit, setEditingUnit] = useState(null)
@@ -64,6 +71,10 @@ export default function AdminCourseEditPage({ teacher = false }) {
   const [allProblems, setAllProblems] = useState([])
   const [selectedProblemId, setSelectedProblemId] = useState(null)
   const [assigningProblem, setAssigningProblem] = useState(false)
+
+  // Quản lý tài liệu đính kèm (Unit Files)
+  const [unitFiles, setUnitFiles] = useState([])
+  const [uploadingFile, setUploadingFile] = useState(false)
 
   const units = course?.units || []
 
@@ -142,20 +153,49 @@ export default function AdminCourseEditPage({ teacher = false }) {
     setLessonLoading(true)
     setSelectedProblemId(null)
     try {
-      const [resLesson, resProblems, resAll] = await Promise.all([
+      const [resLesson, resProblems, resAll, resFiles] = await Promise.all([
         api.getLesson(unit.id),
         api.getUnitProblems(unit.id),
         teacher ? api.teacherContestProblems() : api.listProblems(),
+        api.listUnitFiles(unit.id).catch(() => []),
       ])
       setTheoryContent(resLesson.theoryContent || '')
       setSampleCode(resLesson.sampleCode || '')
       setSampleInput(resLesson.sampleInput || '')
       setUnitProblems(resProblems || [])
       setAllProblems(resAll || [])
+      setUnitFiles(resFiles || [])
     } catch (e) {
       message.error(e.message)
     } finally {
       setLessonLoading(false)
+    }
+  }
+
+  const handleUploadFile = async (file) => {
+    if (!lessonUnit) return false
+    setUploadingFile(true)
+    try {
+      await api.uploadUnitFile(lessonUnit.id, file)
+      message.success(`Đã tải lên tài liệu ${file.name}`)
+      const files = await api.listUnitFiles(lessonUnit.id).catch(() => [])
+      setUnitFiles(files || [])
+    } catch (e) {
+      message.error(e.message || 'Không thể tải lên tài liệu')
+    } finally {
+      setUploadingFile(false)
+    }
+    return false
+  }
+
+  const handleDeleteFile = async (fileId) => {
+    if (!lessonUnit) return
+    try {
+      await api.deleteUnitFile(lessonUnit.id, fileId)
+      message.success('Đã xóa tài liệu')
+      setUnitFiles((prev) => prev.filter((f) => f.id !== fileId))
+    } catch (e) {
+      message.error(e.message || 'Không thể xóa tài liệu')
     }
   }
 
@@ -233,7 +273,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
             <Button
               size="small"
               icon={<ArrowUpOutlined />}
-              disabled={idx === 0 || reordering}
+              disabled={!canManage || idx === 0 || reordering}
               onClick={() => moveUnit(idx, -1)}
             />
           </Tooltip>
@@ -241,7 +281,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
             <Button
               size="small"
               icon={<ArrowDownOutlined />}
-              disabled={idx === units.length - 1 || reordering}
+              disabled={!canManage || idx === units.length - 1 || reordering}
               onClick={() => moveUnit(idx, 1)}
             />
           </Tooltip>
@@ -262,18 +302,20 @@ export default function AdminCourseEditPage({ teacher = false }) {
             icon={<FileTextOutlined />}
             onClick={() => openEditLesson(row)}
           >
-            Soạn bài
+            {canManage ? 'Soạn bài' : 'Xem bài'}
           </Button>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEditUnit(row)} />
-          <Popconfirm
-            title="Xóa chủ đề này?"
-            onConfirm={() => removeUnit(row.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
+          {canManage && <Button size="small" icon={<EditOutlined />} onClick={() => openEditUnit(row)} />}
+          {canManage && (
+            <Popconfirm
+              title="Xóa chủ đề này?"
+              onConfirm={() => removeUnit(row.id)}
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} />
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -309,9 +351,11 @@ export default function AdminCourseEditPage({ teacher = false }) {
               </Typography.Paragraph>
             )}
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateUnit}>
-            Thêm chủ đề
-          </Button>
+          {canManage && (
+            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateUnit}>
+              Thêm chủ đề
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -369,15 +413,19 @@ export default function AdminCourseEditPage({ teacher = false }) {
         destroyOnClose
         extra={
           <Space>
-            <Button onClick={() => setLessonDrawerOpen(false)}>Hủy</Button>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              loading={lessonSaving}
-              onClick={saveLesson}
-            >
-              Lưu bài giảng
-            </Button>
+            <Button onClick={() => setLessonDrawerOpen(false)}>{canManage ? 'Hủy' : 'Đóng'}</Button>
+            {canManage ? (
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={lessonSaving}
+                onClick={saveLesson}
+              >
+                Lưu bài giảng
+              </Button>
+            ) : (
+              <Tag color="orange">Chế độ chỉ đọc</Tag>
+            )}
           </Space>
         }
       >
@@ -594,6 +642,92 @@ export default function AdminCourseEditPage({ teacher = false }) {
                   </div>
                 ),
               },
+              {
+                key: 'files',
+                label: (
+                  <span>
+                    <FilePdfOutlined /> Tài liệu đính kèm ({unitFiles.length})
+                  </span>
+                ),
+                children: (
+                  <div style={{ padding: '8px 0' }}>
+                    <Card style={{ marginBottom: 20, background: 'var(--surface)' }}>
+                      <Typography.Title level={5} style={{ marginTop: 0 }}>
+                        Tải lên tài liệu bài giảng (PDF / Slides / DOCX)
+                      </Typography.Title>
+                      <Upload.Dragger
+                        name="file"
+                        multiple={false}
+                        beforeUpload={handleUploadFile}
+                        showUploadList={false}
+                        disabled={uploadingFile}
+                        style={{ padding: '20px 0' }}
+                      >
+                        <p className="ant-upload-drag-icon">
+                          <InboxOutlined style={{ fontSize: 40, color: 'var(--primary)' }} />
+                        </p>
+                        <p className="ant-upload-text">Kéo thả file vào đây hoặc bấm để chọn tệp tài liệu</p>
+                        <p className="ant-upload-hint">Hỗ trợ PDF, PPTX, DOCX, ZIP... tối đa 50MB</p>
+                      </Upload.Dragger>
+                    </Card>
+
+                    <Table
+                      rowKey="id"
+                      dataSource={unitFiles}
+                      pagination={false}
+                      locale={{ emptyText: <Empty description="Chưa có tài liệu đính kèm nào." /> }}
+                      columns={[
+                        {
+                          title: 'Tên tài liệu',
+                          dataIndex: 'fileName',
+                          render: (name, row) => (
+                            <Space>
+                              <FilePdfOutlined style={{ color: '#ef4444', fontSize: 16 }} />
+                              <a href={`/api/courses/units/${lessonUnit?.id}/files/${row.id}`} download={name} target="_blank" rel="noreferrer">
+                                <b>{name}</b>
+                              </a>
+                            </Space>
+                          ),
+                        },
+                        {
+                          title: 'Kích thước',
+                          dataIndex: 'fileSize',
+                          width: 120,
+                          render: (bytes) => bytes ? `${(bytes / 1024).toFixed(1)} KB` : '—',
+                        },
+                        {
+                          title: 'Ngày tải lên',
+                          dataIndex: 'createdAt',
+                          width: 160,
+                          render: (d) => d ? new Date(d).toLocaleDateString('vi-VN') : '—',
+                        },
+                        {
+                          title: 'Thao tác',
+                          key: 'actions',
+                          width: 140,
+                          align: 'right',
+                          render: (_, row) => (
+                            <Space>
+                              <a href={`/api/courses/units/${lessonUnit?.id}/files/${row.id}`} download={row.fileName} target="_blank" rel="noreferrer">
+                                <Button size="small" icon={<DownloadOutlined />}>Tải về</Button>
+                              </a>
+                              <Popconfirm
+                                title="Xóa tài liệu này?"
+                                onConfirm={() => handleDeleteFile(row.id)}
+                                okText="Xóa"
+                                cancelText="Hủy"
+                                okButtonProps={{ danger: true }}
+                              >
+                                <Button size="small" danger icon={<DeleteOutlined />} />
+                              </Popconfirm>
+                            </Space>
+                          ),
+                        },
+                      ]}
+                    />
+                  </div>
+                ),
+              }
             ]}
           />
         )}

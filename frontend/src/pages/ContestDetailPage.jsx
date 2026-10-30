@@ -117,7 +117,8 @@ function SubmissionsTab({ subs, labels, showUser }) {
 
 export default function ContestDetailPage() {
   const { id } = useParams()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isLecturer } = useAuth()
+  const isStaff = isAdmin || isLecturer
   const { message } = App.useApp()
   const navigate = useNavigate()
   const now = useNow(1000)
@@ -127,8 +128,8 @@ export default function ContestDetailPage() {
   const contest = useFetch(() => api.getContest(id, user), [id, user])
   const standings = useFetch(() => api.contestStandings(id), [id])
   const subs = useFetch(
-    () => api.listSubmissions({ contestId: id, userId: isAdmin ? undefined : user.id }),
-    [id, user.id, isAdmin],
+    () => api.listSubmissions({ contestId: id, userId: isStaff ? undefined : user.id }),
+    [id, user.id, isStaff],
   )
   const c = contest.data
   const status = c ? liveStatus(c, now) : null
@@ -196,14 +197,14 @@ export default function ContestDetailPage() {
     }
   }
 
-  const canSolve = isAdmin || status === 'ENDED' || (status === 'RUNNING' && c.registered)
+  const canSolve = isStaff || status === 'ENDED' || (status === 'RUNNING' && c.registered)
   const myRow = standings.data?.rows.find((r) => r.userId === user.id)
 
   return (
     <div className="page">
       <Breadcrumb
         style={{ marginBottom: 12 }}
-        items={[{ title: <Link to={isAdmin ? '/admin/contests' : '/contests'}>Kỳ thi</Link> }, { title: c.title }]}
+        items={[{ title: <Link to={isStaff ? (isAdmin ? '/admin/contests' : '/teacher/contests') : '/contests'}>Kỳ thi</Link> }, { title: c.title }]}
       />
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -229,12 +230,12 @@ export default function ContestDetailPage() {
           </div>
           <div style={{ display: 'grid', gap: 10, justifyItems: 'end' }}>
             <ContestClock contest={c} />
-            {!isAdmin && !c.registered && status === 'UPCOMING' && (
+            {!isStaff && !c.registered && status === 'UPCOMING' && (
               <Button type="primary" size="large" loading={registering} onClick={register}>
                 Đăng ký tham gia
               </Button>
             )}
-            {!isAdmin && c.registered && status === 'UPCOMING' && (
+            {!isStaff && c.registered && status === 'UPCOMING' && (
               <Popconfirm
                 title="Hủy đăng ký kỳ thi?"
                 description="Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu."
@@ -252,7 +253,7 @@ export default function ContestDetailPage() {
         </div>
       </Card>
 
-      {status === 'RUNNING' && !c.registered && !isAdmin && (
+      {status === 'RUNNING' && !c.registered && !isStaff && (
         <Card size="small" style={{ marginBottom: 16 }}>
           <Typography.Text type="warning">Bạn cần đăng ký để xem đề và nộp bài trong kỳ thi này.</Typography.Text>
         </Card>
@@ -267,7 +268,7 @@ export default function ContestDetailPage() {
               key: 'problems',
               label: 'Đề bài',
               children:
-                status === 'RUNNING' && !c.registered && !isAdmin ? (
+                status === 'RUNNING' && !c.registered && !isStaff ? (
                   <Empty description="Đăng ký để xem đề bài" />
                 ) : (
                   <ProblemsTab contest={c} status={status} mySubs={subs.data || []} canSolve={canSolve} />
@@ -289,9 +290,9 @@ export default function ContestDetailPage() {
             {
               key: 'subs',
               label: 'Bài nộp',
-              children: <SubmissionsTab subs={subs.data || []} labels={labels} showUser={isAdmin} />,
+              children: <SubmissionsTab subs={subs.data || []} labels={labels} showUser={isStaff} />,
             },
-            ...(isAdmin
+            ...(isStaff
               ? [
                   {
                     key: 'proctor',

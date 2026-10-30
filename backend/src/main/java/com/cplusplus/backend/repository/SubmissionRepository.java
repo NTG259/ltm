@@ -171,7 +171,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
               and (:verdict is null or s.verdict = :verdict)
               and (
                   (:hasClasses = true and (
-                      exists (select 1 from ClassroomStudent cs where cs.classroom.id in :classroomIds and cs.user.id = u.id)
+                      (s.contest is null and exists (select 1 from ClassroomStudent cs where cs.classroom.id in :classroomIds and cs.user.id = u.id))
                       or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id in :classroomIds and cc.contest.id = s.contest.id))
                   ))
                   or (s.contest is not null and s.contest.createdBy.id = :lecturerId)
@@ -190,7 +190,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
               and (:verdict is null or s.verdict = :verdict)
               and (
                   (:hasClasses = true and (
-                      exists (select 1 from ClassroomStudent cs where cs.classroom.id in :classroomIds and cs.user.id = u.id)
+                      (s.contest is null and exists (select 1 from ClassroomStudent cs where cs.classroom.id in :classroomIds and cs.user.id = u.id))
                       or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id in :classroomIds and cc.contest.id = s.contest.id))
                   ))
                   or (s.contest is not null and s.contest.createdBy.id = :lecturerId)
@@ -220,7 +220,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
               and (:contestId is null or s.contest.id = :contestId)
               and (:verdict is null or s.verdict = :verdict)
               and (
-                  exists (select 1 from ClassroomStudent cs where cs.classroom.id = :classroomId and cs.user.id = u.id)
+                  (s.contest is null and exists (select 1 from ClassroomStudent cs where cs.classroom.id = :classroomId and cs.user.id = u.id))
                   or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id = :classroomId and cc.contest.id = s.contest.id))
               )
             order by s.id desc
@@ -236,7 +236,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
               and (:contestId is null or s.contest.id = :contestId)
               and (:verdict is null or s.verdict = :verdict)
               and (
-                  exists (select 1 from ClassroomStudent cs where cs.classroom.id = :classroomId and cs.user.id = u.id)
+                  (s.contest is null and exists (select 1 from ClassroomStudent cs where cs.classroom.id = :classroomId and cs.user.id = u.id))
                   or (s.contest is not null and exists (select 1 from ClassroomContest cc where cc.classroom.id = :classroomId and cc.contest.id = s.contest.id))
               )
             """)
@@ -248,24 +248,26 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
                 SELECT 1 FROM submissions s
                 WHERE s.id = :submissionId
                   AND (
-                      EXISTS (
+                      (s.contest_id IS NULL AND EXISTS (
                           SELECT 1 FROM classroom_students cs
                           JOIN classrooms c ON c.id = cs.classroom_id
                           WHERE cs.user_id = s.user_id
                             AND (c.created_by = :lecturerId OR c.lecturer_id = :lecturerId
                                  OR EXISTS (SELECT 1 FROM classroom_lecturers cl WHERE cl.classroom_id = c.id AND cl.user_id = :lecturerId))
-                      )
-                      OR EXISTS (
-                          SELECT 1 FROM classroom_contests cc
-                          JOIN classrooms c ON c.id = cc.classroom_id
-                          WHERE cc.contest_id = s.contest_id
-                            AND (c.created_by = :lecturerId OR c.lecturer_id = :lecturerId
-                                 OR EXISTS (SELECT 1 FROM classroom_lecturers cl WHERE cl.classroom_id = c.id AND cl.user_id = :lecturerId))
-                      )
-                      OR EXISTS (
-                          SELECT 1 FROM contests ct
-                          WHERE ct.id = s.contest_id AND ct.created_by = :lecturerId
-                      )
+                      ))
+                      OR (s.contest_id IS NOT NULL AND (
+                          EXISTS (
+                              SELECT 1 FROM classroom_contests cc
+                              JOIN classrooms c ON c.id = cc.classroom_id
+                              WHERE cc.contest_id = s.contest_id
+                                AND (c.created_by = :lecturerId OR c.lecturer_id = :lecturerId
+                                     OR EXISTS (SELECT 1 FROM classroom_lecturers cl WHERE cl.classroom_id = c.id AND cl.user_id = :lecturerId))
+                          )
+                          OR EXISTS (
+                              SELECT 1 FROM contests ct
+                              WHERE ct.id = s.contest_id AND ct.created_by = :lecturerId
+                          )
+                      ))
                   )
             )
             """, nativeQuery = true)

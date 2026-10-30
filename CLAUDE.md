@@ -95,7 +95,7 @@ Master (Spring Boot, backend/)
 
 **`judgement/` directory** — The upstream [go-judge](https://github.com/criyle/go-judge) Go source code kept as a reference. Not built or used directly; `go-judge-custom/` is the live container.
 
-**Frontend (`frontend/`)** — React 19 + Vite + Ant Design 6 + Monaco Editor. Source files are `.jsx`/`.js` (not TypeScript). No Redux; state in components and context. All API calls go through `frontend/src/api/index.js`, which exports either `mockApi` (via `mock/engine.js` and `mock/data.js`) or `realApi`, selected by `VITE_USE_MOCK`. Two roles: contestant and admin.
+**Frontend (`frontend/`)** — React 19 + Vite + Ant Design 6 + Monaco Editor. Source files are `.jsx`/`.js` (not TypeScript). No Redux; state in components and context. All API calls go through `frontend/src/api/index.js` which connects 100% to real backend REST endpoints and WebSocket RFC 6455. Three roles: student, lecturer, and admin.
 
 ### Queue and Dispatch (V11+)
 

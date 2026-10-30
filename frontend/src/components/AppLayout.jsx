@@ -15,6 +15,7 @@ import {
   UsergroupAddOutlined,
   SunOutlined,
   MoonOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
@@ -50,12 +51,15 @@ export default function AppLayout() {
           { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
           { key: '/admin/courses', icon: <BookOutlined />, label: <Link to="/admin/courses">Khóa học</Link> },
           { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
+          { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> },
         ]
       : [
           { key: '/problems', icon: <CodeOutlined />, label: <Link to="/problems">Bài tập</Link> },
+          { key: '/courses', icon: <BookOutlined />, label: <Link to="/courses">Khóa học</Link> },
           { key: '/contests', icon: <FlagOutlined />, label: <Link to="/contests">Kỳ thi</Link> },
           { key: '/submissions', icon: <OrderedListOutlined />, label: <Link to="/submissions">Bài nộp</Link> },
           { key: '/my-classrooms', icon: <TeamOutlined />, label: <Link to="/my-classrooms">Lớp học</Link> },
+          { key: '/leaderboard', icon: <TrophyOutlined />, label: <Link to="/leaderboard">Xếp hạng</Link> },
         ]),
   ]
   const selected =
@@ -170,12 +174,12 @@ export default function AppLayout() {
                   ),
                 },
                 { type: 'divider' },
-                ...(!isAdmin ? [{
+                {
                   key: 'change-password',
                   icon: <KeyOutlined />,
                   label: 'Đổi mật khẩu',
                   onClick: () => navigate('/change-password'),
-                }] : []),
+                },
                 {
                   key: 'logout',
                   icon: <LogoutOutlined />,

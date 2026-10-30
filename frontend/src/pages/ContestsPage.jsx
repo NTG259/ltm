@@ -10,12 +10,13 @@ import ContestClock from '../components/ContestClock'
 
 function ContestCard({ contest: c, status, onRegister, registering }) {
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isLecturer } = useAuth()
+  const isStaff = isAdmin || isLecturer
   const open = () => navigate(`/contests/${c.id}`)
 
   let action
   if (status === 'ENDED') action = <Button onClick={open}>Xem kết quả</Button>
-  else if (isAdmin) action = <Button onClick={open}>Theo dõi</Button>
+  else if (isStaff) action = <Button onClick={open}>{status === 'RUNNING' ? 'Giám sát' : 'Theo dõi'}</Button>
   else if (!c.registered)
     action = (
       <Button type="primary" loading={registering} onClick={() => onRegister(c)}>

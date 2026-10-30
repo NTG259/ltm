@@ -160,7 +160,7 @@ export default function ProblemsPage() {
                     {p.title}
                   </Link>
                   <div style={{ marginTop: 4 }}>
-                    {p.tags.map((t) => (
+                    {(p.tags || []).map((t) => (
                       <Tag key={t} variant="filled" style={{ fontSize: 11 }}>
                         {t}
                       </Tag>

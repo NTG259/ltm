@@ -38,7 +38,7 @@ public class ProblemController {
             @RequestParam(required = false, defaultValue = "20") int size,
             HttpServletRequest req) {
         User currentUser = req != null ? (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR) : null;
-        boolean isAdmin = currentUser != null && currentUser.isAdmin();
+        boolean isAdmin = currentUser != null && currentUser.isAdminOrLecturer();
 
         Map<Long, ProblemRepository.Stats> statsMap = problemRepository.findAllStats().stream()
                 .collect(Collectors.toMap(ProblemRepository.Stats::getProblemId, s -> s));
@@ -78,7 +78,7 @@ public class ProblemController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getProblem(@PathVariable Long id, HttpServletRequest req) {
         User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        boolean isAdmin = currentUser != null && currentUser.isAdmin();
+        boolean isAdmin = currentUser != null && currentUser.isAdminOrLecturer();
 
         Problem problem = problemRepository.findWithTestCases(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập #" + id));

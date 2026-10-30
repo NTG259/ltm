@@ -8,6 +8,7 @@ import { buildTheme, ThemeModeContext } from './theme'
 import AppLayout from './components/AppLayout'
 import TeacherLayout from './components/TeacherLayout'
 import LoginPage from './pages/LoginPage'
+import ErrorBoundary from './components/ErrorBoundary'
 
 const ProblemsPage = lazy(() => import('./pages/ProblemsPage'))
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'))
@@ -19,6 +20,9 @@ const ContestDetailPage = lazy(() => import('./pages/ContestDetailPage'))
 const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
 const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
+const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'))
+const AdminLecturersPage = lazy(() => import('./pages/admin/AdminLecturersPage'))
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const AdminProblemsPage = lazy(() => import('./pages/admin/AdminProblemsPage'))
 const AdminClassroomsPage = lazy(() => import('./pages/admin/AdminClassroomsPage'))
 const AdminClassroomDetailPage = lazy(() => import('./pages/admin/AdminClassroomDetailPage'))
@@ -59,8 +63,9 @@ function AppRoutes() {
   const { user, isAdmin, isLecturer } = useAuth()
   const home = !user ? '/login' : isAdmin ? '/admin' : isLecturer ? '/teacher/classrooms' : '/problems'
   return (
-    <Suspense fallback={<Spin style={{ display: 'block', margin: 80 }} />}>
-      <Routes>
+    <ErrorBoundary>
+      <Suspense fallback={<Spin style={{ display: 'block', margin: 80 }} />}>
+        <Routes>
         <Route path="/login" element={user ? <Navigate to={home} replace /> : <LoginPage />} />
         <Route
           element={
@@ -69,6 +74,7 @@ function AppRoutes() {
             </RequireAuth>
           }
         >
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/courses" element={<CourseListPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
@@ -88,6 +94,22 @@ function AppRoutes() {
             element={
               <RequireAuth admin>
                 <AdminDashboardPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/overview"
+            element={
+              <RequireAuth admin>
+                <AdminOverviewPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/lecturers"
+            element={
+              <RequireAuth admin>
+                <AdminLecturersPage />
               </RequireAuth>
             }
           />
@@ -174,18 +196,20 @@ function AppRoutes() {
         >
           <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
           <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
-          <Route path="/teacher/problems" element={<TeacherProblemsPage />} />
+          <Route path="/teacher/problems" element={<AdminProblemsPage teacher />} />
           <Route path="/teacher/courses" element={<AdminCoursesPage teacher />} />
           <Route path="/teacher/courses/:id" element={<AdminCourseEditPage teacher />} />
-          <Route path="/teacher/contests" element={<TeacherContestsPage />} />
+          <Route path="/teacher/contests" element={<AdminContestsPage teacher />} />
           <Route path="/teacher/submissions" element={<SubmissionsPage teacher />} />
           <Route path="/teacher/submissions/:id" element={<SubmissionDetailPage />} />
           <Route path="/teacher/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage teacher />} />
           <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/teacher/change-password" element={<ChangePasswordPage />} />
         </Route>
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   )
 }
 

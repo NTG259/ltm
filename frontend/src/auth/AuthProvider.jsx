@@ -1,9 +1,17 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, getStoredSession, storeSession } from '../api'
 import { AuthContext } from './context'
 
 export default function AuthProvider({ children }) {
   const [session, setSession] = useState(getStoredSession)
+
+  useEffect(() => {
+    const handleSessionChange = () => {
+      setSession(getStoredSession())
+    }
+    window.addEventListener('cj:session-change', handleSessionChange)
+    return () => window.removeEventListener('cj:session-change', handleSessionChange)
+  }, [])
 
   const login = useCallback(async (payload) => {
     const s = await api.login(payload)
@@ -27,6 +35,7 @@ export default function AuthProvider({ children }) {
     () => ({
       user: session?.user ?? null,
       isAdmin: session?.user?.role === 'admin',
+      isLecturer: session?.user?.role === 'lecturer',
       login,
       logout,
     }),

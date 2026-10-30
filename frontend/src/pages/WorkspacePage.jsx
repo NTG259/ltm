@@ -29,7 +29,7 @@ import {
   SafetyCertificateOutlined,
   WarningOutlined,
 } from '@ant-design/icons'
-import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useLiveSubmission, useNow, useSocket } from '../lib/hooks'
@@ -87,7 +87,7 @@ function Statement({ problem }) {
         <span>Thời gian: <b>{problem.timeLimitMs / 1000} s</b></span>
         <span>Bộ nhớ: <b>{problem.memoryLimitMb} MB</b></span>
         <span>
-          {problem.tags.map((t) => (
+          {(problem.tags || []).map((t) => (
             <Tag key={t} variant="filled" style={{ marginInlineEnd: 4 }}>{t}</Tag>
           ))}
         </span>
@@ -97,7 +97,7 @@ function Statement({ problem }) {
       <Rich text={problem.inputSpec} />
       <h3>Kết quả</h3>
       <Rich text={problem.outputSpec} />
-      {problem.samples.map((s, i) => (
+      {(problem.samples || []).map((s, i) => (
         <div key={i}>
           <h3>Ví dụ {i + 1}</h3>
           <div className="io-grid">
@@ -369,7 +369,7 @@ export function Workspace({ id, contest, label }) {
   const { message, modal } = App.useApp()
   const navigate = useNavigate()
   const { data: problem, error, loading } = useFetch(() => api.getProblem(id), [id])
-  const [code, setCode] = useState(() => readDraft(id, user.id) ?? STARTER_CODE)
+  const [code, setCode] = useState(() => readDraft(id, user?.id) ?? STARTER_CODE)
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
   const [submitting, setSubmitting] = useState(false)
   const [activeId, setActiveId] = useState(null)
@@ -386,18 +386,15 @@ export function Workspace({ id, contest, label }) {
   const { sub: active } = useLiveSubmission(activeId)
   const now = useNow(1000)
   const leaving = useRef(false)
-  const examActive = !!contest && user.role === 'student' && now >= contest.startAt && now < contest.endAt
-  const blocker = useBlocker(({ nextLocation }) =>
-    examActive && !leaving.current &&
-    !contest.problems.some((p) => nextLocation.pathname === `/contests/${contest.id}/problems/${p.label}`),
-  )
+  const examActive = !!contest && user?.role === 'student' && now >= contest.startAt && now < contest.endAt
+
 
   useEffect(() => {
     if (!examActive) return
     const warn = (event) => {
       if (leaving.current) return
       try {
-        localStorage.setItem(draftKey(id, user.id), code)
+        if (user?.id) localStorage.setItem(draftKey(id, user.id), code)
       } catch { /* Vẫn cảnh báo nếu bộ nhớ trình duyệt đầy. */ }
       event.preventDefault()
       event.returnValue = ''
@@ -413,18 +410,9 @@ export function Workspace({ id, contest, label }) {
       window.removeEventListener('beforeunload', warn)
       window.removeEventListener('cj:before-logout', preventLogout)
     }
-  }, [examActive, code, id, user.id, message])
+  }, [examActive, code, id, user?.id, message])
 
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return
-    const dialog = modal.warning({
-      title: 'Bạn đang làm bài thi',
-      content: 'Hãy bấm “Hoàn thành” trong phòng thi trước khi rời trang. Chuyển tab hoặc ứng dụng khác sẽ được ghi nhận là vi phạm.',
-      okText: 'Tiếp tục làm bài',
-      onOk: () => blocker.reset(),
-    })
-    return () => dialog.destroy()
-  }, [blocker, modal])
+
 
   const finishExam = () => modal.confirm({
     title: 'Hoàn thành và rời phòng thi?',
@@ -433,7 +421,7 @@ export function Workspace({ id, contest, label }) {
     cancelText: 'Tiếp tục làm bài',
     onOk: () => {
       try {
-        localStorage.setItem(draftKey(id, user.id), code)
+        if (user?.id) localStorage.setItem(draftKey(id, user.id), code)
       } catch {
         message.error('Không lưu được bản nháp. Hãy nộp bài trước khi hoàn thành.')
         return Promise.reject(new Error('Không lưu được bản nháp'))
@@ -447,19 +435,19 @@ export function Workspace({ id, contest, label }) {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      try { localStorage.setItem(draftKey(id, user.id), code) } catch { /* ignore */ }
+      try { if (user?.id) localStorage.setItem(draftKey(id, user.id), code) } catch { /* ignore */ }
     }, 400)
     return () => clearTimeout(t)
-  }, [code, id, user.id])
+  }, [code, id, user?.id])
 
   useSocket(
     useCallback(
       (msg) => {
-        if (msg.type === 'SUBMISSION_UPDATE' && msg.submission.userId === user.id && msg.submission.status === 'FINISHED') {
+        if (msg.type === 'SUBMISSION_UPDATE' && msg.submission?.userId === user?.id && msg.submission.status === 'FINISHED') {
           setRefreshKey((k) => k + 1)
         }
       },
-      [user.id],
+      [user?.id],
     ),
   )
 
@@ -568,7 +556,7 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
           <>
             <span className="title"><span className="mono muted">#{problem.id}</span> {problem.title}</span>
             <span className={`diff-pill diff-pill-${problem.difficulty}`} style={{ margin: 0 }}>
-              {DIFFICULTIES[problem.difficulty].label}
+              {DIFFICULTIES[problem?.difficulty]?.label || problem?.difficulty || 'Dễ'}
             </span>
           </>
         )}
@@ -624,7 +612,7 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
               ) : (
                 <MySubmissions
                   problemId={problem.id}
-                  userId={user.id}
+                  userId={user?.id}
                   contestId={contest?.id}
                   refreshKey={refreshKey}
                   onPick={(sid) => {

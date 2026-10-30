@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -45,6 +47,26 @@ public class CourseUnitFileController {
         this.courseUnitRepository = courseUnitRepository;
         this.courseUnitFileRepository = courseUnitFileRepository;
         this.uploadDir = Paths.get(uploadDirStr).toAbsolutePath().normalize();
+    }
+
+    @GetMapping
+    public ResponseEntity<?> listFiles(@PathVariable Long unitId, HttpServletRequest req) {
+        User user = currentUser(req);
+        if (user == null) return unauthorized();
+        CourseUnit unit = courseUnitRepository.findById(unitId).orElse(null);
+        if (unit == null) return ResponseEntity.notFound().build();
+
+        List<CourseUnitFile> files = courseUnitFileRepository.findByUnitIdOrderByOrderIndexAsc(unitId);
+        List<Map<String, Object>> result = files.stream().map(f -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", f.getId());
+            map.put("filename", f.getFilename());
+            map.put("fileSize", f.getFileSize() != null ? f.getFileSize() : 0L);
+            map.put("orderIndex", f.getOrderIndex());
+            map.put("createdAt", f.getUploadedAt() != null ? f.getUploadedAt().toEpochMilli() : null);
+            return map;
+        }).toList();
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

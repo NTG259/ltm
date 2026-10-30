@@ -46,7 +46,7 @@ export default function MyClassroomsPage() {
       width: 130,
       render: (_, r) => (
         <Link to={`/classrooms/${r.id}`}>
-          <Button size="small" icon={<ArrowRightOutlined />}>Xem kỳ thi</Button>
+          <Button type="primary" size="small" icon={<ArrowRightOutlined />}>Vào lớp học</Button>
         </Link>
       ),
     },
@@ -58,7 +58,7 @@ export default function MyClassroomsPage() {
       <Card>
         <Space direction="vertical" style={{ width: '100%' }} size={0}>
           <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
-            Bấm vào tên lớp hoặc "Xem kỳ thi" để xem danh sách kỳ thi trong lớp.
+            Bấm vào lớp học để xem bài giảng, tài liệu khóa học và các kỳ thi của lớp.
           </Typography.Text>
           <Table
             rowKey="id"
