@@ -1,5 +1,13 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
-const WS_URL = import.meta.env.VITE_WS_URL || `ws://${window.location.hostname}:8001`
+const getWsUrl = () => {
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
+  if (typeof window === 'undefined') return 'ws://localhost:18001'
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.hostname
+  const port = window.location.port === '18080' || window.location.port === '5173' ? 18001 : (window.location.port || 8001)
+  return `${protocol}//${host}:${port}`
+}
+const WS_URL = getWsUrl()
 const TOKEN_KEY = 'cj.token'
 const USER_KEY = 'cj.user'
 

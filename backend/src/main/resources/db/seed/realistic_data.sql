@@ -17,9 +17,9 @@ INSERT INTO demo_classes VALUES
  (5,'D23CQCN02-B · Cấu trúc dữ liệu','gv.lan','Trần Ngọc Lan'),
  (6,'CLB Olympic Tin học · Nhóm nâng cao','gv.hung','Lê Mạnh Hùng');
 
-INSERT INTO users(username,full_name,role,password_hash,created_at)
-SELECT DISTINCT d.teacher,d.full_name,'ADMIN',
- '$2a$10$HEDAKlQqJpiB6BsR1w1Y2unKqDEKSM7Czn1eZZfvTUasGRZBVhtfO',now()-interval '60 days'
+INSERT INTO users(username,full_name,role,password_hash,initial_password,created_at)
+SELECT DISTINCT d.teacher,d.full_name,'LECTURER',
+ '$2a$10$HEDAKlQqJpiB6BsR1w1Y2unKqDEKSM7Czn1eZZfvTUasGRZBVhtfO','admin123',now()-interval '60 days'
 FROM demo_classes d WHERE NOT EXISTS (SELECT 1 FROM users u WHERE upper(u.username)=upper(d.teacher));
 
 INSERT INTO users(username,full_name,role,password_hash,created_at)
@@ -41,7 +41,7 @@ SELECT c.id,u.id,now()-interval '45 days'
 FROM demo_classes d JOIN classrooms c ON c.name=d.name AND c.semester='HK1/2026-2027'
 JOIN users u ON u.username ~ '^B24DCCN[0-9]{3}$'
  AND substring(u.username from 8)::int BETWEEN 101+(d.n-1)*30 AND 130+(d.n-1)*30
-ON CONFLICT (user_id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 CREATE TEMP TABLE demo_exams(n int,label text,starts timestamptz,ends timestamptz) ON COMMIT DROP;
 INSERT INTO demo_exams VALUES
@@ -127,4 +127,23 @@ AND NOT EXISTS (SELECT 1 FROM submission_events e WHERE e.submission_id=s.id AND
 UPDATE users SET password_hash='$2a$10$HEDAKlQqJpiB6BsR1w1Y2unKqDEKSM7Czn1eZZfvTUasGRZBVhtfO'
 WHERE password_hash IS NULL AND username IN
  ('B20DCCN001','B20DCCN014','B20DCCN027','B20DCCN033','B20DCCN048','B20DCCN052','B20DCCN069','B20DCCN075');
+
+INSERT INTO classroom_lecturers(classroom_id, user_id, assigned_at)
+SELECT c.id, u.id, now() - interval '45 days'
+FROM demo_classes d
+JOIN classrooms c ON c.name = d.name AND c.semester = 'HK1/2026-2027'
+JOIN users u ON u.username = d.teacher
+ON CONFLICT DO NOTHING;
+
+UPDATE classrooms c
+SET lecturer_id = u.id
+FROM demo_classes d
+JOIN users u ON u.username = d.teacher
+WHERE c.name = d.name AND c.semester = 'HK1/2026-2027' AND c.lecturer_id IS NULL;
+
+INSERT INTO users (username, full_name, role, password_hash, initial_password)
+SELECT 'GV001', 'Giảng viên mẫu', 'LECTURER',
+       '$2a$10$DGCyct6YxT0BMVh5Sds7hu2NhzXQhwOEWMnewxCvX36.kh/n5pBZq', 'gv123456'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE upper(username) = 'GV001');
+
 COMMIT;
