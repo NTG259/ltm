@@ -92,20 +92,8 @@ public class CourseProgressService {
      */
     @Transactional(readOnly = true)
     public boolean isUnitLocked(User user, CourseUnit unit) {
-        if (user.isAdmin()) return false;
-        List<CourseUnit> siblings = courseUnitRepository.findByCourseIdOrderByOrderIndexAsc(unit.getCourse().getId());
-        int idx = -1;
-        for (int i = 0; i < siblings.size(); i++) {
-            if (siblings.get(i).getId().equals(unit.getId())) {
-                idx = i;
-                break;
-            }
-        }
-        if (idx <= 0) return false; // first unit or not found → always unlocked
-        CourseUnit prev = siblings.get(idx - 1);
-        return progressRepository.findByUserIdAndUnitId(user.getId(), prev.getId())
-                .map(p -> !p.isCompleted())
-                .orElse(true); // no progress record → locked
+        // Bỏ khóa tuần tự để tránh phụ thuộc giữa các chủ đề
+        return false;
     }
 
     /**

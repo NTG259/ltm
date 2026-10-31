@@ -90,18 +90,12 @@ public class CourseController {
         Map<String, Object> progress = courseProgressService.getCourseProgress(user, id);
         map.put("progress", progress);
 
-        // Mark units locked/unlocked (sequential unlock; admins bypass)
-        if (!user.isAdmin()) {
-            @SuppressWarnings("unchecked")
-            List<Long> completedIds = (List<Long>) progress.get("completedUnitIds");
-            Set<Long> completedSet = completedIds != null ? new HashSet<>(completedIds) : Set.of();
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> units = (List<Map<String, Object>>) map.get("units");
-            if (units != null) {
-                for (int i = 0; i < units.size(); i++) {
-                    boolean locked = i > 0 && !completedSet.contains((Long) units.get(i - 1).get("id"));
-                    units.get(i).put("locked", locked);
-                }
+        // Bỏ khóa tuần tự: các chủ đề luôn mở để học viên tự do truy cập, chỉ tính % tiến độ
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> units = (List<Map<String, Object>>) map.get("units");
+        if (units != null) {
+            for (Map<String, Object> u : units) {
+                u.put("locked", false);
             }
         }
 
@@ -329,9 +323,7 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Khóa học chưa được công khai"));
         }
 
-        if (!isCourseOwner(unit.getCourse(), user) && courseProgressService.isUnitLocked(user, unit)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Bạn cần hoàn thành chủ đề trước để mở khóa chủ đề này"));
-        }
+// Bỏ chặn truy cập bài học theo chủ đề
 
         Optional<CourseLesson> lessonOpt = courseLessonRepository.findByUnitId(unitId);
         if (lessonOpt.isPresent()) {
@@ -471,10 +463,7 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
         }
         CourseUnit unit = unitOpt.get();
-        if (courseProgressService.isUnitLocked(user, unit)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Hãy hoàn thành chủ đề trước để mở khóa chủ đề này"));
-        }
+// Bỏ chặn đánh dấu tiến độ theo chủ đề
 
         boolean completed = courseProgressService.toggleUnitProgress(user, unitId);
         return ResponseEntity.ok(Map.of("unitId", unitId, "completed", completed));

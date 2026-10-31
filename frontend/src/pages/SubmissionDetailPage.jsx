@@ -6,6 +6,7 @@ import { useLiveSubmission } from '../lib/hooks'
 import { formatClock, formatDateTime } from '../lib/format'
 import CodeEditor from '../components/CodeEditor'
 import TestResults from '../components/TestResults'
+import VerdictTag from '../components/VerdictTag'
 
 const HISTORY_COLOR = {
   IN_QUEUE: 'gray',
@@ -49,22 +50,34 @@ export default function SubmissionDetailPage() {
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Space size={12}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(returnPath)}>
-            Quay lại danh sách bài nộp
-          </Button>
-          <Breadcrumb
-            items={[
-              { title: <Link to={returnPath}>Danh sách bài nộp</Link> },
-              { title: <span className="mono">#{s.id}</span> },
-            ]}
-          />
-        </Space>
+      <div style={{ marginBottom: 16 }}>
+        <Breadcrumb
+          style={{ marginBottom: 10 }}
+          items={[
+            { title: <Link to={returnPath}>Danh sách bài nộp</Link> },
+            { title: <span className="mono">Bài nộp #{s.id}</span> },
+          ]}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <Space size={12} align="center">
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(returnPath)}>
+              Quay lại
+            </Button>
+            <Typography.Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>Bài nộp #{s.id}</span>
+              <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>·</span>
+              <Link to={`/problems/${s.problemId}`} style={{ color: 'inherit' }}>
+                #{s.problemId}. {s.problemTitle}
+              </Link>
+            </Typography.Title>
+          </Space>
+          <VerdictTag submission={s} size="large" full />
+        </div>
       </div>
+
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             {(s.tests?.length > 0 || ['CE', 'SEC'].includes(s.verdict)) && (
               <Card title="Test case">
                 <TestResults submission={s} />
@@ -116,8 +129,9 @@ export default function SubmissionDetailPage() {
             </Card>
           </Space>
         </Col>
+
         <Col xs={24} lg={8}>
-          <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
             <Card title="Thông tin">
               <Descriptions
                 column={1}
@@ -128,7 +142,7 @@ export default function SubmissionDetailPage() {
                     label: 'Đề bài',
                     children: (
                       <span>
-                        #{s.problemId} {s.problemTitle}{' '}
+                        #{s.problemId} · {s.problemTitle}{' '}
                         <Link to={`/problems/${s.problemId}`} target="_blank" style={{ fontSize: 12, marginLeft: 6 }}>
                           [Xem đề ↗]
                         </Link>
@@ -140,47 +154,52 @@ export default function SubmissionDetailPage() {
                     label: 'Thí sinh',
                     children: (
                       <span>
-                        {s.userName}{' '}
-                        <Typography.Text type="secondary" className="mono">
-                          ({s.userId})
-                        </Typography.Text>
+                        {s.userName || s.userId}
+                        {s.userName && s.userName !== s.userId && (
+                          <Typography.Text type="secondary" className="mono" style={{ marginLeft: 6 }}>
+                            ({s.userId})
+                          </Typography.Text>
+                        )}
                       </span>
                     ),
                   },
-                  { key: 'l', label: 'Ngôn ngữ', children: <span className="mono">{s.language} · g++ -O2</span> },
+                  { key: 'l', label: 'Ngôn ngữ', children: <span className="mono">{s.language || 'cpp17'} · g++ -O2</span> },
                   { key: 'c', label: 'Nộp lúc', children: formatDateTime(s.createdAt) },
                 ]}
               />
             </Card>
-            <Card title="Dòng thời gian xử lý">
-              <Timeline
-                items={(s.history || [])
-                  .filter((h, i, arr) => !(h.status === 'TESTING' && arr[i + 1]?.status === 'TESTING'))
-                  .map((h, i) => ({
-                    key: i,
-                    color: HISTORY_COLOR[h.status] || 'gray',
-                    title: (
-                      <span className="mono" style={{ fontSize: 12 }}>
-                        {formatClock(h.time)}
-                      </span>
-                    ),
-                    content: (
-                      <div>
-                        <Typography.Text strong className="mono" style={{ fontSize: 12 }}>
-                          {h.status}
-                        </Typography.Text>
-                        {h.workerId && (
-                          <Typography.Text type="secondary" className="mono" style={{ fontSize: 12 }}>
-                            {' '}
-                            @ {h.workerId}
+
+            {(isAdmin || isLecturer) && (
+              <Card title="Dòng thời gian xử lý">
+                <Timeline
+                  items={(s.history || [])
+                    .filter((h, i, arr) => !(h.status === 'TESTING' && arr[i + 1]?.status === 'TESTING'))
+                    .map((h, i) => ({
+                      key: i,
+                      color: HISTORY_COLOR[h.status] || 'gray',
+                      title: (
+                        <span className="mono" style={{ fontSize: 12 }}>
+                          {formatClock(h.time)}
+                        </span>
+                      ),
+                      content: (
+                        <div>
+                          <Typography.Text strong className="mono" style={{ fontSize: 12 }}>
+                            {h.status}
                           </Typography.Text>
-                        )}
-                        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{h.note}</div>
-                      </div>
-                    ),
-                  }))}
-              />
-            </Card>
+                          {h.workerId && (
+                            <Typography.Text type="secondary" className="mono" style={{ fontSize: 12 }}>
+                              {' '}
+                              @ {h.workerId}
+                            </Typography.Text>
+                          )}
+                          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{h.note}</div>
+                        </div>
+                      ),
+                    }))}
+                />
+              </Card>
+            )}
           </Space>
         </Col>
       </Row>

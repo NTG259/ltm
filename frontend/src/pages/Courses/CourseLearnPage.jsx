@@ -123,13 +123,12 @@ export default function CourseLearnPage() {
     if (units.length === 0) return null
     if (unitId) {
       const found = units.find((u) => String(u.id) === String(unitId))
-      // Don't navigate to a locked unit; fall through to find unlocked one
-      if (found && !(found.locked && !isAdmin)) return found
+      if (found) return found
     }
-    // Nếu không có unitId trên URL (hoặc unit bị khóa), tìm bài đầu tiên chưa hoàn thành và chưa bị khóa
-    const firstAccessible = units.find((u) => !completedSet.has(u.id) && !(u.locked && !isAdmin))
-    return firstAccessible || units[0]
-  }, [units, unitId, completedSet, isAdmin])
+    // Nếu không có unitId trên URL, tìm bài đầu tiên chưa hoàn thành
+    const firstUncompleted = units.find((u) => !completedSet.has(u.id))
+    return firstUncompleted || units[0]
+  }, [units, unitId, completedSet])
 
   // Index của unit hiện tại
   const currentIndex = useMemo(() => {
@@ -193,10 +192,6 @@ export default function CourseLearnPage() {
   const [updatingProgress, setUpdatingProgress] = useState(false)
 
   const handleSelectUnit = (targetUnit) => {
-    if (targetUnit.locked && !isAdmin) {
-      message.warning('Hãy hoàn thành chủ đề trước để mở khóa chủ đề này.')
-      return
-    }
     setEditedCode(null)
     setEditedInput(null)
     setRunResult(null)
@@ -422,7 +417,6 @@ export default function CourseLearnPage() {
                 renderItem={(unit, index) => {
                   const isDone = completedSet.has(unit.id)
                   const isActive = currentUnit && unit.id === currentUnit.id
-                  const isLocked = !isAdmin && unit.locked === true
                   return (
                     <div
                       key={unit.id}
@@ -430,11 +424,10 @@ export default function CourseLearnPage() {
                       className={isDone && !isActive ? 'unit-item-completed' : ''}
                       style={{
                         padding: '12px 16px',
-                        cursor: isLocked ? 'not-allowed' : 'pointer',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 12,
-                        opacity: isLocked ? 0.55 : 1,
                         background: isActive
                           ? 'var(--primary-soft)'
                           : isDone
@@ -444,8 +437,6 @@ export default function CourseLearnPage() {
                           ? '4px solid var(--primary)'
                           : isDone
                           ? '4px solid #16a34a'
-                          : isLocked
-                          ? '4px solid var(--border)'
                           : '4px solid transparent',
                         borderBottom: '1px solid var(--border)',
                         transition: 'all 0.15s ease',
@@ -469,7 +460,7 @@ export default function CourseLearnPage() {
                           boxShadow: isDone ? '0 2px 6px rgba(22, 163, 74, 0.4)' : undefined,
                         }}
                       >
-                        {isDone ? <CheckCircleFilled style={{ fontSize: 15 }} /> : isLocked ? <LockOutlined style={{ fontSize: 13 }} /> : index + 1}
+                        {isDone ? <CheckCircleFilled style={{ fontSize: 15 }} /> : index + 1}
                       </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -494,11 +485,6 @@ export default function CourseLearnPage() {
                         {isDone && !isActive && (
                           <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2, fontWeight: 700 }}>
                             ✓ Đã hoàn thành
-                          </div>
-                        )}
-                        {isLocked && (
-                          <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>
-                            Hoàn thành bài trước để mở khóa
                           </div>
                         )}
                       </div>
@@ -637,14 +623,6 @@ export default function CourseLearnPage() {
                               <Button icon={<CopyOutlined />} onClick={handleCopyCode}>
                                 Sao chép code
                               </Button>
-                              <Link
-                                to="/playground"
-                                state={{ code: currentCode, input: currentInput }}
-                              >
-                                <Button icon={<ThunderboltOutlined />}>
-                                  Mở trong Playground đầy đủ
-                                </Button>
-                              </Link>
                             </Space>
                           </div>
                         }
