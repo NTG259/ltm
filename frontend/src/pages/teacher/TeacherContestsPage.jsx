@@ -59,13 +59,13 @@ export default function TeacherContestsPage() {
       <Card styles={{ body: { padding: 0 } }}>
         <Table rowKey="id" loading={contests.loading} dataSource={contests.data || []} pagination={false}
           columns={[
-            { title: 'Kỳ thi', render: (_, c) => <><Link to={`/contests/${c.id}`}><b>{c.title}</b></Link><div><Typography.Text type="secondary">{(c.problems || []).map((p) => p.label).join(' · ')}</Typography.Text></div></> },
+            { title: 'Kỳ thi', render: (_, c) => <><Link to={`/teacher/contests/${c.id}`}><b>{c.title}</b></Link><div><Typography.Text type="secondary">{(c.problems || []).map((p) => p.label).join(' · ')}</Typography.Text></div></> },
             { title: 'Lớp', dataIndex: 'classroomId', width: 170, render: (id) => classrooms.data?.find((c) => c.id === id)?.name || '—' },
             { title: 'Trạng thái', width: 125, render: (_, c) => { const status = liveStatus(c, now); return <Tag color={CONTEST_STATUS[status]?.color}>{CONTEST_STATUS[status]?.label || status}</Tag> } },
             { title: 'Bắt đầu', dataIndex: 'startAt', width: 170, render: formatDateTime },
             { title: 'Thời lượng', dataIndex: 'durationMin', width: 110, render: formatDuration },
             { title: '', width: 150, render: (_, c) => <Space>
-              <Link to={`/teacher/classrooms/${c.classroomId}/contests/${c.id}/monitor`}><Button size="small" icon={<TrophyOutlined />} aria-label="Kết quả" /></Link>
+              {c.classroomId ? <Link to={`/teacher/classrooms/${c.classroomId}/contests/${c.id}/monitor`}><Button size="small" icon={<TrophyOutlined />} title="Giám sát kỳ thi của lớp" aria-label="Kết quả" /></Link> : <Link to={`/teacher/contests/${c.id}`}><Button size="small" icon={<TrophyOutlined />} title="Giám sát phòng thi" aria-label="Kết quả" /></Link>}
               <Button size="small" icon={<EditOutlined />} onClick={() => open(c)} aria-label="Sửa" />
               <Popconfirm title="Xóa kỳ thi?" onConfirm={() => remove(c.id)} okButtonProps={{ danger: true }}>
                 <Button size="small" danger icon={<DeleteOutlined />} aria-label="Xóa" />

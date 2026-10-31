@@ -163,7 +163,7 @@ export default function AdminContestsPage({ teacher = false }) {
               title: 'Kỳ thi',
               render: (_, c) => (
                 <div>
-                  <Link to={`/contests/${c.id}`} style={{ fontWeight: 500 }}>
+                  <Link to={teacher ? `/teacher/contests/${c.id}` : `/admin/contests/${c.id}`} style={{ fontWeight: 500 }}>
                     {c.title}
                   </Link>
                   <div>
@@ -194,7 +194,7 @@ export default function AdminContestsPage({ teacher = false }) {
                   <Button
                     size="small"
                     icon={<EyeOutlined />}
-                    onClick={() => navigate(`/contests/${c.id}`)}
+                    onClick={() => navigate(teacher ? `/teacher/contests/${c.id}` : `/admin/contests/${c.id}`)}
                     aria-label="Theo dõi"
                   />
                   <Button size="small" icon={<EditOutlined />} onClick={() => setEditing(c)} aria-label="Sửa" />

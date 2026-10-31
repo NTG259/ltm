@@ -1,12 +1,12 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
-  App, Button, Empty, Modal, Select, Space, Spin, Table, Tag, Tabs,
-  Typography, Upload, Popconfirm, Input,
+  Alert, App, Button, Empty, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Spin, Table, Tag, Tabs,
+  Typography, Upload,
 } from 'antd'
 import {
   ArrowLeftOutlined, PlusOutlined, TrophyOutlined,
   FilePdfOutlined, UploadOutlined, DeleteOutlined, PlayCircleOutlined, KeyOutlined,
-  ReloadOutlined, SearchOutlined,
+  ReloadOutlined, SearchOutlined, UserAddOutlined, IdcardOutlined, UserOutlined, FileTextOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
@@ -31,6 +31,78 @@ function StudentsTab({ classroomId }) {
   const [resetTarget, setResetTarget] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [resetting, setResetting] = useState(false)
+
+  // State cho Modal thêm sinh viên thủ công / danh sách nhanh
+  const [addModalVisible, setAddModalVisible] = useState(false)
+  const [addMode, setAddMode] = useState('single')
+  const [adding, setAdding] = useState(false)
+  const [singleForm] = Form.useForm()
+  const [batchText, setBatchText] = useState('')
+
+  const parsedStudents = useMemo(() => {
+    if (!batchText.trim()) return []
+    return batchText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split(/[,;\t]/).map((p) => p.trim())
+        const sid = parts[0]?.toUpperCase()
+        const name = parts.slice(1).join(' ').trim() || sid
+        return sid ? { studentId: sid, fullName: name } : null
+      })
+      .filter(Boolean)
+  }, [batchText])
+
+  const handleAddSingle = async (values) => {
+    setAdding(true)
+    try {
+      const studentId = values.studentId.trim().toUpperCase()
+      const fullName = values.fullName.trim()
+      await api.addClassroomStudent(classroomId, { studentId, fullName })
+      message.success(`Đã thêm sinh viên ${studentId} (${fullName}) vào lớp`)
+      singleForm.resetFields()
+      setAddModalVisible(false)
+      refresh()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const handleAddBatch = async () => {
+    if (!batchText.trim()) {
+      message.warning('Vui lòng nhập hoặc dán danh sách sinh viên vào ô bên dưới')
+      return
+    }
+
+    if (parsedStudents.length === 0) {
+      message.warning('Không tìm thấy dòng nào hợp lệ (cần có MSSV)')
+      return
+    }
+
+    setAdding(true)
+    try {
+      const res = await api.addClassroomStudent(classroomId, { students: parsedStudents })
+      if (res.errors && res.errors.length > 0) {
+        message.warning(
+          `Đã thêm ${res.added} sinh viên. Có ${res.errors.length} lỗi:\n${res.errors.slice(0, 3).join(', ')}${
+            res.errors.length > 3 ? '...' : ''
+          }`,
+        )
+      } else {
+        message.success(`Đã thêm thành công ${res.added ?? parsedStudents.length} sinh viên vào lớp!`)
+      }
+      setBatchText('')
+      setAddModalVisible(false)
+      refresh()
+    } catch (e) {
+      message.error(e.message)
+    } finally {
+      setAdding(false)
+    }
+  }
 
   const handleImport = async (file) => {
     try {
@@ -77,27 +149,30 @@ function StudentsTab({ classroomId }) {
   }
 
   const columns = [
-    { title: 'MSSV', dataIndex: 'username', className: 'mono' },
+    { title: 'MSSV', dataIndex: 'username', className: 'mono', width: 140 },
     { title: 'Họ tên', dataIndex: 'fullName' },
     {
       title: 'Mật khẩu ban đầu',
       dataIndex: 'importedPassword',
-      render: (v) => v ? <span className="mono" style={{ color: 'var(--primary)' }}>{v}</span> : '—',
+      width: 160,
+      render: (v) => v ? <span className="mono" style={{ color: 'var(--primary)', fontWeight: 600 }}>{v}</span> : '—',
     },
     {
       title: 'Ngày thêm',
       dataIndex: 'joinedAt',
+      width: 130,
       render: (v) => new Date(v).toLocaleDateString('vi-VN'),
     },
     {
       title: '',
       width: 140,
+      align: 'right',
       render: (_, r) => (
         <Space size="small">
           <Button size="small" icon={<KeyOutlined />} onClick={() => openReset(r)} title="Đặt lại mật khẩu">
             Reset
           </Button>
-          <Popconfirm title="Xoá sinh viên này khỏi lớp?" onConfirm={() => handleRemove(r.userId)}>
+          <Popconfirm title="Xoá sinh viên này khỏi lớp?" onConfirm={() => handleRemove(r.userId)} okButtonProps={{ danger: true }}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -107,16 +182,188 @@ function StudentsTab({ classroomId }) {
 
   return (
     <div style={{ padding: 20 }}>
-      <Space style={{ marginBottom: 12 }}>
+      <Space style={{ marginBottom: 16 }}>
+        <Button
+          type="primary"
+          icon={<UserAddOutlined />}
+          onClick={() => {
+            singleForm.resetFields()
+            setAddModalVisible(true)
+          }}
+        >
+          Thêm sinh viên
+        </Button>
         <Upload accept=".csv" beforeUpload={handleImport} showUploadList={false}>
           <Button icon={<UploadOutlined />}>Import CSV</Button>
         </Upload>
       </Space>
+
       {!loading && (!students || students.length === 0) ? (
-        <Empty description="Chưa có sinh viên. Import file CSV (mssv,password) để thêm." />
+        <Empty description="Chưa có sinh viên trong lớp. Nhấn 'Thêm sinh viên' hoặc 'Import CSV' để thêm." />
       ) : (
-        <Table rowKey="userId" columns={columns} dataSource={students || []} loading={loading} pagination={false} size="small" />
+        <Table rowKey="userId" columns={columns} dataSource={students || []} loading={loading} pagination={{ pageSize: 20 }} size="small" />
       )}
+
+      {/* Modal Thêm sinh viên thủ công / danh sách nhanh */}
+      <Modal
+        title={
+          <Space>
+            <UserAddOutlined style={{ color: '#4f46e5' }} />
+            <span>Thêm sinh viên vào lớp</span>
+          </Space>
+        }
+        open={addModalVisible}
+        onCancel={() => setAddModalVisible(false)}
+        footer={null}
+        destroyOnClose
+        centered
+        width={540}
+      >
+        <Segmented
+          block
+          value={addMode}
+          onChange={setAddMode}
+          style={{ marginBottom: 20 }}
+          options={[
+            { value: 'single', label: 'Thêm từng sinh viên', icon: <UserOutlined /> },
+            { value: 'batch', label: 'Dán danh sách nhanh (Paste)', icon: <FileTextOutlined /> },
+          ]}
+        />
+
+        {addMode === 'single' ? (
+          <Form
+            form={singleForm}
+            layout="vertical"
+            requiredMark={false}
+            onFinish={handleAddSingle}
+          >
+            <Form.Item
+              name="studentId"
+              label="Mã sinh viên (MSSV)"
+              rules={[
+                { required: true, message: 'Vui lòng nhập MSSV' },
+                {
+                  pattern: /^[A-Za-z0-9._-]{3,32}$/,
+                  message: 'MSSV gồm 3-32 ký tự chữ, số (VD: B24DCCN101)',
+                },
+              ]}
+              normalize={(v) => v?.toUpperCase()}
+            >
+              <Input
+                prefix={<IdcardOutlined />}
+                placeholder="VD: B24DCCN101"
+                className="mono"
+                autoFocus
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="fullName"
+              label="Họ và tên sinh viên"
+              rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập họ và tên' }]}
+            >
+              <Input prefix={<UserOutlined />} placeholder="VD: Nguyễn Văn An" />
+            </Form.Item>
+
+            <Alert
+              type="info"
+              showIcon
+              message="Tự động khởi tạo tài khoản"
+              description="Nếu sinh viên chưa có tài khoản, hệ thống sẽ tự động tạo hồ sơ với mật khẩu ban đầu bằng MSSV. Mật khẩu sẽ hiển thị ở cột 'Mật khẩu ban đầu' để bạn gửi cho sinh viên."
+              style={{ marginBottom: 20 }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <Button onClick={() => setAddModalVisible(false)}>Hủy</Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={adding}
+                icon={<UserAddOutlined />}
+              >
+                Thêm vào lớp
+              </Button>
+            </div>
+          </Form>
+        ) : (
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 8,
+              }}
+            >
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                Dán danh sách từ Excel/Word (mỗi dòng 1 sinh viên dạng <code>MSSV, Họ tên</code>):
+              </Typography.Text>
+              <Button
+                size="small"
+                type="link"
+                style={{ padding: 0 }}
+                onClick={() =>
+                  setBatchText(
+                    'B24DCCN001, Nguyễn Văn An\nB24DCCN002, Trần Thị Bình\nB24DCCN003, Lê Hoàng Cường'
+                  )
+                }
+              >
+                Dán dữ liệu mẫu
+              </Button>
+            </div>
+            <Input.TextArea
+              rows={6}
+              value={batchText}
+              onChange={(e) => setBatchText(e.target.value)}
+              placeholder="Nhập hoặc dán danh sách vào đây (mỗi sinh viên một dòng)...&#10;Ví dụ:&#10;B24DCCN001, Nguyễn Văn An&#10;B24DCCN002, Trần Thị Bình"
+              className="mono"
+              style={{ marginBottom: 12 }}
+            />
+
+            {parsedStudents.length > 0 ? (
+              <div
+                style={{
+                  marginBottom: 14,
+                  padding: '8px 12px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: 6,
+                  color: '#059669',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span>✓</span>
+                <span>
+                  Đã nhận diện <b>{parsedStudents.length}</b> sinh viên hợp lệ sẵn sàng thêm vào lớp
+                </span>
+              </div>
+            ) : null}
+
+            <Alert
+              type="info"
+              showIcon
+              message="Định dạng hỗ trợ"
+              description="Hỗ trợ phân cách bằng dấu phẩy, chấm phẩy hoặc khoảng trắng Tab (khi copy trực tiếp từ Excel). Dòng chỉ có MSSV sẽ tự gán MSSV làm họ tên."
+              style={{ marginBottom: 20 }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <Button onClick={() => setAddModalVisible(false)}>Hủy</Button>
+              <Button
+                type="primary"
+                onClick={handleAddBatch}
+                loading={adding}
+                icon={<UserAddOutlined />}
+              >
+                Thêm danh sách{parsedStudents.length > 0 ? ` (${parsedStudents.length})` : ''}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         title={`Đặt lại mật khẩu: ${resetTarget?.username} (${resetTarget?.fullName})`}
@@ -133,7 +380,8 @@ function StudentsTab({ classroomId }) {
         <Input.Password
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="Mật khẩu mới"
+          placeholder="Mật khẩu mới..."
+          style={{ width: '100%' }}
         />
       </Modal>
     </div>
@@ -427,7 +675,7 @@ function CourseTab({ classroomId }) {
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
                 {(activeUnit.problems || []).map((p) => (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
-                    <Link to={`/problems/${p.id}`} style={{ flex: 1, fontWeight: 500 }}>
+                    <Link to={`/teacher/problems/${p.id}`} style={{ flex: 1, fontWeight: 500 }}>
                       <PlayCircleOutlined style={{ marginRight: 6, color: 'var(--primary)' }} />
                       {p.title}
                     </Link>

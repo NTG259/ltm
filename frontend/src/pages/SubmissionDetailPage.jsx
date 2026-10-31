@@ -66,7 +66,7 @@ export default function SubmissionDetailPage() {
             <Typography.Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span>Bài nộp #{s.id}</span>
               <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>·</span>
-              <Link to={`/problems/${s.problemId}`} style={{ color: 'inherit' }}>
+              <Link to={isAdmin ? `/admin/problems/${s.problemId}` : isLecturer ? `/teacher/problems/${s.problemId}` : `/problems/${s.problemId}`} style={{ color: 'inherit' }}>
                 #{s.problemId}. {s.problemTitle}
               </Link>
             </Typography.Title>
@@ -113,7 +113,7 @@ export default function SubmissionDetailPage() {
                         } catch {
                           /* ignore */
                         }
-                        navigate(`/problems/${s.problemId}`)
+                        navigate(isAdmin ? `/admin/problems/${s.problemId}` : isLecturer ? `/teacher/problems/${s.problemId}` : `/problems/${s.problemId}`)
                       }}
                     >
                       Sửa & nộp lại
@@ -143,7 +143,7 @@ export default function SubmissionDetailPage() {
                     children: (
                       <span>
                         #{s.problemId} · {s.problemTitle}{' '}
-                        <Link to={`/problems/${s.problemId}`} target="_blank" style={{ fontSize: 12, marginLeft: 6 }}>
+                        <Link to={isAdmin ? `/admin/problems/${s.problemId}` : isLecturer ? `/teacher/problems/${s.problemId}` : `/problems/${s.problemId}`} target="_blank" style={{ fontSize: 12, marginLeft: 6 }}>
                           [Xem đề ↗]
                         </Link>
                       </span>

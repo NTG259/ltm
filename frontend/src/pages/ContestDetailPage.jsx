@@ -14,6 +14,7 @@ import ContestPlagiarism from '../components/ContestPlagiarism'
 import VerdictTag from '../components/VerdictTag'
 
 function ProblemsTab({ contest, status, mySubs, canSolve }) {
+  const { isAdmin, isLecturer } = useAuth()
   const navigate = useNavigate()
   if (status === 'UPCOMING')
     return (
@@ -28,7 +29,7 @@ function ProblemsTab({ contest, status, mySubs, canSolve }) {
     if (s.verdict === 'AC') mine[s.problemId] = 'solved'
     else if (!mine[s.problemId]) mine[s.problemId] = 'tried'
   })
-  const open = (p) => navigate(status === 'ENDED' ? `/problems/${p.problemId}` : `/contests/${contest.id}/problems/${p.label}`)
+  const open = (p) => navigate(isAdmin ? `/admin/contests/${contest.id}/problems/${p.label}` : isLecturer ? `/teacher/contests/${contest.id}/problems/${p.label}` : status === 'ENDED' ? `/problems/${p.problemId}` : `/contests/${contest.id}/problems/${p.label}`)
 
   return (
     <Table
@@ -87,6 +88,7 @@ function ProblemsTab({ contest, status, mySubs, canSolve }) {
 }
 
 function SubmissionsTab({ subs, labels, showUser }) {
+  const { isAdmin, isLecturer } = useAuth()
   const now = useNow(15000)
   return (
     <Table
@@ -101,7 +103,7 @@ function SubmissionsTab({ subs, labels, showUser }) {
           dataIndex: 'id',
           width: 80,
           render: (id) => (
-            <Link to={`/submissions/${id}`} className="mono">
+            <Link to={isAdmin ? `/admin/submissions/${id}` : isLecturer ? `/teacher/submissions/${id}` : `/submissions/${id}`} className="mono">
               #{id}
             </Link>
           ),

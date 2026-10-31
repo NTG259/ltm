@@ -5,7 +5,8 @@ import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-d
 import AuthProvider from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import { buildTheme, ThemeModeContext } from './theme'
-import AppLayout from './components/AppLayout'
+import StudentLayout from './components/StudentLayout'
+import AdminLayout from './components/AdminLayout'
 import TeacherLayout from './components/TeacherLayout'
 import LoginPage from './pages/LoginPage'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -50,165 +51,137 @@ function readTheme() {
   }
 }
 
-function RequireAuth({ admin, lecturer, children }) {
-  const { user, isAdmin, isLecturer } = useAuth()
+function getHomePath(user) {
+  if (!user) return '/login'
+  if (user.role === 'admin') return '/admin/overview'
+  if (user.role === 'lecturer') return '/teacher/classrooms'
+  return '/problems'
+}
+
+function RequireRole({ allowedRoles, children }) {
+  const { user, initializing } = useAuth()
   const location = useLocation()
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  if (admin && !isAdmin) return <Navigate to="/problems" replace />
-  if (lecturer && !isLecturer && !isAdmin) return <Navigate to="/problems" replace />
+
+  if (initializing) {
+    return <Spin style={{ display: 'block', margin: 80 }} />
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  }
+
+  // Chuyển hướng thông minh khi Admin hoặc Giảng viên mở liên kết bài tập /problems/:id
+  if (location.pathname.startsWith('/problems/')) {
+    const match = location.pathname.match(/^\/problems\/(\d+)$/)
+    if (match) {
+      const id = match[1]
+      if (user.role === 'admin') return <Navigate to={`/admin/problems/${id}`} replace />
+      if (user.role === 'lecturer') return <Navigate to={`/teacher/problems/${id}`} replace />
+    }
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // Ngăn chặn truy cập chéo giữa các actor: chuyển hướng về đúng trang chủ của vai trò
+    return <Navigate to={getHomePath(user)} replace />
+  }
+
   return children
 }
 
 function AppRoutes() {
-  const { user, isAdmin, isLecturer } = useAuth()
-  const home = !user ? '/login' : isAdmin ? '/admin' : isLecturer ? '/teacher/classrooms' : '/problems'
+  const { user, initializing } = useAuth()
+  const home = getHomePath(user)
+
+  if (initializing) {
+    return <Spin style={{ display: 'block', margin: 80 }} />
+  }
+
   return (
     <ErrorBoundary>
       <Suspense fallback={<Spin style={{ display: 'block', margin: 80 }} />}>
         <Routes>
-        <Route path="/login" element={user ? <Navigate to={home} replace /> : <LoginPage />} />
-        <Route
-          element={
-            <RequireAuth>
-              <AppLayout />
-            </RequireAuth>
-          }
-        >
-          <Route path="/change-password" element={<ChangePasswordPage />} />
-          <Route path="/courses" element={<CourseListPage />} />
-          <Route path="/courses/:id" element={<CourseDetailPage />} />
-          <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
-          <Route path="/courses/:courseId/learn/:unitId" element={<CourseLearnPage />} />
-<Route path="/problems" element={<ProblemsPage />} />
-          <Route path="/problems/:id" element={<WorkspacePage />} />
-          <Route path="/submissions" element={<SubmissionsPage />} />
-          <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
-          <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/contests" element={<ContestsPage />} />
-          <Route path="/contests/:id" element={<ContestDetailPage />} />
-          <Route path="/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
-          <Route path="/my-classrooms" element={<MyClassroomsPage />} />
-          <Route path="/classrooms/:id" element={<MyClassroomDetailPage />} />
+          <Route path="/login" element={user ? <Navigate to={home} replace /> : <LoginPage />} />
+
+          {/* 1. Student routes (Dành riêng cho sinh viên) */}
           <Route
-            path="/admin"
             element={
-              <RequireAuth admin>
-                <AdminDashboardPage />
-              </RequireAuth>
+              <RequireRole allowedRoles={['student']}>
+                <StudentLayout />
+              </RequireRole>
             }
-          />
+          >
+            <Route path="/problems" element={<ProblemsPage />} />
+            <Route path="/problems/:id" element={<WorkspacePage />} />
+            <Route path="/courses" element={<CourseListPage />} />
+            <Route path="/courses/:id" element={<CourseDetailPage />} />
+            <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
+            <Route path="/courses/:courseId/learn/:unitId" element={<CourseLearnPage />} />
+            <Route path="/contests" element={<ContestsPage />} />
+            <Route path="/contests/:id" element={<ContestDetailPage />} />
+            <Route path="/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
+            <Route path="/submissions" element={<SubmissionsPage />} />
+            <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
+            <Route path="/my-classrooms" element={<MyClassroomsPage />} />
+            <Route path="/classrooms/:id" element={<MyClassroomDetailPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/change-password" element={<ChangePasswordPage />} />
+          </Route>
+
+          {/* 2. Admin routes (Dành riêng cho quản trị viên) */}
           <Route
-            path="/admin/overview"
             element={
-              <RequireAuth admin>
-                <AdminOverviewPage />
-              </RequireAuth>
+              <RequireRole allowedRoles={['admin']}>
+                <AdminLayout />
+              </RequireRole>
             }
-          />
+          >
+            <Route path="/admin" element={<AdminDashboardPage />} />
+            <Route path="/admin/overview" element={<AdminOverviewPage />} />
+            <Route path="/admin/lecturers" element={<AdminLecturersPage />} />
+            <Route path="/admin/problems" element={<AdminProblemsPage />} />
+            <Route path="/admin/problems/:id" element={<WorkspacePage />} />
+            <Route path="/admin/contests" element={<AdminContestsPage />} />
+            <Route path="/admin/contests/:id" element={<ContestDetailPage />} />
+            <Route path="/admin/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
+            <Route path="/admin/courses" element={<AdminCoursesPage />} />
+            <Route path="/admin/courses/:id" element={<AdminCourseEditPage />} />
+            <Route path="/admin/submissions" element={<SubmissionsPage admin />} />
+            <Route path="/admin/submissions/:id" element={<SubmissionDetailPage />} />
+            <Route path="/admin/classrooms" element={<AdminClassroomsPage />} />
+            <Route path="/admin/classrooms/:id" element={<AdminClassroomDetailPage />} />
+            <Route path="/admin/classrooms/:id/monitor" element={<AdminClassroomMonitorPage />} />
+            <Route path="/admin/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage />} />
+            <Route path="/admin/leaderboard" element={<LeaderboardPage />} />
+          </Route>
+
+          {/* 3. Teacher routes (Dành riêng cho giảng viên) */}
           <Route
-            path="/admin/lecturers"
             element={
-              <RequireAuth admin>
-                <AdminLecturersPage />
-              </RequireAuth>
+              <RequireRole allowedRoles={['lecturer']}>
+                <TeacherLayout />
+              </RequireRole>
             }
-          />
-          <Route
-            path="/admin/problems"
-            element={
-              <RequireAuth admin>
-                <AdminProblemsPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/contests"
-            element={
-              <RequireAuth admin>
-                <AdminContestsPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/courses"
-            element={
-              <RequireAuth admin>
-                <AdminCoursesPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/courses/:id"
-            element={
-              <RequireAuth admin>
-                <AdminCourseEditPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/submissions"
-            element={
-              <RequireAuth admin>
-                <SubmissionsPage admin />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/classrooms"
-            element={
-              <RequireAuth admin>
-                <AdminClassroomsPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/classrooms/:id"
-            element={
-              <RequireAuth admin>
-                <AdminClassroomDetailPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/classrooms/:id/monitor"
-            element={
-              <RequireAuth admin>
-                <AdminClassroomMonitorPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/admin/classrooms/:cid/contests/:kid/monitor"
-            element={
-              <RequireAuth admin>
-                <AdminContestMonitorPage />
-              </RequireAuth>
-            }
-          />
-        </Route>
-        {/* Teacher routes */}
-        <Route
-          element={
-            <RequireAuth lecturer>
-              <TeacherLayout />
-            </RequireAuth>
-          }
-        >
-          <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
-          <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
-          <Route path="/teacher/problems" element={<AdminProblemsPage teacher />} />
-          <Route path="/teacher/courses" element={<AdminCoursesPage teacher />} />
-          <Route path="/teacher/courses/:id" element={<AdminCourseEditPage teacher />} />
-          <Route path="/teacher/contests" element={<AdminContestsPage teacher />} />
-          <Route path="/teacher/submissions" element={<SubmissionsPage teacher />} />
-          <Route path="/teacher/submissions/:id" element={<SubmissionDetailPage />} />
-          <Route path="/teacher/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage teacher />} />
-          <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/teacher/change-password" element={<ChangePasswordPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to={home} replace />} />
-      </Routes>
-    </Suspense>
+          >
+            <Route path="/teacher/classrooms" element={<TeacherClassroomsPage />} />
+            <Route path="/teacher/classrooms/:id" element={<TeacherClassroomDetailPage />} />
+            <Route path="/teacher/problems" element={<AdminProblemsPage teacher />} />
+            <Route path="/teacher/problems/:id" element={<WorkspacePage />} />
+            <Route path="/teacher/courses" element={<AdminCoursesPage teacher />} />
+            <Route path="/teacher/courses/:id" element={<AdminCourseEditPage teacher />} />
+            <Route path="/teacher/contests" element={<AdminContestsPage teacher />} />
+            <Route path="/teacher/contests/:id" element={<ContestDetailPage />} />
+            <Route path="/teacher/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
+            <Route path="/teacher/submissions" element={<SubmissionsPage teacher />} />
+            <Route path="/teacher/submissions/:id" element={<SubmissionDetailPage />} />
+            <Route path="/teacher/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage teacher />} />
+            <Route path="/teacher/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/teacher/change-password" element={<ChangePasswordPage />} />
+          </Route>
+
+          {/* Route mặc định / URL không khớp: chuyển hướng về đúng trang chủ của actor */}
+          <Route path="*" element={<Navigate to={home} replace />} />
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   )
 }

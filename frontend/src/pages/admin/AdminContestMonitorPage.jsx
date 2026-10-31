@@ -69,7 +69,7 @@ export default function AdminContestMonitorPage({ teacher = false }) {
   const labels = rawRows?.[0]?.problems?.map((p) => p.label) || []
 
   const data = rows ?? []
-  const acLeader = data.length ? Math.max(...data.map((r) => r.acCount)) : 0
+  const acLeader = data.length ? Math.max(...data.map((r) => Number(r.acCount) || 0)) : 0
 
   const baseColumns = [
     {
@@ -92,7 +92,7 @@ export default function AdminContestMonitorPage({ teacher = false }) {
       key: 'acCount',
       width: 70,
       sorter: (a, b) => b.acCount - a.acCount || a.penaltyMinutes - b.penaltyMinutes,
-      defaultSortOrder: 'ascend',
+      defaultSortOrder: 'descend',
       render: (v) => (
         <Typography.Text strong style={{ color: v > 0 ? '#22c55e' : undefined }}>
           {v}
@@ -147,6 +147,9 @@ export default function AdminContestMonitorPage({ teacher = false }) {
       <Space wrap style={{ marginBottom: 16 }}>
         <Link to={`${teacher ? '/teacher' : '/admin'}/classrooms/${cid}`}>
           <Button icon={<ArrowLeftOutlined />}>Chi tiết lớp</Button>
+        </Link>
+        <Link to={`${teacher ? '/teacher' : '/admin'}/contests`}>
+          <Button>Danh sách kỳ thi</Button>
         </Link>
         <Typography.Title level={3} style={{ margin: 0 }}>
           <TrophyOutlined style={{ marginRight: 8 }} />

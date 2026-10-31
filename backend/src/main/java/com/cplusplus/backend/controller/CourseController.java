@@ -458,12 +458,9 @@ public class CourseController {
         User user = currentUser(req);
         if (user == null) return unauthorized();
 
-        Optional<CourseUnit> unitOpt = courseUnitRepository.findById(unitId);
-        if (unitOpt.isEmpty()) {
+        if (!courseUnitRepository.existsById(unitId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
         }
-        CourseUnit unit = unitOpt.get();
-// Bỏ chặn đánh dấu tiến độ theo chủ đề
 
         boolean completed = courseProgressService.toggleUnitProgress(user, unitId);
         return ResponseEntity.ok(Map.of("unitId", unitId, "completed", completed));

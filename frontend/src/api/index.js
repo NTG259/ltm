@@ -72,6 +72,7 @@ async function http(method, path, body) {
 }
 
 export const api = {
+  getMe: () => http('GET', '/auth/me'),
   login: (payload) => http('POST', '/auth/login', payload),
   logout: () => http('DELETE', '/auth/logout'),
   changePassword: (payload) => http('POST', '/auth/change-password', payload),

@@ -4,6 +4,37 @@ import { AuthContext } from './context'
 
 export default function AuthProvider({ children }) {
   const [session, setSession] = useState(getStoredSession)
+  const [initializing, setInitializing] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    const initAuth = async () => {
+      const stored = getStoredSession()
+      if (stored?.token) {
+        try {
+          const freshUser = await api.getMe()
+          if (!active) return
+          const updated = { token: stored.token, user: freshUser }
+          storeSession(updated)
+          setSession(updated)
+        } catch {
+          if (!active) return
+          storeSession(null)
+          setSession(null)
+        }
+      } else {
+        if (!active) return
+        setSession(null)
+      }
+      if (active) setInitializing(false)
+    }
+
+    initAuth()
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     const handleSessionChange = () => {
@@ -36,10 +67,12 @@ export default function AuthProvider({ children }) {
       user: session?.user ?? null,
       isAdmin: session?.user?.role === 'admin',
       isLecturer: session?.user?.role === 'lecturer',
+      isStudent: session?.user?.role === 'student',
+      initializing,
       login,
       logout,
     }),
-    [session, login, logout],
+    [session, initializing, login, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -4,6 +4,7 @@ import com.cplusplus.backend.security.SecurityService;
 import com.cplusplus.backend.domain.user.User;
 import com.cplusplus.backend.security.AuthInterceptor;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +22,19 @@ public class AuthController {
 
     public record LoginRequest(String username, String password) {}
     public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+
+    @GetMapping("/me")
+    public ResponseEntity<?> me(HttpServletRequest request) {
+        User user = (User) request.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Chưa đăng nhập hoặc phiên đã hết hạn"));
+        }
+        return ResponseEntity.ok(Map.of(
+                "id", user.getUsername(),
+                "name", user.getFullName(),
+                "role", user.isAdmin() ? "admin" : user.isLecturer() ? "lecturer" : "student"
+        ));
+    }
 
     @DeleteMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request) {

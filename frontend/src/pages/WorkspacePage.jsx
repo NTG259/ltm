@@ -365,7 +365,7 @@ function TestResultPanel({ mode, running, testResult, active, submitting, proble
 }
 
 export function Workspace({ id, contest, label }) {
-  const { user } = useAuth()
+  const { user, isAdmin, isLecturer } = useAuth()
   const { message, modal } = App.useApp()
   const navigate = useNavigate()
   const { data: problem, error, loading } = useFetch(() => api.getProblem(id), [id])
@@ -531,7 +531,7 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
   if (error)
     return (
       <Result status="404" title="Không tìm thấy đề bài"
-        extra={<Button onClick={() => navigate('/problems')}>Về danh sách</Button>} />
+        extra={<Button onClick={() => navigate(isAdmin ? '/admin/problems' : isLecturer ? '/teacher/problems' : '/problems')}>Về danh sách</Button>} />
     )
 
   const marked = active?.verdict === 'CE'
@@ -545,7 +545,7 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
       <div className="workspace-bar">
         <Tooltip title={contest ? 'Về trang kỳ thi' : 'Danh sách bài'}>
           <Button type="text" icon={<ArrowLeftOutlined />}
-            onClick={() => navigate(contest ? `/contests/${contest.id}` : '/problems')} />
+            onClick={() => navigate(contest ? (isAdmin ? `/admin/contests/${contest.id}` : isLecturer ? `/teacher/contests/${contest.id}` : `/contests/${contest.id}`) : (isAdmin ? '/admin/problems' : isLecturer ? '/teacher/problems' : '/problems'))} />
         </Tooltip>
         {contest ? (
           <>

@@ -95,7 +95,7 @@ export default function LeaderboardPage() {
   ]
   const problemColumns = [
     { title: '#', dataIndex: 'rank', width: 60, align: 'center', render: (v) => <b>{v}</b> },
-    { title: 'Bài tập', render: (_, r) => <Link to={`/problems/${r.problemId}`}>{r.title}</Link> },
+    { title: 'Bài tập', render: (_, r) => <Link to={isAdmin ? `/admin/problems/${r.problemId}` : isLecturer ? `/teacher/problems/${r.problemId}` : `/problems/${r.problemId}`}>{r.title}</Link> },
     { title: 'Lượt nộp', dataIndex: 'submissions', width: 110, align: 'center' },
     { title: 'Người đã thử', dataIndex: 'attemptedUsers', width: 120, align: 'center' },
     { title: 'Người AC', dataIndex: 'acceptedUsers', width: 110, align: 'center' },

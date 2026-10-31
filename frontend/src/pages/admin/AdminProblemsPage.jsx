@@ -446,7 +446,7 @@ export default function AdminProblemsPage({ teacher = false }) {
               title: 'Tên bài',
               render: (_, p) => (
                 <div>
-                  <Link to={`/problems/${p.id}`}>{p.title}</Link>
+                  <Link to={teacher ? `/teacher/problems/${p.id}` : `/admin/problems/${p.id}`}>{p.title}</Link>
                   <div style={{ marginTop: 4 }}>
                     {(p.tags || []).map((t) => (
                       <Tag key={t} variant="filled" style={{ fontSize: 11 }}>
