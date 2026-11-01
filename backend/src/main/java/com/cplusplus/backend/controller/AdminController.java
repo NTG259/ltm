@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.cplusplus.backend.service.TestCaseZipImporter;
 import com.cplusplus.backend.service.LecturerCsvImporter;
+import com.cplusplus.backend.service.WorkerContainerService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -50,6 +51,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final SecurityService securityService;
     private final LecturerCsvImporter lecturerCsvImporter;
+    private final WorkerContainerService workerContainerService;
     private final JdbcTemplate jdbc;
 
     public AdminController(
@@ -63,6 +65,7 @@ public class AdminController {
             UserRepository userRepository,
             SecurityService securityService,
             LecturerCsvImporter lecturerCsvImporter,
+            WorkerContainerService workerContainerService,
             JdbcTemplate jdbc) {
         this.judgeMasterService = judgeMasterService;
         this.submissionRepository = submissionRepository;
@@ -74,6 +77,7 @@ public class AdminController {
         this.userRepository = userRepository;
         this.securityService = securityService;
         this.lecturerCsvImporter = lecturerCsvImporter;
+        this.workerContainerService = workerContainerService;
         this.jdbc = jdbc;
     }
 
@@ -104,6 +108,8 @@ public class AdminController {
     ) {}
 
     public record LecturerCreateRequest(String staffId, String username, String fullName, String password) {}
+
+    public record WorkerLifecycleRequest(String action) {}
 
     private void requireAdmin(HttpServletRequest req) {
         User user = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
@@ -309,6 +315,18 @@ public class AdminController {
         requireAdmin(req);
         judgeMasterService.disconnectWorker(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/workers/{id}/lifecycle")
+    public ResponseEntity<?> controlWorkerContainer(
+            @PathVariable String id,
+            @RequestBody WorkerLifecycleRequest body,
+            HttpServletRequest req) {
+        requireAdmin(req);
+        WorkerContainerService.Action action = WorkerContainerService.Action.parse(
+                body == null ? null : body.action()
+        );
+        return ResponseEntity.ok(workerContainerService.apply(id, action));
     }
 
     @DeleteMapping("/workers/disconnected")

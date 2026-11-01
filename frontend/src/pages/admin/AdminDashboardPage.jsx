@@ -1,14 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { App, Button, Col, Popconfirm, Row, Spin } from 'antd'
+import { App, Button, Popconfirm, Spin } from 'antd'
 import { DeleteOutlined } from '@ant-design/icons'
 import { api } from '../../api'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
 import {
   ClusterSummary,
-  MasterLogPanel,
-  QueuePanel,
-  ThroughputChart,
-  WorkerCard,
+  ConnectionLogPanel,
+  MachineTable,
 } from '../../components/admin/JudgeClusterPanels'
 import { useFetch, useNow, useSocket } from '../../lib/hooks'
 
@@ -17,6 +15,7 @@ export default function AdminDashboardPage() {
   const { message } = App.useApp()
   const overview = useFetch(() => api.adminOverview(), [])
   const [live, setLive] = useState({})
+  const [workerAction, setWorkerAction] = useState(null)
 
   useSocket(
     useCallback((msg) => {
@@ -37,20 +36,19 @@ export default function AdminDashboardPage() {
     [base.logs, live.logs],
   )
   const queue = live.queue || base.queue
-  const throughput = base.throughput || []
   const alive = workers.filter((w) => w.status !== 'DEAD').length
   const busy = workers.filter((w) => w.status === 'BUSY').length
 
-  const kill = useCallback(async (id) => {
-    await api.killWorker(id)
-    message.warning(`${id} đã bị ngắt – Master kích hoạt Failover`)
-  }, [message])
-  const revive = useCallback(async (id) => {
+  const controlWorker = useCallback(async (id, action) => {
+    setWorkerAction({ id, action })
     try {
-      await api.reviveWorker(id)
-      message.success(`${id} đã đăng ký lại`)
+      await api.controlWorker(id, action)
+      const labels = { START: 'khởi động', STOP: 'dừng', RESTART: 'khởi động lại' }
+      message.success(`Đã gửi yêu cầu ${labels[action]} máy chấm ${id}`)
     } catch (e) {
-      message.info(e.message)
+      message.error(e.message || 'Không thể điều khiển máy chấm')
+    } finally {
+      setWorkerAction(null)
     }
   }, [message])
   const removeDisconnected = useCallback(async () => {
@@ -65,29 +63,27 @@ export default function AdminDashboardPage() {
   }, [message, overview])
 
   return (
-    <div className="page">
+    <div className="page judge-monitor">
       <AdminPageHeader
-        title="Giám sát cụm Judge Worker"
-        description="Trạng thái sống còn qua Heartbeat (PING/PONG 5s, timeout 15s), hàng đợi FIFO và nhật ký điều phối của Master."
-      />
-      {disconnectedCount > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        eyebrow="Vận hành hệ thống chấm"
+        title="Giám sát máy chấm"
+        actions={disconnectedCount > 0 ? (
           <Popconfirm
-            title={`Xóa ${disconnectedCount} worker đã ngắt kết nối?`}
-            description="Các worker đang hoạt động sẽ được giữ lại."
-            okText="Xóa worker đã dừng"
+            title={`Xóa ${disconnectedCount} máy chấm đã ngắt kết nối?`}
+            description="Các máy chấm đang hoạt động sẽ được giữ lại."
+            okText="Xóa máy đã dừng"
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
             onConfirm={removeDisconnected}
           >
-            <Button danger icon={<DeleteOutlined />}>Dọn worker đã dừng ({disconnectedCount})</Button>
+            <Button danger icon={<DeleteOutlined />}>Dọn máy đã dừng ({disconnectedCount})</Button>
           </Popconfirm>
-        </div>
-      )}
+        ) : null}
+      />
 
       {overview.loading && <Spin style={{ display: 'block', margin: 40 }} />}
       {!overview.loading && (
-        <>
+        <div className="judge-monitor__content">
           <ClusterSummary
             alive={alive}
             busy={busy}
@@ -96,29 +92,17 @@ export default function AdminDashboardPage() {
             submissionCount={base.submissions + (live.newIds?.size || 0)}
           />
 
-          <Row gutter={[16, 16]}>
-            {workers.map((w) => (
-              <Col xs={24} md={12} xl={8} key={w.id}>
-                <WorkerCard worker={w} now={now} onKill={kill} onRevive={revive} />
-              </Col>
-            ))}
-          </Row>
+          <div className="judge-monitor__workspace">
+            <MachineTable
+              workers={workers}
+              now={now}
+              onControl={controlWorker}
+              pendingAction={workerAction}
+            />
+          </div>
 
-          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-            <Col xs={24}>
-              <ThroughputChart throughput={throughput} />
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-            <Col xs={24} lg={10}>
-              <QueuePanel queue={queue} />
-            </Col>
-            <Col xs={24} lg={14}>
-              <MasterLogPanel logs={logs} levelFilter={logLevel} onLevelChange={setLogLevel} />
-            </Col>
-          </Row>
-        </>
+          <ConnectionLogPanel logs={logs} levelFilter={logLevel} onLevelChange={setLogLevel} />
+        </div>
       )}
     </div>
   )

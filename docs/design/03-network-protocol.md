@@ -363,6 +363,23 @@ Request header: Authorization: Bearer <token>
 }
 ```
 
+**`POST /api/admin/workers/{id}/lifecycle`** — Admin
+
+Điều khiển vòng đời container của một máy chấm thuộc đúng Compose project hiện tại.
+
+```json
+{ "action": "START" }
+```
+
+`action` nhận một trong `START`, `STOP`, `RESTART`. Phản hồi thành công:
+
+```json
+{ "workerId": "a1b2c3d4e5f6", "action": "START", "status": "ACCEPTED" }
+```
+
+Backend từ chối ID không đúng định dạng container và container không mang đồng thời hai label
+`com.docker.compose.project=<project>` và `com.docker.compose.service=worker`.
+
 **`POST /api/contests/:id/plagiarism/run`** — Admin
 ```json
 // Request: body empty

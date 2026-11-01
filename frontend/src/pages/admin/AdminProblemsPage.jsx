@@ -426,7 +426,6 @@ export default function AdminProblemsPage({ teacher = false }) {
     <div className="page">
       <AdminPageHeader
         title={teacher ? "Kho đề bài tập" : "Ngân hàng đề bài"}
-        description={teacher ? "Tạo và quản lý đề bài, bộ test case và tài liệu bài tập cho sinh viên." : "Thêm, sửa, xoá đề bài và bộ test case dùng để chấm."}
         actions={
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing(EMPTY)}>
             Thêm đề bài

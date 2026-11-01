@@ -48,6 +48,26 @@ services:
       interval: 5s
       retries: 5
 
+  docker-proxy:
+    image: lscr.io/linuxserver/socket-proxy:3.4.7
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      POST: 0
+      ALLOW_START: 1
+      ALLOW_STOP: 1
+      ALLOW_RESTARTS: 1
+      EVENTS: 0
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /run
+    security_opt:
+      - no-new-privileges:true
+    networks: [docker-control]
+
   backend:
     build:
       context: ./backend
@@ -59,6 +79,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      docker-proxy:
+        condition: service_started
     environment:
       SERVER_PORT: 8000
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-codejudge}
@@ -67,11 +89,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GO_JUDGE_URL: http://go-judge:5050
+      DOCKER_PROXY_URL: http://docker-proxy:2375
+      DOCKER_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-codejudge}
       TZ: Asia/Ho_Chi_Minh
     ports:
       - "18000:8000"   # HTTP REST
       - "18001:8001"   # WebSocket
-    networks: [default, judge]
+    networks: [default, judge, docker-control]
     healthcheck:
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
       interval: 10s
@@ -150,6 +174,8 @@ networks:
   default:
   judge:
     internal: true   # backend ↔ go-judge; code thí sinh không ra Internet
+  docker-control:
+    internal: true
 
 volumes:
   db-data:

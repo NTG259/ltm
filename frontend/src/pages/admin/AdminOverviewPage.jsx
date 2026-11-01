@@ -1,12 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, Badge, Button, Card, Col, Empty, Row, Spin, Statistic, Typography } from 'antd'
-import { ReloadOutlined } from '@ant-design/icons'
+import { Alert, Badge, Button, Card, Empty, Spin, Statistic, Typography } from 'antd'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
 import { useAuth } from '../../auth/context'
 import AdminPageHeader from '../../components/admin/AdminPageHeader'
-import { AdminOverviewAnalytics, AdminOverviewActivity } from '../../components/admin/AdminOverviewPanels'
-import { ClusterSummary } from '../../components/admin/JudgeClusterPanels'
+import { AdminOverviewAnalytics } from '../../components/admin/AdminOverviewPanels'
 import { useFetch, useSocket, useSocketStatus } from '../../lib/hooks'
 
 export default function AdminOverviewPage() {
@@ -27,9 +25,6 @@ export default function AdminOverviewPage() {
         workers: Array.isArray(msg.workers) ? msg.workers : current.workers,
         queue: Array.isArray(msg.queue) ? msg.queue : current.queue,
       }))
-    }
-    if (msg.type === 'LOG' && msg.entry) {
-      setLive((current) => ({ ...current, logs: [msg.entry, ...(current.logs || [])].slice(0, 20) }))
     }
     if (msg.type === 'SUBMISSION_UPDATE' && msg.submission?.id != null) {
       const sub = msg.submission
@@ -58,12 +53,6 @@ export default function AdminOverviewPage() {
 
   const workers = live.workers || overview.data?.workers
   const queue = live.queue || overview.data?.queue
-  const logs = useMemo(() => {
-    const initial = overview.data?.logs || []
-    const updates = live.logs || []
-    const ids = new Set(updates.map((entry) => entry.id))
-    return [...updates, ...initial.filter((entry) => !ids.has(entry.id))]
-  }, [overview.data?.logs, live.logs])
   const recent = useMemo(() => {
     if (!Array.isArray(submissions.data)) return null
     const byId = new Map(submissions.data.map((sub) => [sub.id, sub]))
@@ -80,8 +69,6 @@ export default function AdminOverviewPage() {
   const connection = socketStatus === 'open' ? { status: 'success', text: 'Đã kết nối' }
     : socketStatus === 'connecting' || socketStatus === 'reconnecting' ? { status: 'warning', text: 'Đang kết nối' }
     : { status: 'error', text: 'Mất kết nối' }
-  const warnings = logs.filter((entry) => ['warning', 'error'].includes(entry.level))
-
   const refresh = () => {
     overview.reload()
     submissions.reload()
@@ -89,50 +76,43 @@ export default function AdminOverviewPage() {
   }
 
   return (
-    <div className="page admin-overview">
+    <div className="page admin-overview admin-overview--single-screen">
       <AdminPageHeader
-        title="Tổng quan hệ thống"
-        description="Theo dõi hoạt động chấm bài, bài nộp và tình trạng cụm Judge tại một nơi."
-        actions={<Button icon={<ReloadOutlined />} onClick={refresh}>Làm mới</Button>}
+        eyebrow="Điều hành hệ thống"
+        title="Bảng điều hành"
+        actions={<Button onClick={refresh}>Cập nhật dữ liệu</Button>}
       />
 
       <section aria-labelledby="overview-system-title">
         <div className="admin-overview__section-head">
-          <h2 id="overview-system-title">Tình trạng hệ thống</h2>
+          <div>
+            <h2 id="overview-system-title">Vận hành hiện tại</h2>
+          </div>
           <Badge status={connection.status} text={connection.text} />
         </div>
         {overview.error && <Alert type="error" showIcon message="Không tải được trạng thái cụm Judge" description={overview.error.message} className="admin-overview__notice" />}
         {overview.loading && !workers ? <Spin style={{ display: 'block', margin: 32 }} /> : workers && queue ? (
-          <>
-            <ClusterSummary alive={online} busy={busy} workerCount={workers.length} queueCount={queue.length} submissionCount={total ?? '—'} />
-            <Typography.Text type="secondary" className="admin-overview__snapshot-note">Tổng bài nộp là số liệu tại lần tải gần nhất.</Typography.Text>
-            <Row gutter={[12, 12]} className="admin-overview__extra-stats">
-              <Col xs={24} sm={12} lg={8}><Card size="small"><Statistic title="Bài đang xử lý · trong 100 bài gần nhất" value={processing ?? '—'} /></Card></Col>
-              <Col xs={24} sm={12} lg={8}><Card size="small"><Statistic title="Kỳ thi đang diễn ra" value={activeContests ?? '—'} /></Card></Col>
-              <Col xs={24} sm={24} lg={8}><Card size="small" className="admin-overview__cluster-card">
-                <Typography.Text type="secondary">Cụm Judge</Typography.Text>
-                <div className="admin-overview__cluster-state">{workers.length === 0 ? 'Chưa có Worker' : online === 0 ? 'Không có Worker trực tuyến' : `${online}/${workers.length} Worker trực tuyến`}</div>
-                <Link to="/admin">Mở giám sát chi tiết →</Link>
-              </Card></Col>
-            </Row>
-          </>
+          <div className="admin-overview__operations">
+            <div className="admin-overview__metrics">
+              <Card size="small"><Statistic title="Worker hoạt động" value={online} suffix={`/ ${workers.length}`} /></Card>
+              <Card size="small"><Statistic title="Bài đang tồn đọng" value={queue.length} /></Card>
+              <Card size="small"><Statistic title="Đang xử lý" value={processing ?? '—'} /></Card>
+              <Card size="small"><Statistic title="Tổng bài nộp" value={total ?? '—'} /></Card>
+            </div>
+            <div className="admin-overview__operation-note">
+              <div>
+                <strong>{workers.length === 0 ? 'Chưa có Worker' : online === 0 ? 'Cụm Judge đang ngoại tuyến' : `${online}/${workers.length} Worker trực tuyến`}</strong>
+                <span>{busy || 0} worker đang chấm · {activeContests ?? '—'} kỳ thi đang diễn ra</span>
+              </div>
+              <Link to="/admin">Mở giám sát máy chấm</Link>
+            </div>
+          </div>
         ) : !overview.error && <Empty description="Chưa có dữ liệu cụm Judge" />}
         {contests.error && <Alert type="warning" showIcon message="Không tải được số kỳ thi đang diễn ra" description={contests.error.message} className="admin-overview__notice" />}
         {submissions.error && <Alert type="warning" showIcon message="Không tải được số bài đang xử lý và phân tích bài nộp" description={submissions.error.message} className="admin-overview__notice" />}
       </section>
 
       <AdminOverviewAnalytics submissions={recent} loading={submissions.loading} error={submissions.error} />
-      <AdminOverviewActivity submissions={recent} logs={logs} warnings={warnings} loading={submissions.loading} error={submissions.error} logsAvailable={Boolean(overview.data)} />
-
-      <section aria-labelledby="overview-actions-title" className="admin-overview__section">
-        <div className="admin-overview__section-head"><h2 id="overview-actions-title">Truy cập nhanh</h2></div>
-        <div className="admin-overview__actions">
-          <Link to="/admin/submissions">Quản lý bài nộp →</Link>
-          <Link to="/admin/problems">Quản lý đề bài →</Link>
-          <Link to="/admin/contests">Quản lý kỳ thi →</Link>
-          <Link to="/admin">Giám sát Judge Worker →</Link>
-        </div>
-      </section>
     </div>
   )
 }

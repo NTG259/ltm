@@ -185,8 +185,11 @@ export const api = {
       return data
     })
   },
-  killWorker: (id) => http('POST', `/admin/workers/${id}/disconnect`),
-  reviveWorker: () => Promise.reject(new Error('HÃ£y khá»Ÿi Ä‘á»™ng láº¡i tiáº¿n trÃ¬nh judge_worker.py')),
+  controlWorker: (id, action) => http(
+    'POST',
+    `/admin/workers/${encodeURIComponent(id)}/lifecycle`,
+    { action },
+  ),
   removeDisconnectedWorkers: () => http('DELETE', '/admin/workers/disconnected'),
   adminLogs: (level) => http('GET', level ? `/admin/logs?level=${level}` : '/admin/logs'),
   // ---- Lá»›p há»c ----

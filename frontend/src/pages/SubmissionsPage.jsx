@@ -125,13 +125,6 @@ export default function SubmissionsPage({ admin, teacher }) {
       <div className="page-head">
         <div>
           <h1>{isLecturer ? 'Bài nộp sinh viên theo lớp phụ trách' : admin ? 'Toàn bộ bài nộp của sinh viên' : 'Bài nộp của tôi'}</h1>
-          <p>
-            {isLecturer
-              ? 'Xem và theo dõi bài nộp của sinh viên theo từng lớp học bạn phụ trách. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn và kết quả chấm.'
-              : admin
-              ? 'Tra cứu và lọc bài nộp của sinh viên. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn C++ và kết quả chấm.'
-              : 'Lịch sử nộp bài và kết quả chấm của bạn. Bấm vào bất kỳ dòng nào để xem chi tiết mã nguồn và kết quả test.'}
-          </p>
         </div>
       </div>
 

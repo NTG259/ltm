@@ -103,7 +103,6 @@ export default function AdminLecturersPage() {
       <Space style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <Typography.Title level={3} style={{ margin: 0 }}>Tài khoản giảng viên</Typography.Title>
-          <Typography.Text type="secondary">Tài khoản giảng viên được tạo bởi admin, không có đăng ký tự do.</Typography.Text>
         </div>
         <Space wrap>
           <Upload accept=".csv,text/csv" customRequest={importCsv} showUploadList={false}>

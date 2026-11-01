@@ -11,7 +11,7 @@ const shared = {
   borderRadius: 8,
   borderRadiusSM: 6,
   borderRadiusLG: 12,
-  fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  fontFamily: "'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
   fontFamilyCode: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
   fontSize: 14,
 }

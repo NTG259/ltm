@@ -34,7 +34,7 @@ export function AdminOverviewAnalytics({ submissions, loading, error }) {
   return (
     <section aria-labelledby="overview-analytics-title" className="admin-overview__section">
       <div className="admin-overview__section-head">
-        <div><h2 id="overview-analytics-title">Phân tích bài nộp</h2><Typography.Text type="secondary">Mẫu tối đa 100 bài nộp gần nhất · không phải số liệu toàn hệ thống</Typography.Text></div>
+        <div><h2 id="overview-analytics-title">Phân tích bài nộp</h2></div>
         <Link to="/admin/submissions">Xem tất cả →</Link>
       </div>
       <Row gutter={[16, 16]}>

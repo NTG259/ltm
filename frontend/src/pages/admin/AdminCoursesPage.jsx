@@ -169,7 +169,6 @@ export default function AdminCoursesPage({ teacher = false }) {
     <div className="page admin-page--wide">
       <AdminPageHeader
         title={teacher ? 'Khóa học của tôi' : 'Quản lý Khóa học & Lộ trình'}
-        description={teacher ? 'Tạo khóa học và soạn nội dung bằng các đề có sẵn trong kho chung.' : 'Xây dựng lộ trình học C++, sắp xếp các chủ đề lý thuyết và bài tập'}
         icon={<BookOutlined />}
         actions={
           <Space>

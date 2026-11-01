@@ -1,32 +1,99 @@
-import { Avatar, Button, Dropdown, Layout, Menu, Space, Tooltip, Typography } from 'antd'
-import {
-  BookOutlined,
-  CloudServerOutlined,
-  CodeOutlined,
-  DashboardOutlined,
-  DatabaseOutlined,
-  FlagOutlined,
-  LogoutOutlined,
-  ProfileOutlined,
-  TeamOutlined,
-  TrophyOutlined,
-  UserOutlined,
-  UsergroupAddOutlined,
-  SunOutlined,
-  MoonOutlined,
-} from '@ant-design/icons'
+import { useState } from 'react'
+import { Avatar, Button, Drawer, Dropdown, Layout, Space, Tooltip, Typography } from 'antd'
+import { MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
 import { useOnlineCount, useSocketStatus } from '../lib/hooks'
-import CyberBackground from './CyberBackground'
 
 const SOCKET_LABEL = {
-  open: { status: 'success', text: 'WS :8001', tip: 'Đã kết nối WebSocket RFC 6455 tới Master' },
-  connecting: { status: 'warning', text: 'Đang kết nối…', tip: 'Đang kết nối WebSocket tới Master :8001' },
-  reconnecting: { status: 'warning', text: 'Đang thử lại…', tip: 'WebSocket bị ngắt – đang tự động kết nối lại' },
+  open: { status: 'success', text: 'Trực tuyến', tip: 'Đã kết nối WebSocket tới Master' },
+  connecting: { status: 'warning', text: 'Đang kết nối', tip: 'Đang kết nối WebSocket tới Master' },
+  reconnecting: { status: 'warning', text: 'Đang thử lại', tip: 'WebSocket bị ngắt, hệ thống đang kết nối lại' },
   disconnected: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket chưa kết nối' },
-  closed: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket bị ngắt – tự động thử lại' },
+  closed: { status: 'error', text: 'Mất kết nối', tip: 'WebSocket bị ngắt, hệ thống sẽ tự thử lại' },
+}
+
+const NAV_GROUPS = [
+  {
+    label: 'Vận hành',
+    items: [
+      { key: '/admin/overview', label: 'Tổng quan' },
+      { key: '/admin', label: 'Giám sát máy chấm', exact: true },
+      { key: '/admin/submissions', label: 'Bài nộp' },
+    ],
+  },
+  {
+    label: 'Quản trị',
+    items: [
+      { key: '/admin/lecturers', label: 'Giảng viên' },
+      { key: '/admin/problems', label: 'Đề bài' },
+      { key: '/admin/contests', label: 'Kỳ thi' },
+      { key: '/admin/courses', label: 'Khóa học' },
+      { key: '/admin/classrooms', label: 'Lớp học' },
+      { key: '/admin/leaderboard', label: 'Xếp hạng' },
+    ],
+  },
+]
+
+const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items)
+
+function findCurrentItem(pathname) {
+  return NAV_ITEMS
+    .filter((item) => item.exact ? pathname === item.key : pathname === item.key || pathname.startsWith(`${item.key}/`))
+    .sort((a, b) => b.key.length - a.key.length)[0] || NAV_ITEMS[0]
+}
+
+function initials(name) {
+  return (name || 'Admin')
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+function AdminBrand() {
+  return (
+    <Link to="/admin/overview" className="admin-brand" aria-label="CodeJudge Admin">
+      <span className="admin-brand__mark">CJ</span>
+      <span className="admin-brand__copy">
+        <strong>CodeJudge</strong>
+        <small>Admin Console</small>
+      </span>
+    </Link>
+  )
+}
+
+function AdminNavigation({ pathname, onNavigate }) {
+  const current = findCurrentItem(pathname)
+
+  return (
+    <nav className="admin-nav" aria-label="Điều hướng quản trị">
+      {NAV_GROUPS.map((group) => (
+        <div className="admin-nav__group" key={group.label}>
+          <div className="admin-nav__label">{group.label}</div>
+          <div className="admin-nav__items">
+            {group.items.map((item) => {
+              const selected = current.key === item.key
+              return (
+                <Link
+                  className={selected ? 'admin-nav__item is-active' : 'admin-nav__item'}
+                  key={item.key}
+                  to={item.key}
+                  aria-current={selected ? 'page' : undefined}
+                  onClick={onNavigate}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+  )
 }
 
 export default function AdminLayout() {
@@ -37,172 +104,102 @@ export default function AdminLayout() {
   const onlineCount = useOnlineCount()
   const location = useLocation()
   const navigate = useNavigate()
+  const [navOpen, setNavOpen] = useState(false)
+  const currentItem = findCurrentItem(location.pathname)
 
-  const items = [
-    { key: '/admin/overview', icon: <DashboardOutlined />, label: <Link to="/admin/overview">Tổng quan</Link> },
-    { key: '/admin', icon: <CloudServerOutlined />, label: <Link to="/admin">Giám sát</Link> },
-    { key: '/admin/lecturers', icon: <UsergroupAddOutlined />, label: <Link to="/admin/lecturers">Giảng viên</Link> },
-    { key: '/admin/submissions', icon: <ProfileOutlined />, label: <Link to="/admin/submissions">Bài nộp</Link> },
-    { key: '/admin/problems', icon: <DatabaseOutlined />, label: <Link to="/admin/problems">Đề bài</Link> },
-    { key: '/admin/contests', icon: <FlagOutlined />, label: <Link to="/admin/contests">Kỳ thi</Link> },
-    { key: '/admin/courses', icon: <BookOutlined />, label: <Link to="/admin/courses">Khóa học</Link> },
-    { key: '/admin/classrooms', icon: <TeamOutlined />, label: <Link to="/admin/classrooms">Lớp học</Link> },
-    { key: '/admin/leaderboard', icon: <TrophyOutlined />, label: <Link to="/admin/leaderboard">Xếp hạng</Link> },
-  ]
-
-  const selected =
-    items
-      .map((i) => i.key)
-      .filter((k) => location.pathname === k || location.pathname.startsWith(`${k}/`))
-      .sort((a, b) => b.length - a.length)[0] ||
-    (location.pathname.startsWith('/admin/problems')
-      ? '/admin/problems'
-      : location.pathname.startsWith('/admin/contests')
-      ? '/admin/contests'
-      : location.pathname.startsWith('/admin/submissions')
-      ? '/admin/submissions'
-      : location.pathname.startsWith('/admin/courses')
-      ? '/admin/courses'
-      : location.pathname.startsWith('/admin/classrooms')
-      ? '/admin/classrooms'
-      : '/admin/overview')
+  const logoutUser = async () => {
+    if (await logout()) navigate('/login')
+  }
 
   return (
-    <Layout className="admin-layout" style={{ minHeight: '100vh', background: 'transparent', position: 'relative' }}>
-      <CyberBackground mode={mode} />
-      <Layout.Header
-        className="app-header"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          height: 60,
-          lineHeight: 'normal',
-          padding: '0 24px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <Link to="/admin/overview" className="brand">
-          <span className="brand-logo">
-            <CodeOutlined />
-          </span>
-          <span>
-            Code<b>Judge</b>
-          </span>
-        </Link>
-        <Menu mode="horizontal" items={items} selectedKeys={[selected]} className="header-menu" />
-        <Space size={8} align="center" style={{ lineHeight: 1 }}>
-          <Tooltip
-            title={
-              socketStatus === 'open' && onlineCount != null
-                ? `${onlineCount} sinh viên đang online`
-                : socket.tip
-            }
-          >
-            <div className="header-status-pill">
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  backgroundColor:
-                    socket.status === 'success'
-                      ? '#10b981'
-                      : socket.status === 'warning'
-                      ? '#f59e0b'
-                      : '#ef4444',
-                  boxShadow:
-                    socket.status === 'success' ? '0 0 8px rgba(16, 185, 129, 0.7)' : 'none',
-                }}
-              />
-              {socketStatus === 'open' && onlineCount != null ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <UsergroupAddOutlined style={{ fontSize: 12 }} />
-                  {onlineCount}
-                </span>
-              ) : (
-                <span>{socket.text}</span>
-              )}
-            </div>
-          </Tooltip>
+    <Layout className="admin-shell">
+      <aside className="admin-sidebar">
+        <AdminBrand />
+        <AdminNavigation pathname={location.pathname} />
+        <div className="admin-sidebar__footer">
+          <span className={`admin-connection-dot is-${socket.status}`} aria-hidden="true" />
+          <span>{socket.text}</span>
+          {socketStatus === 'open' && onlineCount != null && <strong>{onlineCount} online</strong>}
+        </div>
+      </aside>
 
-          <Tooltip title={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}>
+      <Drawer
+        className="admin-nav-drawer"
+        placement="left"
+        size={292}
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        title={<AdminBrand />}
+      >
+        <AdminNavigation pathname={location.pathname} onNavigate={() => setNavOpen(false)} />
+      </Drawer>
+
+      <Layout className="admin-shell__main">
+        <Layout.Header className="admin-topbar">
+          <div className="admin-topbar__context">
             <Button
               type="text"
-              className="header-theme-btn"
-              onClick={toggle}
-              icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
-              aria-label={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+              className="admin-menu-trigger"
+              icon={<MenuOutlined />}
+              onClick={() => setNavOpen(true)}
+              aria-label="Mở điều hướng quản trị"
             />
-          </Tooltip>
-
-          <Dropdown
-            trigger={['click']}
-            placement="bottomRight"
-            menu={{
-              items: [
-                {
-                  key: 'me',
-                  disabled: true,
-                  label: (
-                    <div style={{ padding: '4px 0' }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>{user?.name}</div>
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        Quản trị viên
-                      </Typography.Text>
-                    </div>
-                  ),
-                },
-                { type: 'divider' },
-                {
-                  key: 'logout',
-                  icon: <LogoutOutlined />,
-                  danger: true,
-                  label: 'Đăng xuất',
-                  onClick: async () => {
-                    if (await logout()) navigate('/login')
-                  },
-                },
-              ],
-            }}
-          >
-            <div className="header-user-pill">
-              <Avatar
-                size={26}
-                style={{
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)',
-                  fontWeight: 700,
-                  fontSize: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                icon={<UserOutlined />}
-              />
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--text)',
-                  maxWidth: 110,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  lineHeight: 'normal',
-                }}
-              >
-                {user?.name}
-              </span>
+            <div>
+              <span>Không gian quản trị</span>
+              <strong>{currentItem.label}</strong>
             </div>
-          </Dropdown>
-        </Space>
-      </Layout.Header>
-      <Layout.Content style={{ background: 'transparent', position: 'relative', zIndex: 1 }}>
-        <Outlet />
-      </Layout.Content>
+          </div>
+
+          <Space size={8} align="center">
+            <Tooltip title={socketStatus === 'open' && onlineCount != null ? `${onlineCount} người dùng đang online` : socket.tip}>
+              <div className="admin-topbar__status">
+                <span className={`admin-connection-dot is-${socket.status}`} aria-hidden="true" />
+                <span>{socketStatus === 'open' && onlineCount != null ? `${onlineCount} online` : socket.text}</span>
+              </div>
+            </Tooltip>
+
+            <Tooltip title={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}>
+              <Button
+                type="text"
+                className="admin-topbar__theme"
+                onClick={toggle}
+                icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+                aria-label={mode === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+              />
+            </Tooltip>
+
+            <Dropdown
+              trigger={['click']}
+              placement="bottomRight"
+              menu={{
+                items: [
+                  {
+                    key: 'me',
+                    disabled: true,
+                    label: (
+                      <div className="admin-account-menu">
+                        <strong>{user?.name}</strong>
+                        <Typography.Text type="secondary">Quản trị viên</Typography.Text>
+                      </div>
+                    ),
+                  },
+                  { type: 'divider' },
+                  { key: 'logout', danger: true, label: 'Đăng xuất', onClick: logoutUser },
+                ],
+              }}
+            >
+              <button type="button" className="admin-account" aria-label="Mở menu tài khoản">
+                <Avatar size={28}>{initials(user?.name)}</Avatar>
+                <span>{user?.name}</span>
+              </button>
+            </Dropdown>
+          </Space>
+        </Layout.Header>
+
+        <Layout.Content className="admin-shell__content">
+          <Outlet />
+        </Layout.Content>
+      </Layout>
     </Layout>
   )
 }
-
