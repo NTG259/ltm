@@ -1,0 +1,21 @@
+{
+  "uid": "codejudge-chapter7",
+  "title": "CodeJudge - Chapter 7 Tests",
+  "tags": ["codejudge", "chapter7", "local"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "5s",
+  "panels": [
+    {"id": 1, "title": "Concurrent submissions", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}, "targets": [{"expr": "codejudge_submissions_active", "legendFormat": "Active submissions"}]},
+    {"id": 2, "title": "Queued submissions", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}, "targets": [{"expr": "codejudge_submissions_queued", "legendFormat": "IN_QUEUE"}]},
+    {"id": 3, "title": "Verdict time p50/p95 (last 5 min)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}, "fieldConfig": {"defaults": {"unit": "ms"}}, "targets": [{"expr": "codejudge_verdict_p50_ms_5m", "legendFormat": "Verdict p50"}, {"expr": "codejudge_verdict_p95_ms_5m", "legendFormat": "Verdict p95"}]},
+    {"id": 4, "title": "Queue waiting p50/p95 (last 5 min)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}, "fieldConfig": {"defaults": {"unit": "ms"}}, "targets": [{"expr": "codejudge_queue_wait_p50_ms_5m", "legendFormat": "Queue p50"}, {"expr": "codejudge_queue_wait_p95_ms_5m", "legendFormat": "Queue p95"}]},
+    {"id": 5, "title": "Finished throughput (submissions/s)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}, "fieldConfig": {"defaults": {"unit": "ops"}}, "targets": [{"expr": "rate(codejudge_submissions_finished_total[1m])", "legendFormat": "Finished/s"}]},
+    {"id": 6, "title": "Worker states", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}, "targets": [{"expr": "codejudge_workers_online", "legendFormat": "Online"}, {"expr": "codejudge_workers_busy", "legendFormat": "BUSY"}]},
+    {"id": 7, "title": "Submission failure rate (submissions/s)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8}, "targets": [{"expr": "rate(codejudge_submissions_failed_total[1m])", "legendFormat": "FAILED/s"}]},
+    {"id": 8, "title": "Container CPU (cores)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8}, "targets": [{"expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name=~\".*codejudge-(backend|worker|go-judge).*\"}[1m]))", "legendFormat": "{{name}}"}]},
+    {"id": 9, "title": "Container RAM (bytes)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8}, "fieldConfig": {"defaults": {"unit": "bytes"}}, "targets": [{"expr": "sum by (name) (container_memory_working_set_bytes{name=~\".*codejudge-(backend|worker|go-judge).*\"})", "legendFormat": "{{name}}"}]},
+    {"id": 10, "title": "Worker utilization (BUSY / online time, 1 min)", "type": "timeseries", "datasource": "Prometheus", "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8}, "fieldConfig": {"defaults": {"unit": "percent"}}, "targets": [{"expr": "100 * avg_over_time(codejudge_workers_busy[1m]) / clamp_min(avg_over_time(codejudge_workers_online[1m]), 1)", "legendFormat": "Worker utilization %"}]}
+  ]
+}

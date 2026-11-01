@@ -143,7 +143,10 @@ class Worker:
         file_id = None
         try:
             self._send(OP_TASK_STATUS, {"submissionId": sid, "status": "COMPILING"})
+            compile_started = time.monotonic()
             ok, file_id, compile_log = self._compile(source, language)
+            compile_ms = (time.monotonic() - compile_started) * 1000
+            log.info("Task #%d compile_ms=%.3f", sid, compile_ms)
 
             if not ok:
                 self._send(OP_TASK_RESULT, {
@@ -162,6 +165,7 @@ class Worker:
                 return
 
             self._send(OP_TASK_STATUS, {"submissionId": sid, "status": "TESTING"})
+            execution_started = time.monotonic()
 
             test_results = []
             passed = 0
@@ -208,6 +212,8 @@ class Worker:
                         break
 
             score = round(100 * passed / len(tests)) if tests else 0
+            execution_ms = (time.monotonic() - execution_started) * 1000
+            log.info("Task #%d execution_ms=%.3f", sid, execution_ms)
             self._send(OP_TASK_RESULT, {
                 "submissionId":  sid,
                 "verdict":       overall,
@@ -314,7 +320,9 @@ class Worker:
         status_map = {
             "Accepted":           None,
             "TimeLimitExceeded":  "TLE",
+            "Time Limit Exceeded":"TLE",
             "MemoryLimitExceeded":"MLE",
+            "Memory Limit Exceeded":"MLE",
             "RuntimeError":       "RTE",
             "OutputLimitExceeded":"WA",
             "FileError":          "RTE",
