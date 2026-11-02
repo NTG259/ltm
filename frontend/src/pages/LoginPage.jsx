@@ -25,6 +25,15 @@ export default function LoginPage() {
   const { message } = App.useApp()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('cj.kicked')) {
+        sessionStorage.removeItem('cj.kicked')
+        message.warning('Tài khoản của bạn đã được đăng nhập từ thiết bị khác. Vui lòng đăng nhập lại.')
+      }
+    } catch {}
+  }, [message])
+
   const onFinish = async (values) => {
     setLoading(true)
     try {

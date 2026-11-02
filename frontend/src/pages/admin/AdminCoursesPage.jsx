@@ -211,7 +211,7 @@ export default function AdminCoursesPage({ teacher = false }) {
                       <TableHead className="text-center">Số chủ đề</TableHead>
                       <TableHead>Trạng thái</TableHead>
                       <TableHead>Ngày tạo</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
+                      <TableHead className="text-left">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -239,7 +239,7 @@ export default function AdminCoursesPage({ teacher = false }) {
                           </TableCell>
                           <TableCell className="text-muted-foreground">{course.createdAt ? new Date(course.createdAt).toLocaleDateString('vi-VN') : '—'}</TableCell>
                           <TableCell>
-                            <div className="flex justify-end gap-1">
+                            <div className="flex justify-start gap-1">
                               <Button variant="ghost" size="icon-sm" render={<Link to={`${basePath}/${course.id}`} />} nativeButton={false} aria-label="Xem chủ đề" title="Chủ đề"><ListTree /></Button>
                               {canManage && <Button variant="ghost" size="icon-sm" onClick={() => openEdit(course)} aria-label="Sửa khóa học" title="Sửa"><Edit3 /></Button>}
                               {canManage && <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(course)} aria-label="Xóa khóa học" title="Xóa"><Trash2 /></Button>}

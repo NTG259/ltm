@@ -124,7 +124,7 @@ export const MachineTable = memo(function MachineTable({ workers, now, onControl
       title: '',
       key: 'action',
       width: 250,
-      align: 'right',
+      align: 'left',
       render: (_, worker) => {
         const isStopped = worker.status === 'DEAD'
         const isPending = pendingAction?.id === worker.id

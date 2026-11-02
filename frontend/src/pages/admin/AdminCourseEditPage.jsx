@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import {
   App,
-  Breadcrumb,
   Button,
   Card,
-  Col,
   Drawer,
   Empty,
   Form,
   Input,
   Modal,
   Popconfirm,
-  Row,
   Select,
   Space,
   Spin,
@@ -29,7 +26,6 @@ import {
   InboxOutlined,
   ArrowUpOutlined,
   BookOutlined,
-  CodeOutlined,
   DeleteOutlined,
   EditOutlined,
   FileTextOutlined,
@@ -37,12 +33,10 @@ import {
   RocketOutlined,
   SaveOutlined,
 } from '@ant-design/icons'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { api } from '../../api'
 import { useFetch } from '../../lib/hooks'
 import { useAuth } from '../../auth/context'
-import MarkdownViewer from '../../components/MarkdownViewer'
-import CodeEditor from '../../components/CodeEditor'
 
 export default function AdminCourseEditPage({ teacher = false }) {
   const { id } = useParams()
@@ -243,10 +237,6 @@ export default function AdminCourseEditPage({ teacher = false }) {
     }
   }
 
-  const insertSnippet = (snippet) => {
-    setTheoryContent((prev) => prev + '\n' + snippet + '\n')
-  }
-
   const columns = [
     {
       title: '#',
@@ -292,7 +282,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
       title: 'Thao tác',
       key: 'actions',
       width: 220,
-      align: 'right',
+      align: 'left',
       render: (_, row) => (
         <Space>
           <Button
@@ -323,15 +313,6 @@ export default function AdminCourseEditPage({ teacher = false }) {
 
   return (
     <div className="page admin-page--editor">
-      <Breadcrumb
-        style={{ marginBottom: 16 }}
-        items={[
-          { title: <Link to={teacher ? '/teacher/classrooms' : '/admin'}>{teacher ? 'Khu vực giảng viên' : 'Bảng điều khiển'}</Link> },
-          { title: <Link to={teacher ? '/teacher/courses' : '/admin/courses'}>{teacher ? 'Khóa học của tôi' : 'Quản lý Khóa học'}</Link> },
-          { title: course?.title || 'Chi tiết khóa học' },
-        ]}
-      />
-
       <Card style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
@@ -435,114 +416,8 @@ export default function AdminCourseEditPage({ teacher = false }) {
           </div>
         ) : (
           <Tabs
-            defaultActiveKey="theory"
+            defaultActiveKey="problems"
             items={[
-              {
-                key: 'theory',
-                label: (
-                  <span>
-                    <FileTextOutlined /> Lý thuyết (Markdown)
-                  </span>
-                ),
-                children: (
-                  <div>
-                    {/* Thanh chèn nhanh cú pháp Markdown */}
-                    <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13, color: '#64748b', alignSelf: 'center', marginRight: 4 }}>
-                        Chèn nhanh:
-                      </span>
-                      <Button size="small" onClick={() => insertSnippet('### 1. Tiêu đề mục mới\nNội dung giải thích...')}>
-                        + Tiêu đề H3
-                      </Button>
-                      <Button size="small" onClick={() => insertSnippet('**Đoạn văn in đậm**')}>
-                        + In đậm
-                      </Button>
-                      <Button size="small" onClick={() => insertSnippet('```cpp\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // Code C++ ở đây\n    return 0;\n}\n```')}>
-                        + Khối Code C++
-                      </Button>
-                      <Button size="small" onClick={() => insertSnippet('> [!TIP]\n> Mẹo tối ưu hóa hoặc lưu ý kinh nghiệm thi đấu')}>
-                        + Hộp Mẹo (Tip)
-                      </Button>
-                      <Button size="small" onClick={() => insertSnippet('> [!NOTE]\n> Điểm cần ghi nhớ đặc biệt')}>
-                        + Hộp Ghi nhớ (Note)
-                      </Button>
-                    </div>
-
-                    <Row gutter={16}>
-                      {/* Cột trái: Biên soạn */}
-                      <Col span={12}>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: '#64748b' }}>
-                          MÃ NGUỒN MARKDOWN
-                        </div>
-                        <Input.TextArea
-                          value={theoryContent}
-                          onChange={(e) => setTheoryContent(e.target.value)}
-                          placeholder="Soạn nội dung bài học bằng định dạng Markdown..."
-                          rows={22}
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 13.5,
-                            lineHeight: 1.6,
-                            resize: 'vertical',
-                          }}
-                        />
-                      </Col>
-
-                      {/* Cột phải: Xem trước */}
-                      <Col span={12}>
-                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: '#64748b' }}>
-                          XEM TRƯỚC BÀI GIẢNG (LIVE PREVIEW)
-                        </div>
-                        <div
-                          style={{
-                            height: 520,
-                            overflowY: 'auto',
-                            padding: 16,
-                            borderRadius: 6,
-                            border: '1px solid var(--border)',
-                            background: 'var(--surface)',
-                          }}
-                        >
-                          <MarkdownViewer content={theoryContent} />
-                        </div>
-                      </Col>
-                    </Row>
-                  </div>
-                ),
-              },
-              {
-                key: 'code',
-                label: (
-                  <span>
-                    <CodeOutlined /> Mã nguồn mẫu C++ & STDIN
-                  </span>
-                ),
-                children: (
-                  <div style={{ padding: '8px 0' }}>
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                        Mã nguồn C++ mẫu minh họa (Học viên có thể copy hoặc mở trong Trình chạy C++):
-                      </div>
-                      <div style={{ height: 350, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                        <CodeEditor value={sampleCode} onChange={setSampleCode} />
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                        Dữ liệu đầu vào mặc định (STDIN) cho mã nguồn mẫu trên:
-                      </div>
-                      <Input.TextArea
-                        value={sampleInput}
-                        onChange={(e) => setSampleInput(e.target.value)}
-                        placeholder="Ví dụ: 10 20 hoặc dữ liệu mảng..."
-                        rows={4}
-                        style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}
-                      />
-                    </div>
-                  </div>
-                ),
-              },
               {
                 key: 'problems',
                 label: (
@@ -622,7 +497,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
                           title: 'Thao tác',
                           key: 'actions',
                           width: 100,
-                          align: 'right',
+                          align: 'left',
                           render: (_, row) => (
                             <Popconfirm
                               title="Gỡ bài tập này khỏi chủ đề?"
@@ -705,7 +580,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
                           title: 'Thao tác',
                           key: 'actions',
                           width: 140,
-                          align: 'right',
+                          align: 'left',
                           render: (_, row) => (
                             <Space>
                               <a href={`/api/courses/units/${lessonUnit?.id}/files/${row.id}`} download={row.fileName} target="_blank" rel="noreferrer">

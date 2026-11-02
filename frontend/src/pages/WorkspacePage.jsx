@@ -153,7 +153,7 @@ function MySubmissions({ problemId, userId, contestId, onPick, refreshKey }) {
           title: '',
           key: 'action',
           width: 70,
-          align: 'right',
+          align: 'left',
           render: (_, r) => (
             <Link to={`/submissions/${r.id}`} target="_blank" onClick={(e) => e.stopPropagation()} style={{ fontSize: 12, fontWeight: 500 }}>
               Xem ↗

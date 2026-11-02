@@ -49,7 +49,7 @@ function SubmissionsTab({ contestId, user }) {
           <TableRow key={submission.id}>
             <TableCell className="text-muted-foreground">{index + 1}</TableCell>
             <TableCell className="font-medium">{submission.problemTitle || submission.problemId}</TableCell>
-            <TableCell><VerdictTag submission={submission} /></TableCell>
+            <TableCell><VerdictTag submission={submission} showIcon={false} /></TableCell>
             <TableCell>{submission.score ?? '—'}</TableCell>
             <TableCell className="text-xs text-muted-foreground">{submission.createdAt ? new Date(submission.createdAt).toLocaleTimeString('vi-VN') : '—'}</TableCell>
           </TableRow>

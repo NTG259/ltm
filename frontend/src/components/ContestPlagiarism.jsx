@@ -209,7 +209,7 @@ export default function ContestPlagiarism({ contestId }) {
     {
       title: 'Hành động',
       width: 140,
-      align: 'right',
+      align: 'left',
       render: (_, r) => (
         <Button
           size="small"

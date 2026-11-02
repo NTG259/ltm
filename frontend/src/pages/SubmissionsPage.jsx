@@ -28,7 +28,8 @@ import {
 } from '../components/ui/table'
 import { FileText, Search, Server } from 'lucide-react'
 
-const PAGE_SIZE = 50
+const PAGE_SIZES = [10, 20, 50, 100]
+const DEFAULT_PAGE_SIZE = 50
 
 const VERDICT_OPTIONS = [
   { value: 'all', label: 'Tất cả kết quả' },
@@ -66,6 +67,8 @@ export default function SubmissionsPage({ admin, teacher }) {
   const problemId = searchParams.get('problemId') ? Number(searchParams.get('problemId')) : null
   const student = searchParams.get('student') || ''
   const page = searchParams.get('page') ? Number(searchParams.get('page')) : 0
+  const requestedPageSize = Number(searchParams.get('size'))
+  const pageSize = PAGE_SIZES.includes(requestedPageSize) ? requestedPageSize : DEFAULT_PAGE_SIZE
   const debounceRef = useRef(null)
 
   const setParam = (key, val) => {
@@ -83,22 +86,18 @@ export default function SubmissionsPage({ admin, teacher }) {
     debounceRef.current = setTimeout(() => setParam('student', val), 300)
   }
 
-  const staffQuery = isStaff
-    ? {
-        userId: student || undefined,
-        problemId: problemId || undefined,
-        verdict: verdict || undefined,
-        classroomId: isLecturer ? (activeClassroomId || undefined) : undefined,
-        page,
-        size: PAGE_SIZE,
-      }
-    : null
+  const submissionsQuery = {
+    userId: isStaff ? student || undefined : user.id,
+    problemId: problemId || undefined,
+    verdict: verdict || undefined,
+    classroomId: isLecturer ? (activeClassroomId || undefined) : undefined,
+    page,
+    size: pageSize,
+  }
 
   const subs = useFetch(
-    () => isStaff
-      ? api.listSubmissions(staffQuery)
-      : api.listSubmissions({ userId: user.id }),
-    isStaff ? [student, problemId, verdict, activeClassroomId, page] : [user.id],
+    () => api.listSubmissions(submissionsQuery),
+    [isStaff, student, problemId, verdict, activeClassroomId, page, pageSize, user.id],
   )
   const problems = useFetch(() => api.listProblems(), [])
   const { setData } = subs
@@ -126,28 +125,19 @@ export default function SubmissionsPage({ admin, teacher }) {
   const { rows, total } = useMemo(() => {
     const d = subs.data
     if (!d) return { rows: [], total: 0 }
-    if (Array.isArray(d)) {
-      const filtered = d.filter(
-        (s) =>
-          (!verdict || (verdict === 'PENDING' ? s.status !== 'FINISHED' : s.verdict === verdict)) &&
-          (!problemId || s.problemId === problemId) &&
-          (!student || `${s.userId} ${s.userName}`.toLowerCase().includes(student.toLowerCase())),
-      )
-      return { rows: filtered, total: filtered.length }
-    }
     return { rows: d.submissions || [], total: d.total || 0 }
-  }, [subs.data, verdict, problemId, student])
+  }, [subs.data])
 
   const stats = useMemo(() => {
     const list = Array.isArray(subs.data) ? (subs.data || []) : (subs.data?.submissions || [])
     const finished = list.filter((s) => s.status === 'FINISHED')
     return {
-      total: isStaff ? total : list.length,
+      total,
       pending: list.length - finished.length,
       ac: finished.filter((s) => s.verdict === 'AC').length,
       students: new Set(list.map((s) => s.userId)).size,
     }
-  }, [subs.data, total, isStaff])
+  }, [subs.data, total])
 
   const submissionPath = (id) => isLecturer
     ? `/teacher/submissions/${id}`
@@ -161,7 +151,7 @@ export default function SubmissionsPage({ admin, teacher }) {
     })),
   ]
 
-  const pageCount = isStaff ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return (
     <div className={`page flex flex-col gap-3${(admin || teacher) ? ' page--fluid' : ''}`}>
@@ -373,11 +363,37 @@ export default function SubmissionsPage({ admin, teacher }) {
           )}
         </CardContent>
 
-        {isStaff && !subs.loading && total > PAGE_SIZE && (
-          <div className="flex items-center justify-between border-t px-4 py-3">
-            <span className="text-sm text-muted-foreground">
-              Trang {page + 1} / {pageCount} · {total} kết quả
-            </span>
+        {!subs.loading && total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                Trang {page + 1} / {pageCount} · {total} kết quả
+              </span>
+              <div className="flex items-center gap-2">
+                <label htmlFor="submission-page-size" className="text-sm text-muted-foreground">Hiển thị</label>
+                <Select
+                  items={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size} / trang` }))}
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev)
+                      next.set('size', value)
+                      next.delete('page')
+                      return next
+                    }, { replace: true })
+                  }}
+                >
+                  <SelectTrigger id="submission-page-size" className="h-8 w-28" aria-label="Số bài nộp mỗi trang">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZES.map((size) => (
+                      <SelectItem key={size} value={String(size)}>{size} / trang</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled={page <= 0}
                 onClick={() => setParam('page', page <= 1 ? null : String(page - 1))}>

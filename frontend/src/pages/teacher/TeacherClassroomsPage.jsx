@@ -53,7 +53,7 @@ export default function TeacherClassroomsPage() {
                   <TableHead>Tên lớp</TableHead>
                   <TableHead>Kỳ học</TableHead>
                   <TableHead>Ngày tạo</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead className="text-left">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -72,7 +72,7 @@ export default function TeacherClassroomsPage() {
                     <TableCell className="text-muted-foreground">
                       {new Date(classroom.createdAt).toLocaleDateString('vi-VN')}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-left">
                       <Button size="sm" onClick={() => navigate(`/teacher/classrooms/${classroom.id}`)}>
                         Quản lý
                         <ArrowRight data-icon="inline-end" />

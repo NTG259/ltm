@@ -205,7 +205,7 @@ export default function ContestProctoring({ contestId }) {
     {
       title: 'Chi tiết',
       width: 130,
-      align: 'right',
+      align: 'left',
       render: (_, r) => (
         <Button
           size="small"

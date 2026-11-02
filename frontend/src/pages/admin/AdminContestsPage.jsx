@@ -388,7 +388,7 @@ export default function AdminContestsPage({ teacher = false }) {
                       <TableHead>Bắt đầu</TableHead>
                       <TableHead>Thời lượng</TableHead>
                       <TableHead className="text-center">Thí sinh</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
+                      <TableHead className="text-left">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -420,7 +420,7 @@ export default function AdminContestsPage({ teacher = false }) {
                           <TableCell className="text-sm text-muted-foreground">{formatDuration(c.durationMin)}</TableCell>
                           <TableCell className="text-center">{c.participantCount ?? 0}</TableCell>
                           <TableCell>
-                            <div className="flex justify-end gap-1">
+                            <div className="flex justify-start gap-1">
                               <Button variant="ghost" size="icon-sm" onClick={() => navigate(contestPath(c.id))} aria-label="Theo dõi kỳ thi" title="Theo dõi">
                                 <Eye />
                               </Button>

@@ -22,6 +22,7 @@ import com.cplusplus.backend.repository.ProblemRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import com.cplusplus.backend.repository.SystemLogRepository;
 import com.cplusplus.backend.security.SecurityService;
+import com.cplusplus.backend.security.SessionKickedEvent;
 import com.cplusplus.backend.service.CourseProgressService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
@@ -149,6 +154,14 @@ public class JudgeMasterService {
 
         // Thử giao việc nếu có bài trong hàng đợi
         scheduler.schedule(this::dispatchNext, 2, TimeUnit.SECONDS);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void onSessionKicked(SessionKickedEvent event) {
+        if (wsServer != null) {
+            wsServer.sendKickToUser(event.getUserId());
+        }
     }
 
     @PreDestroy

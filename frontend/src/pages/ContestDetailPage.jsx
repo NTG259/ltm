@@ -90,7 +90,7 @@ function ProblemsTab({ contest, status, mySubs, canSolve }) {
             <TableCell className="font-mono" title={`${problem.solvedCount} thí sinh AC / ${problem.attemptCount} thí sinh đã nộp`}>
               {problem.solvedCount}/{problem.attemptCount}
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-left">
               {canSolve && (
                 <Button size="sm" variant={status === 'RUNNING' ? 'default' : 'outline'} onClick={() => open(problem)}>
                   {status === 'RUNNING' ? 'Làm bài' : 'Luyện tập'}
@@ -149,7 +149,7 @@ function SubmissionsTab({ subs, labels, showUser }) {
               <TableCell>{formatRelative(submission.createdAt, now)}</TableCell>
               {showUser && <TableCell>{submission.userName} ({submission.userId})</TableCell>}
               <TableCell>{labels[submission.problemId] ?? '?'}. {submission.problemTitle}</TableCell>
-              <TableCell><VerdictTag submission={submission} /></TableCell>
+              <TableCell><VerdictTag submission={submission} showIcon={false} /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -226,7 +226,6 @@ export default function ContestDetailPage() {
   if (!c) return <div className="flex justify-center py-20"><Spinner className="size-6 text-muted-foreground" /></div>
 
   const canSolve = isStaff || status === 'ENDED' || status === 'RUNNING'
-  const myRow = standings.data?.rows.find((r) => r.userId === user.id)
   const badgeVariant = STATUS_BADGE[status] || STATUS_BADGE.ENDED
 
   return (
@@ -240,9 +239,6 @@ export default function ContestDetailPage() {
           <CardTitle>{c.title}</CardTitle>
           <CardDescription>
             Bắt đầu: {formatDateTime(c.startAt)} · {formatDuration(c.durationMin)} · {c.participantCount} thí sinh
-            {myRow && (
-              <> · Hạng của bạn: <b className="text-foreground">#{myRow.rank}</b> · {myRow.solved} bài · {myRow.penalty} phút</>
-            )}
           </CardDescription>
           <CardAction className="flex flex-col items-end gap-2 pl-4">
               <ContestClock contest={c} />

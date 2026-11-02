@@ -88,6 +88,19 @@ public class MasterWebSocketServer extends WebSocketServer {
         log.info("WebSocket server RFC 6455 started on port {}", getPort());
     }
 
+    public void sendKickToUser(Long userId) {
+        for (WebSocket conn : getConnections()) {
+            if (userId.equals(connUserIds.get(conn)) && conn.isOpen()) {
+                try {
+                    conn.send(objectMapper.writeValueAsString(Map.of("type", "SESSION_KICKED")));
+                    conn.close(1000, "session_kicked");
+                } catch (Exception e) {
+                    log.debug("Lỗi gửi SESSION_KICKED tới user {}: {}", userId, e.getMessage());
+                }
+            }
+        }
+    }
+
     public void broadcastText(String text) {
         broadcast(text);
     }

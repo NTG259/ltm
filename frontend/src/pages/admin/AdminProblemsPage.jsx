@@ -204,7 +204,7 @@ export default function AdminProblemsPage({ teacher = false }) {
                       <TableHead className="text-center">Số test</TableHead>
                       <TableHead className="text-center">Công khai</TableHead>
                       <TableHead>Bài nộp (AC)</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
+                      <TableHead className="text-left">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -240,7 +240,7 @@ export default function AdminProblemsPage({ teacher = false }) {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-start gap-1">
                             <Button variant="ghost" size="icon-sm" onClick={() => setZipProblem(problem)} aria-label="Nhập bộ test từ ZIP" title="Nhập ZIP"><FileArchive /></Button>
                             <Button variant="ghost" size="icon-sm" onClick={() => openEdit(problem.id)} aria-label="Sửa đề bài" title="Sửa"><Edit3 /></Button>
                             <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(problem)} aria-label="Xóa đề bài" title="Xóa"><Trash2 /></Button>

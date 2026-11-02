@@ -343,6 +343,12 @@ function connect() {
   ws.onmessage = (e) => {
     try {
       const msg = JSON.parse(e.data)
+      if (msg.type === 'SESSION_KICKED') {
+        try { sessionStorage.setItem('cj.kicked', '1') } catch {}
+        storeSession(null)
+        window.location.hash = '#/login'
+        return
+      }
       wsListeners.forEach((fn) => fn(msg))
     } catch {
       /* bá» qua frame khÃ´ng pháº£i JSON */

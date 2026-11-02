@@ -2,7 +2,7 @@
 #
 #   cp .env.example .env              # (tùy chọn) đổi mật khẩu / cổng
 #   docker compose up -d --build      # db + backend + frontend + go-judge
-#   docker compose --profile demo up -d seed   # nạp dữ liệu demo (admin/admin123, 10 đề, 3 kỳ thi)
+#   docker compose --profile demo up -d seed   # nạp dữ liệu demo (admin/admin123, 3 lớp, 6 kỳ thi)
 #
 #   Web:       http://localhost:18080
 #   Master:    HTTP :18000, WebSocket :18001
@@ -91,7 +91,10 @@ services:
       GO_JUDGE_URL: http://go-judge:5050
       DOCKER_PROXY_URL: http://docker-proxy:2375
       DOCKER_COMPOSE_PROJECT: ${COMPOSE_PROJECT_NAME:-codejudge}
+      UPLOAD_DIR: /opt/backend/uploads/course-files
       TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - course-files:/opt/backend/uploads/course-files
     ports:
       - "18000:8000"   # HTTP REST
       - "18001:8001"   # WebSocket
@@ -166,7 +169,8 @@ services:
       PGPASSWORD: ${DB_PASSWORD:-codejudge}
     volumes:
       - ./backend/src/main/resources/db/seed:/seed:ro
-    entrypoint: ["psql", "-v", "ON_ERROR_STOP=1", "-q", "-f", "/seed/demo_data.sql"]
+      - course-files:/uploads
+    entrypoint: ["/bin/bash", "/seed/run_seed.sh"]
     networks: [default]
     restart: "no"
 
@@ -178,5 +182,6 @@ networks:
     internal: true
 
 volumes:
+  course-files:
   db-data:
   redis-data:

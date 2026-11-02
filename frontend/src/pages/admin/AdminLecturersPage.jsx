@@ -273,7 +273,7 @@ export default function AdminLecturersPage() {
                       <TableHead>Lớp đang phụ trách</TableHead>
                       <TableHead>Mật khẩu ban đầu</TableHead>
                       <TableHead>Ngày tạo</TableHead>
-                      <TableHead className="text-right">Hành động</TableHead>
+                      <TableHead className="text-left">Hành động</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -302,7 +302,7 @@ export default function AdminLecturersPage() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{new Date(lecturer.createdAt).toLocaleDateString('vi-VN')}</TableCell>
                         <TableCell>
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-start gap-1">
                             <Button variant="ghost" size="icon-sm" onClick={() => openReset(lecturer)} aria-label="Đặt lại mật khẩu" title="Đặt lại mật khẩu"><KeyRound /></Button>
                             <Button
                               variant="ghost"

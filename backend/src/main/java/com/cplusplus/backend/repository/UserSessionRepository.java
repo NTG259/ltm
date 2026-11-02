@@ -16,6 +16,10 @@ public interface UserSessionRepository extends JpaRepository<UserSession, byte[]
             """)
     Optional<UserSession> findActive(byte[] tokenHash, Instant now);
 
+    @Modifying(clearAutomatically = true)
+    @Query("update UserSession s set s.revokedAt = :now where s.user.id = :userId and s.revokedAt is null and s.expiresAt > :now")
+    int revokeAllActiveForUser(Long userId, Instant now);
+
     @Modifying
     @Query("delete from UserSession s where s.expiresAt < :before")
     int deleteExpired(Instant before);

@@ -254,7 +254,7 @@ function StudentsTab({ classroomId }) {
               <TableHead>Họ tên</TableHead>
               <TableHead className="w-36">Mật khẩu ban đầu</TableHead>
               <TableHead className="w-28">Ngày thêm</TableHead>
-              <TableHead className="w-28 text-right">Thao tác</TableHead>
+              <TableHead className="w-28 text-left">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -270,8 +270,8 @@ function StudentsTab({ classroomId }) {
                 <TableCell className="text-muted-foreground text-sm">
                   {new Date(s.joinedAt).toLocaleDateString('vi-VN')}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
+                <TableCell className="text-left">
+                  <div className="flex justify-start gap-1">
                     <Button size="icon-sm" variant="ghost" title="Đặt lại mật khẩu" onClick={() => openReset(s)}>
                       <Key />
                     </Button>
@@ -488,7 +488,7 @@ function ContestsTab({ classroomId }) {
               <TableHead className="w-44">Bắt đầu</TableHead>
               <TableHead className="w-44">Kết thúc</TableHead>
               <TableHead className="w-32">Trạng thái</TableHead>
-              <TableHead className="w-28 text-right">Thao tác</TableHead>
+              <TableHead className="w-28 text-left">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -503,7 +503,7 @@ function ContestsTab({ classroomId }) {
                 <TableCell className="text-muted-foreground text-sm">{formatDateTime(c.startAt)}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{formatDateTime(c.endAt)}</TableCell>
                 <TableCell>{phaseTag(c, now)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-left">
                   <Link to={`/teacher/classrooms/${classroomId}/contests/${c.contestId}/monitor`}>
                     <Button size="sm" variant="outline">Giám sát</Button>
                   </Link>

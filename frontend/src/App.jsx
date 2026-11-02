@@ -22,6 +22,7 @@ const ContestDetailPage = lazy(() => import('./pages/ContestDetailPage'))
 const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
 const ContestExamPage = lazy(() => import('./pages/ContestExamPage'))
 const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
+const AdminContestLeaderboardPage = lazy(() => import('./pages/admin/AdminContestLeaderboardPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'))
 const AdminLecturersPage = lazy(() => import('./pages/admin/AdminLecturersPage'))
@@ -152,7 +153,8 @@ function AppRoutes() {
             <Route path="/admin/classrooms/:id" element={<AdminClassroomDetailPage />} />
             <Route path="/admin/classrooms/:id/monitor" element={<AdminClassroomMonitorPage />} />
             <Route path="/admin/classrooms/:cid/contests/:kid/monitor" element={<AdminContestMonitorPage />} />
-            <Route path="/admin/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/admin/leaderboard" element={<AdminContestLeaderboardPage />} />
+            <Route path="/admin/leaderboard/:id" element={<AdminContestLeaderboardPage />} />
           </Route>
 
           {/* 3. Teacher routes (Dành riêng cho giảng viên) */}

@@ -31,7 +31,8 @@ import {
 import { Skeleton } from '../components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
 
-const PAGE_SIZE = 20
+const PAGE_SIZES = [10, 20, 50, 100]
+const DEFAULT_PAGE_SIZE = 20
 const DIFFICULTY_OPTIONS = [
   { value: 'all', label: 'Tất cả độ khó' },
   ...Object.entries(DIFFICULTIES).map(([value, item]) => ({ value, label: item.label })),
@@ -54,6 +55,7 @@ export default function ProblemsPage() {
   const [difficulty, setDifficulty] = useState('')
   const [tag, setTag] = useState(null)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [rateSort, setRateSort] = useState('none')
   const debounceRef = useRef(null)
   const [debouncedQ, setDebouncedQ] = useState('')
@@ -67,8 +69,8 @@ export default function ProblemsPage() {
   }
 
   const problems = useFetch(
-    () => api.searchProblems({ q: debouncedQ, difficulty, page, size: PAGE_SIZE }),
-    [debouncedQ, difficulty, page],
+    () => api.searchProblems({ q: debouncedQ, difficulty, page, size: pageSize }),
+    [debouncedQ, difficulty, page, pageSize],
   )
   const mine = useFetch(() => api.listSubmissions({ userId: user.id }), [user.id])
 
@@ -104,7 +106,7 @@ export default function ProblemsPage() {
   const total = problems.data?.total ?? 0
   const solved = Object.values(myStatus).filter((status) => status === 'solved').length
   const solvedPercent = total ? Math.round((solved / total) * 100) : 0
-  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   const cycleRateSort = () => {
     setRateSort((current) => current === 'none' ? 'desc' : current === 'desc' ? 'asc' : 'none')
@@ -206,7 +208,7 @@ export default function ProblemsPage() {
                   <TableHead>Giới hạn</TableHead>
                   <TableHead className="min-w-36">Tỉ lệ AC</TableHead>
                   <TableHead>Độ khó</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead className="text-left">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -246,7 +248,7 @@ export default function ProblemsPage() {
                           {DIFFICULTIES[problem.difficulty]?.label || problem.difficulty}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-left">
                         <Button
                           variant={status ? 'outline' : 'default'}
                           size="sm"
@@ -263,9 +265,31 @@ export default function ProblemsPage() {
           )}
         </CardContent>
 
-        {!problems.loading && total > PAGE_SIZE && (
+        {!problems.loading && total > 0 && (
           <CardFooter className="justify-between">
-            <span className="text-sm text-muted-foreground">Trang {page}/{pageCount} · {total} bài</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-muted-foreground">Trang {page}/{pageCount} · {total} bài</span>
+              <label htmlFor="problem-page-size" className="text-sm text-muted-foreground">Hiển thị</label>
+              <Select
+                items={PAGE_SIZES.map((size) => ({ value: String(size), label: `${size} / trang` }))}
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value))
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger id="problem-page-size" className="h-8 w-28" aria-label="Số bài tập mỗi trang">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {PAGE_SIZES.map((size) => (
+                      <SelectItem key={size} value={String(size)}>{size} / trang</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
                 <ChevronLeft data-icon="inline-start" />

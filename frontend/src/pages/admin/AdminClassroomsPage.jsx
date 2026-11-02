@@ -205,7 +205,7 @@ export default function AdminClassroomsPage() {
                       <TableHead>Kỳ học</TableHead>
                       <TableHead>Giảng viên phụ trách</TableHead>
                       <TableHead>Ngày tạo</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
+                      <TableHead className="text-left">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -218,7 +218,7 @@ export default function AdminClassroomsPage() {
                         <TableCell><div className="flex flex-wrap gap-1">{lecturerBadges(classroom)}</div></TableCell>
                         <TableCell className="text-muted-foreground">{new Date(classroom.createdAt).toLocaleDateString('vi-VN')}</TableCell>
                         <TableCell>
-                          <div className="flex justify-end gap-1">
+                          <div className="flex justify-start gap-1">
                             <Button variant="ghost" size="icon-sm" render={<Link to={`/admin/classrooms/${classroom.id}`} />} nativeButton={false} aria-label="Xem chi tiết" title="Chi tiết"><Users /></Button>
                             <Button variant="ghost" size="icon-sm" onClick={() => openEdit(classroom)} aria-label="Sửa lớp học" title="Sửa"><Edit3 /></Button>
                             <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(classroom)} aria-label="Xóa lớp học" title="Xóa"><Trash2 /></Button>

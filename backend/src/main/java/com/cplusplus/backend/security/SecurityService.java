@@ -5,6 +5,7 @@ import com.cplusplus.backend.repository.ClassroomStudentRepository;
 import com.cplusplus.backend.domain.user.UserSession;
 import com.cplusplus.backend.repository.UserRepository;
 import com.cplusplus.backend.repository.UserSessionRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +27,17 @@ public class SecurityService {
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
     private final ClassroomStudentRepository classroomStudentRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(12);
     private final SecureRandom secureRandom = new SecureRandom();
 
     public SecurityService(UserRepository userRepository, UserSessionRepository userSessionRepository,
-                           ClassroomStudentRepository classroomStudentRepository) {
+                           ClassroomStudentRepository classroomStudentRepository,
+                           ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
         this.classroomStudentRepository = classroomStudentRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public record AuthResult(String token, User user) {}
@@ -134,6 +138,10 @@ public class SecurityService {
     }
 
     private void createSession(String token, User user) {
+        int revoked = userSessionRepository.revokeAllActiveForUser(user.getId(), Instant.now());
+        if (revoked > 0) {
+            eventPublisher.publishEvent(new SessionKickedEvent(this, user.getId()));
+        }
         byte[] hash = sha256(token);
         Instant expiresAt = Instant.now().plus(7, ChronoUnit.DAYS);
         UserSession session = new UserSession(hash, user, expiresAt);
