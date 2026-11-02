@@ -123,7 +123,7 @@ public class MonitorController {
                     .toList();
 
             int acCount = 0;
-            long penaltyMinutes = 0;
+            long totalTimeMinutes = 0;
             int totalSubmissions = userSubs.size();
             Instant lastSubmitAt = null;
             Map<String, Integer> wrongBefore = new HashMap<>();
@@ -145,7 +145,7 @@ public class MonitorController {
                     acCount++;
                     long minutesSinceStart = Duration.between(contest.getStartAt(), s.getCreatedAt()).toMinutes();
                     int wrong = wrongBefore.getOrDefault(label, 0);
-                    penaltyMinutes += minutesSinceStart + (long) wrong * contest.getPenaltyMinutes();
+                    totalTimeMinutes += minutesSinceStart;
 
                     Map<String, Object> cell = cells.get(label);
                     cell.put("verdict", "AC");
@@ -166,7 +166,7 @@ public class MonitorController {
             row.put("online", onlineIds.contains(user.getId()));
             row.put("acCount", acCount);
             row.put("totalSubmissions", totalSubmissions);
-            row.put("penaltyMinutes", penaltyMinutes);
+            row.put("penaltyMinutes", totalTimeMinutes);
             row.put("lastSubmitAt", lastSubmitAt != null ? lastSubmitAt.toString() : null);
             row.put("problems", new ArrayList<>(cells.values()));
             return row;

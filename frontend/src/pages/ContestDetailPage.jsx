@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, CheckCircle2, FileDiff, Lock, SearchX, Shield } from 'lucide-react'
+
+import { AlertCircle, CheckCircle2, Lock, SearchX, ShieldAlert } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -9,16 +10,13 @@ import { CONTEST_STATUS, liveStatus } from '../lib/contest'
 import ContestClock from '../components/ContestClock'
 import ContestStandings from '../components/ContestStandings'
 import ContestProctoring from '../components/ContestProctoring'
-import ContestPlagiarism from '../components/ContestPlagiarism'
 import VerdictTag from '../components/VerdictTag'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '../components/ui/alert-dialog'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
 import { Spinner } from '../components/ui/spinner'
@@ -33,6 +31,7 @@ const STATUS_BADGE = {
 
 function ProblemsTab({ contest, status, mySubs, canSolve }) {
   const { isAdmin, isLecturer } = useAuth()
+  const isStaff = isAdmin || isLecturer
   const navigate = useNavigate()
   if (status === 'UPCOMING')
     return (
@@ -40,6 +39,16 @@ function ProblemsTab({ contest, status, mySubs, canSolve }) {
         <EmptyHeader>
           <Lock className="size-8 text-muted-foreground/50 mb-2" />
           <EmptyTitle>Đề bài sẽ hiện khi kỳ thi bắt đầu</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    )
+
+  if (status === 'RUNNING' && !isStaff)
+    return (
+      <Empty className="border-0 py-12">
+        <EmptyHeader>
+          <Lock className="size-8 text-muted-foreground/50 mb-2" />
+          <EmptyTitle>Đề bài sẽ hiển thị sau khi bạn vào phòng thi</EmptyTitle>
         </EmptyHeader>
       </Empty>
     )
@@ -163,9 +172,7 @@ export default function ContestDetailPage() {
   const navigate = useNavigate()
   const now = useNow(1000)
   const [tab, setTab] = useState('problems')
-  const [registering, setRegistering] = useState(false)
-  const [unregistering, setUnregistering] = useState(false)
-  const [feedback, setFeedback] = useState(null)
+  const [examDialogOpen, setExamDialogOpen] = useState(false)
   const contest = useFetch(() => api.getContest(id, user), [id, user])
   const standings = useFetch(() => api.contestStandings(id), [id])
   const subs = useFetch(
@@ -173,8 +180,6 @@ export default function ContestDetailPage() {
     [id, user.id, isStaff],
   )
   const c = contest.data
-  const contestId = c?.id
-  const isRegistered = c?.registered
   const status = c ? liveStatus(c, now) : null
   const { reload: reloadContest } = contest
   const { reload: reloadStandings } = standings
@@ -185,12 +190,6 @@ export default function ContestDetailPage() {
     if (prevStatus.current && status && prevStatus.current !== status) reloadContest()
     prevStatus.current = status
   }, [status, reloadContest])
-
-  useEffect(() => {
-    if (!isStaff && contestId && status === 'RUNNING' && !isRegistered) {
-      api.registerContest(contestId, user).then(reloadContest).catch(() => {})
-    }
-  }, [contestId, status, isRegistered, isStaff, user, reloadContest])
 
   useSocket(
     useCallback(
@@ -226,112 +225,31 @@ export default function ContestDetailPage() {
     )
   if (!c) return <div className="flex justify-center py-20"><Spinner className="size-6 text-muted-foreground" /></div>
 
-  const register = async () => {
-    setRegistering(true)
-    try {
-      await api.registerContest(c.id, user)
-      setFeedback({ type: 'success', title: 'Đăng ký thành công', message: 'Bạn đã được thêm vào danh sách thí sinh.' })
-      reloadContest()
-      reloadStandings()
-    } catch (e) {
-      setFeedback({ type: 'error', title: 'Không thể đăng ký', message: e.message })
-    } finally {
-      setRegistering(false)
-    }
-  }
-
-  const unregister = async () => {
-    setUnregistering(true)
-    try {
-      await api.unregisterContest(c.id)
-      setFeedback({ type: 'success', title: 'Đã hủy đăng ký', message: 'Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu.' })
-      reloadContest()
-      reloadStandings()
-    } catch (e) {
-      setFeedback({ type: 'error', title: 'Không thể hủy đăng ký', message: e.message })
-    } finally {
-      setUnregistering(false)
-    }
-  }
-
   const canSolve = isStaff || status === 'ENDED' || status === 'RUNNING'
   const myRow = standings.data?.rows.find((r) => r.userId === user.id)
   const badgeVariant = STATUS_BADGE[status] || STATUS_BADGE.ENDED
 
   return (
     <div className="page flex flex-col gap-3">
-      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Link
-          to={isStaff ? (isAdmin ? '/admin/contests' : '/teacher/contests') : '/contests'}
-          className="hover:text-foreground transition-colors"
-        >
-          Kỳ thi
-        </Link>
-        <span>/</span>
-        <span className="text-foreground font-medium truncate">{c.title}</span>
-      </nav>
-
-      {feedback && (
-        <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'}>
-          {feedback.type === 'error' ? <AlertCircle /> : <CheckCircle2 />}
-          <AlertTitle>{feedback.title}</AlertTitle>
-          <AlertDescription>{feedback.message}</AlertDescription>
-        </Alert>
-      )}
-
       <Card>
         <CardHeader>
           <div className="flex flex-wrap gap-1.5">
             <Badge variant={badgeVariant}>{CONTEST_STATUS[status]?.label}</Badge>
             <Badge variant="secondary">ICPC</Badge>
-            {c.registered && <Badge variant="outline">Đã đăng ký</Badge>}
           </div>
           <CardTitle>{c.title}</CardTitle>
           <CardDescription>
             Bắt đầu: {formatDateTime(c.startAt)} · {formatDuration(c.durationMin)} · {c.participantCount} thí sinh
             {myRow && (
-              <> · Hạng của bạn: <b className="text-foreground">#{myRow.rank}</b> · {myRow.solved} bài · phạt {myRow.penalty}</>
+              <> · Hạng của bạn: <b className="text-foreground">#{myRow.rank}</b> · {myRow.solved} bài · {myRow.penalty} phút</>
             )}
           </CardDescription>
           <CardAction className="flex flex-col items-end gap-2 pl-4">
               <ContestClock contest={c} />
-              {!isStaff && c.registered && status === 'RUNNING' && !c.finished && (
-                <Button size="lg" onClick={() => navigate(`/contests/${c.id}/exam`)}>
-                  Vào phòng thi
+              {!isStaff && status === 'RUNNING' && (
+                <Button size="lg" disabled={!!c.finished} onClick={() => setExamDialogOpen(true)}>
+                  {c.finished ? 'Đã nộp bài' : 'Vào phòng thi'}
                 </Button>
-              )}
-              {!isStaff && c.finished && (
-                <span className="text-xs text-muted-foreground">Bạn đã nộp bài</span>
-              )}
-              {!isStaff && !c.registered && status === 'UPCOMING' && (
-                <Button size="lg" disabled={registering} onClick={register}>
-                  {registering && <Spinner data-icon="inline-start" />}
-                  Đăng ký tham gia
-                </Button>
-              )}
-              {!isStaff && c.registered && status === 'UPCOMING' && (
-                <AlertDialog>
-                  <AlertDialogTrigger
-                    render={<Button variant="destructive" size="lg" disabled={unregistering} />}
-                  >
-                    {unregistering && <Spinner data-icon="inline-start" />}
-                    Hủy đăng ký
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Hủy đăng ký kỳ thi?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Giữ lại</AlertDialogCancel>
-                      <AlertDialogAction variant="destructive" onClick={unregister}>
-                        Hủy đăng ký
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               )}
           </CardAction>
         </CardHeader>
@@ -345,18 +263,9 @@ export default function ContestDetailPage() {
               <TabsTrigger value="standings">Xếp hạng</TabsTrigger>
               <TabsTrigger value="subs">Bài nộp</TabsTrigger>
               {isStaff && (
-                <TabsTrigger value="proctor">
-                  <Shield className="text-destructive" />
-                  Giám sát
-                </TabsTrigger>
+                <TabsTrigger value="proctor">Giám sát</TabsTrigger>
               )}
-              {isStaff && (
-                <TabsTrigger value="plagiarism">
-                  <FileDiff className="text-amber-600" />
-                  Chống đạo văn
-                </TabsTrigger>
-              )}
-              <TabsTrigger value="rules">Thể lệ</TabsTrigger>
+              {!isStaff && <TabsTrigger value="rules">Thể lệ</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="problems">
@@ -379,30 +288,54 @@ export default function ContestDetailPage() {
                 <ContestProctoring contestId={c.id} />
               </TabsContent>
             )}
-            {isStaff && (
-              <TabsContent value="plagiarism" className="p-4">
-                <ContestPlagiarism contestId={c.id} />
+            {!isStaff && (
+              <TabsContent value="rules" className="p-4">
+                <div className="statement">
+                  <p>{c.description}</p>
+                  <h3>Cách tính điểm</h3>
+                  <p>
+                    Xếp hạng theo số bài giải đúng (AC). Nếu bằng nhau, thí sinh có tổng thời gian đến khi AC ít hơn xếp trên.
+                    Các lần nộp sai không cộng thêm thời gian.
+                  </p>
+                  <h3>Quy định</h3>
+                  <p>
+                    Chỉ thí sinh đã đăng ký mới được nộp bài. Ngôn ngữ C++17. Bài nộp sau khi kỳ thi kết thúc không được tính vào
+                    bảng xếp hạng.
+                  </p>
+                </div>
               </TabsContent>
             )}
-            <TabsContent value="rules" className="p-4">
-              <div className="statement">
-                <p>{c.description}</p>
-                <h3>Cách tính điểm (ICPC)</h3>
-                <p>
-                  Xếp hạng theo số bài giải đúng (AC). Nếu bằng nhau, ai có tổng thời gian phạt ít hơn xếp trên. Thời gian phạt
-                  của mỗi bài = số phút từ lúc bắt đầu đến khi AC + {standings.data?.penaltyPerWrong ?? 20} phút cho mỗi lần nộp
-                  sai trước đó. Lỗi biên dịch (CE) và vi phạm bảo mật (SEC) không bị tính phạt.
-                </p>
-                <h3>Quy định</h3>
-                <p>
-                  Chỉ thí sinh đã đăng ký mới được nộp bài. Ngôn ngữ C++17. Bài nộp sau khi kỳ thi kết thúc không được tính vào
-                  bảng xếp hạng.
-                </p>
-              </div>
-            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
+
+      <AlertDialog open={examDialogOpen} onOpenChange={setExamDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="size-5 text-destructive" />
+              Quy định phòng thi
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>Trước khi vào phòng thi, bạn cần nắm rõ các quy định sau:</p>
+                <ul className="list-disc space-y-1.5 pl-5">
+                  <li>Không được chuyển tab, thu nhỏ cửa sổ hoặc rời khỏi trang thi trong suốt thời gian làm bài.</li>
+                  <li>Mỗi lần vi phạm sẽ được <strong>ghi lại tự động</strong> và báo cáo tới giảng viên.</li>
+                  <li>Tích lũy vi phạm có thể ảnh hưởng đến kết quả thi của bạn.</li>
+                </ul>
+                <p className="text-muted-foreground">Bằng cách nhấn <strong>Xác nhận vào thi</strong>, bạn đồng ý tuân thủ các quy định trên.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Quay lại</AlertDialogCancel>
+            <AlertDialogAction onClick={() => navigate(`/contests/${c.id}/exam`)}>
+              Xác nhận vào thi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

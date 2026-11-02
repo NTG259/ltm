@@ -64,8 +64,11 @@ export default function ContestWorkspacePage() {
   }
 
   const goBack = () => navigate(`/contests/${cid}`)
-  if (!isStaff && !contest.registered && status === 'UPCOMING') {
+  if (!isStaff && status === 'UPCOMING') {
     return <ContestWorkspaceState title="Kỳ thi chưa bắt đầu" description="Bạn chỉ có thể mở đề khi kỳ thi bắt đầu." onBack={goBack} />
+  }
+  if (!isStaff && status === 'ENDED') {
+    return <ContestWorkspaceState title="Kỳ thi đã kết thúc" description="Không thể vào phòng thi sau khi kỳ thi đã kết thúc." onBack={goBack} />
   }
   const problem = (contest.problems || []).find((item) => item.label === label)
   if (!problem) {

@@ -81,6 +81,7 @@ export default function ContestExamPage() {
 
   const reloadContest = contestQuery.reload
   const reloadStandings = standings.reload
+  const isEnded = contest ? liveStatus(contest, now) === 'ENDED' : false
   const needsAutoRegistration = !!contestId && !isRegistered && isRunning && !registrationFailed
   useEffect(() => {
     if (!needsAutoRegistration) return undefined
@@ -136,6 +137,9 @@ export default function ContestExamPage() {
 
   if (contestQuery.error) {
     return <Empty className="min-h-screen border-0"><EmptyHeader><EmptyTitle>Không tìm thấy kỳ thi</EmptyTitle><EmptyDescription>Kỳ thi không tồn tại hoặc bạn không có quyền truy cập.</EmptyDescription></EmptyHeader></Empty>
+  }
+  if (isEnded) {
+    return <Empty className="min-h-screen border-0"><EmptyHeader><EmptyTitle>Kỳ thi đã kết thúc</EmptyTitle><EmptyDescription>Không thể vào phòng thi sau khi kỳ thi đã kết thúc.</EmptyDescription></EmptyHeader></Empty>
   }
   if (!contest || contestQuery.loading || needsAutoRegistration) {
     return <div className="flex min-h-screen items-center justify-center"><Spinner className="size-6" /></div>

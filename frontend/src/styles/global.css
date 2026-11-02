@@ -2437,7 +2437,7 @@ html, body {
 .result-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 16px; border: 1px solid; border-radius: 8px; }
 .result-summary.tone-running { display: grid; gap: 8px; }
 .result-main { flex: 1; min-width: 220px; display: grid; gap: 2px; color: var(--text); }
-.result-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.result-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
 .result-summary:not(.tone-running) .result-title { color: inherit; }
 .result-summary.tone-ac .result-title { color: var(--ac-fg); }
 .result-summary.tone-wa .result-title { color: var(--wa-fg); }

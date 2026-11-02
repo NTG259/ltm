@@ -701,7 +701,7 @@ function CourseTab({ classroomId }) {
     <>
       {/* Course header */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
-        <span className="font-semibold">📗 {courseData.title}</span>
+        <span className="font-semibold">{courseData.title}</span>
         <Badge variant="secondary">{units.length} chương</Badge>
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>Đổi khóa học</Button>
@@ -1066,10 +1066,10 @@ export default function TeacherClassroomDetailPage() {
         <Tabs defaultValue="students">
           <div className="border-b px-1">
             <TabsList variant="line" className="h-10 gap-0 rounded-none bg-transparent p-0">
-              <TabsTrigger value="students" className="rounded-none px-4 h-full">👥 Sinh viên</TabsTrigger>
-              <TabsTrigger value="contests" className="rounded-none px-4 h-full">🏆 Kỳ thi</TabsTrigger>
-              <TabsTrigger value="course" className="rounded-none px-4 h-full">📖 Khóa học</TabsTrigger>
-              <TabsTrigger value="submissions" className="rounded-none px-4 h-full">📝 Bài nộp</TabsTrigger>
+              <TabsTrigger value="students" className="h-full rounded-none px-4"><Users data-icon="inline-start" />Sinh viên</TabsTrigger>
+              <TabsTrigger value="contests" className="h-full rounded-none px-4"><Trophy data-icon="inline-start" />Kỳ thi</TabsTrigger>
+              <TabsTrigger value="course" className="h-full rounded-none px-4"><GraduationCap data-icon="inline-start" />Khóa học</TabsTrigger>
+              <TabsTrigger value="submissions" className="h-full rounded-none px-4"><FileText data-icon="inline-start" />Bài nộp</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="students"><StudentsTab classroomId={id} /></TabsContent>

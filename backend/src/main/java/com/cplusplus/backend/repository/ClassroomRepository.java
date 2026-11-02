@@ -39,4 +39,13 @@ public interface ClassroomRepository extends JpaRepository<Classroom, Long> {
             )
             """, nativeQuery = true)
     boolean isLecturerAssigned(Long classroomId, Long userId);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1 FROM classroom_contests cc
+                JOIN classroom_students cs ON cs.classroom_id = cc.classroom_id
+                WHERE cc.contest_id = :contestId AND cs.user_id = :userId
+            )
+            """, nativeQuery = true)
+    boolean isStudentInContestClassroom(Long contestId, Long userId);
 }

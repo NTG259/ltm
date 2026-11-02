@@ -8,7 +8,6 @@ import { formatDateTime, formatDuration } from '../lib/format'
 import { CONTEST_STATUS, liveStatus } from '../lib/contest'
 import ContestClock from '../components/ContestClock'
 import StudentPageHeader from '../components/student/StudentPageHeader'
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
 import {
@@ -22,7 +21,6 @@ import {
 } from '../components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
 import { Skeleton } from '../components/ui/skeleton'
-import { Spinner } from '../components/ui/spinner'
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
 
 const STATUS_VARIANT = {
@@ -31,7 +29,7 @@ const STATUS_VARIANT = {
   ENDED: 'outline',
 }
 
-function ContestCard({ contest, status, onRegister, registering }) {
+function ContestCard({ contest, status }) {
   const navigate = useNavigate()
   const { isAdmin, isLecturer } = useAuth()
   const isStaff = isAdmin || isLecturer
@@ -44,13 +42,6 @@ function ContestCard({ contest, status, onRegister, registering }) {
     action = <Button variant="outline" size="sm" onClick={open}>{status === 'RUNNING' ? 'Giám sát' : 'Theo dõi'}</Button>
   } else if (status === 'RUNNING') {
     action = <Button size="sm" onClick={open}>Vào thi</Button>
-  } else if (!contest.registered) {
-    action = (
-      <Button size="sm" disabled={registering} onClick={() => onRegister(contest)}>
-        {registering && <Spinner data-icon="inline-start" />}
-        Đăng ký
-      </Button>
-    )
   } else {
     action = <Button variant="outline" size="sm" onClick={open}>Xem thể lệ</Button>
   }
@@ -64,7 +55,6 @@ function ContestCard({ contest, status, onRegister, registering }) {
         </CardDescription>
         <CardAction className="flex gap-1">
           <Badge variant={STATUS_VARIANT[status]}>{CONTEST_STATUS[status].label}</Badge>
-          {contest.registered && <Badge variant="outline">Đã đăng ký</Badge>}
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -103,29 +93,11 @@ function ContestGridSkeleton() {
 
 export default function ContestsPage() {
   const { user } = useAuth()
-  const navigate = useNavigate()
   const now = useNow(1000)
   const [filter, setFilter] = useState('active')
-  const [registering, setRegistering] = useState(null)
-  const [feedback, setFeedback] = useState(null)
   const list = useFetch(() => api.listContests(user), [user])
   const { reload } = list
   useSocket(useCallback((message) => message.type === 'CONTEST_UPDATE' && reload(), [reload]))
-
-  const register = async (contest) => {
-    setRegistering(contest.id)
-    setFeedback(null)
-    try {
-      await api.registerContest(contest.id, user)
-      setFeedback({ type: 'success', title: 'Đăng ký thành công', message: `Bạn đã đăng ký “${contest.title}”.` })
-      if (liveStatus(contest, Date.now()) === 'RUNNING') navigate(`/contests/${contest.id}`)
-      else reload()
-    } catch (error) {
-      setFeedback({ type: 'error', title: 'Không thể đăng ký', message: error.message })
-    } finally {
-      setRegistering(null)
-    }
-  }
 
   const contests = (list.data || []).map((contest) => ({ contest, status: liveStatus(contest, now) }))
   const order = { RUNNING: 0, UPCOMING: 1, ENDED: 2 }
@@ -152,13 +124,6 @@ export default function ContestsPage() {
         )}
       />
 
-      {feedback && (
-        <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'}>
-          <AlertTitle>{feedback.title}</AlertTitle>
-          <AlertDescription>{feedback.message}</AlertDescription>
-        </Alert>
-      )}
-
       {list.loading ? <ContestGridSkeleton /> : shown.length ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {shown.map(({ contest, status }) => (
@@ -166,8 +131,6 @@ export default function ContestsPage() {
               key={contest.id}
               contest={contest}
               status={status}
-              onRegister={register}
-              registering={registering === contest.id}
             />
           ))}
         </div>

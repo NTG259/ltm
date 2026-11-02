@@ -3,7 +3,7 @@ import { statusLabel, STATUSES, VERDICTS } from '../lib/verdicts'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 /** Nhãn kết quả: hiển thị trạng thái trung gian nếu bài chưa chấm xong. */
-export default function VerdictTag({ submission, verdict, status, progress, size, full }) {
+export default function VerdictTag({ submission, verdict, status, progress, size, full, showIcon = true }) {
   const s = status ?? submission?.status ?? 'FINISHED'
   const v = verdict ?? submission?.verdict
   const p = progress ?? submission?.progress
@@ -23,7 +23,7 @@ export default function VerdictTag({ submission, verdict, status, progress, size
   return (
     <Tooltip>
       <TooltipTrigger render={<span className={`${cls} tone-${meta.tone}`} />}>
-        {v === 'AC' && <CheckCircle2 />}
+        {showIcon && v === 'AC' && <CheckCircle2 />}
         {full ? meta.label : meta.short}
       </TooltipTrigger>
       <TooltipContent>{meta.label} – {meta.desc}</TooltipContent>

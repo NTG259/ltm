@@ -192,7 +192,7 @@ class PersistenceTest {
     }
 
     @Test
-    void contestStandingsFollowIcpcRules() {
+    void contestStandingsDoNotAddTimeForWrongSubmissions() {
         Contest c = new Contest("Giữa kỳ", now.minus(Duration.ofMinutes(50)), Duration.ofMinutes(150));
         c.setProblemList(List.of(aPlusB));
         contests.save(c);
@@ -202,7 +202,7 @@ class PersistenceTest {
         assertThat(c.phaseAt(now)).isEqualTo(ContestPhase.RUNNING);
         assertThat(contests.isRegistered(c.getId(), alice.getId())).isTrue();
 
-        judged(alice, c, wrongAnswer(), now.minus(Duration.ofMinutes(40)));   // +20 phút phạt
+        judged(alice, c, wrongAnswer(), now.minus(Duration.ofMinutes(40)));   // Không cộng thêm phút
         judged(alice, c, accepted(), now.minus(Duration.ofMinutes(30)));      // AC phút 20
         judged(bob, c, accepted(), now.minus(Duration.ofMinutes(20)));        // AC phút 30
         em.flush();
@@ -211,8 +211,8 @@ class PersistenceTest {
                 .extracting(ContestRepository.StandingRow::getUsername, ContestRepository.StandingRow::getRank,
                         ContestRepository.StandingRow::getPenalty)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("B98DCCN014", 1L, 30L),
-                        org.assertj.core.groups.Tuple.tuple("B98DCCN001", 2L, 40L));
+                        org.assertj.core.groups.Tuple.tuple("B98DCCN001", 1L, 20L),
+                        org.assertj.core.groups.Tuple.tuple("B98DCCN014", 2L, 30L));
         assertThat(contests.findStandingCells(c.getId()))
                 .filteredOn(cell -> cell.getUserId().equals(alice.getId()))
                 .singleElement()

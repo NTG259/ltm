@@ -205,7 +205,6 @@ function TestcasePanel({ problem, input, setInput, selectedCase, setSelectedCase
             onClick={() => setSelectedCase('custom')}
           >
             <PlusOutlined style={{ fontSize: 10, marginRight: 3 }} />
-            Tự nhập
           </button>
           {typeof selectedCase === 'number' && samples[selectedCase] && (
             <Tooltip title="Khôi phục dữ liệu ban đầu">
@@ -244,7 +243,7 @@ function DiffText({ output, expected }) {
 }
 
 /** Panel kết quả: hiện kết quả chạy thử HOẶC kết quả nộp bài */
-function TestResultPanel({ mode, running, testResult, active, submitting, problem, setCode, message }) {
+function TestResultPanel({ mode, running, testResult, active, submitting, problem }) {
   if (running) {
     return (
       <div className="result-summary tone-running" style={{ marginTop: 4 }}>
@@ -267,19 +266,6 @@ function TestResultPanel({ mode, running, testResult, active, submitting, proble
     if (active) {
       return (
         <Space direction="vertical" size={10} style={{ width: '100%', paddingTop: 4 }}>
-          <Space size={8} wrap>
-            {active.sourceCode && (
-              <Button size="small" onClick={() => {
-                setCode(active.sourceCode)
-                message.success(`Đã nạp lại mã bài nộp #${active.id}`)
-              }}>
-                Nạp code vào editor
-              </Button>
-            )}
-            <Link to={`/submissions/${active.id}`} target="_blank" style={{ fontSize: 12 }}>
-              Xem toàn bộ bài nộp ↗
-            </Link>
-          </Space>
           <TestResults submission={active} />
         </Space>
       )
@@ -303,11 +289,9 @@ function TestResultPanel({ mode, running, testResult, active, submitting, proble
             </div>
             <div style={{ fontSize: 13 }}>
               {testResult.verdict === 'AC' && (hasExpected ? 'Khớp kết quả mẫu.' : 'Chương trình đã chạy xong.')}
-              {testResult.verdict === 'WA' && 'Kết quả không khớp đáp án mẫu.'}
               {testResult.verdict === 'TLE' && `Vượt giới hạn thời gian (${(problem?.timeLimitMs || 1000) / 1000}s).`}
               {testResult.verdict === 'MLE' && `Vượt giới hạn bộ nhớ (${problem?.memoryLimitMb || 256}MB).`}
               {testResult.verdict === 'RTE' && 'Lỗi khi chạy (Runtime Error).'}
-              {testResult.verdict === 'CE' && 'Biên dịch thất bại.'}
               {testResult.verdict === 'SEC' && `Vi phạm bảo mật: ${testResult.securityMessage}`}
             </div>
           </div>
@@ -720,8 +704,6 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
                       submitting={submitting}
                       problem={problem}
                       code={code}
-                      setCode={setCode}
-                      message={message}
                     />
                   )}
                 </div>

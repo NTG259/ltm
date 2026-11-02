@@ -104,7 +104,6 @@ export default function CustomTestRunner({
             }}
             onClick={pickCustom}
           >
-            Tự nhập
           </button>
           {typeof selectedCase === 'number' && samples[selectedCase] && (
             <Tooltip title="Khôi phục dữ liệu ban đầu của test mẫu này">
@@ -189,11 +188,9 @@ export default function CustomTestRunner({
                     ? 'Chương trình chạy hoàn tất và khớp kết quả mẫu của đề.'
                     : 'Chương trình đã thực thi xong và xuất ra kết quả bên dưới.'
                 )}
-                {result.verdict === 'WA' && 'Kết quả in ra không trùng khớp với đáp án mẫu.'}
                 {result.verdict === 'TLE' && `Vượt quá giới hạn thời gian chạy (${(problem?.timeLimitMs || 1000) / 1000}s).`}
                 {result.verdict === 'MLE' && `Vượt quá giới hạn bộ nhớ (${problem?.memoryLimitMb || 256}MB).`}
                 {result.verdict === 'RTE' && 'Chương trình gặp lỗi khi chạy (Runtime Error).'}
-                {result.verdict === 'CE' && 'Biên dịch thất bại g++.'}
                 {result.verdict === 'SEC' && `Vi phạm quy tắc bảo mật: ${result.securityMessage}`}
               </div>
             </div>

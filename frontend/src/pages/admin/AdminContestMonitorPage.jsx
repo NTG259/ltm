@@ -162,7 +162,7 @@ export default function AdminContestMonitorPage({ teacher = false }) {
                     <TableHead>Họ tên</TableHead>
                     <TableHead className="text-center">AC</TableHead>
                     <TableHead className="text-center">Nộp</TableHead>
-                    <TableHead className="text-center">Phạt</TableHead>
+                    <TableHead className="text-center">Thời gian</TableHead>
                     <TableHead className="text-center">Lần cuối</TableHead>
                     {labels.map((label) => (
                       <TableHead key={label} className="text-center">{label}</TableHead>

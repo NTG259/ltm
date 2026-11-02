@@ -90,10 +90,6 @@ public class SubmissionController {
             var contest = contestRepository.findById(req.contestId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + req.contestId()));
             if (!user.isAdmin()) {
-                if (!contestRepository.isRegistered(req.contestId(), user.getId())) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                            .body(Map.of("message", "Bạn chưa đăng ký tham gia kỳ thi này"));
-                }
                 var phase = contest.phaseAt(java.time.Instant.now());
                 if (phase == com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
                     return ResponseEntity.badRequest().body(Map.of("message", "Kỳ thi chưa bắt đầu"));

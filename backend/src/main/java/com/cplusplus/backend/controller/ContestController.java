@@ -121,35 +121,18 @@ public class ContestController {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
         if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
+
+        ContestParticipant existing = contestParticipantRepository
+                .findByContestIdAndUserId(id, currentUser.getId()).orElse(null);
+        if (existing != null && existing.isFinished()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Bạn đã nộp bài, không thể tham gia lại"));
+        }
+
         contest.register(currentUser, Instant.now());
         contestRepository.save(contest);
 
         return ResponseEntity.ok(toContestMap(contest, currentUser));
-    }
-
-    @DeleteMapping("/{id}/register")
-    @Transactional
-    public ResponseEntity<?> unregisterContest(@PathVariable Long id, HttpServletRequest req) {
-        User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
-        if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Vui lòng đăng nhập"));
-        }
-
-        Contest contest = contestRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
-
-        if (contest.getCreatedBy() != null && contest.getCreatedBy().isLecturer()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Ká»³ thi nÃ y Ä‘Æ°á»£c gÃ¡n theo lá»›p, khÃ´ng thá»ƒ há»§y Ä‘Äƒng kÃ½"));
-        }
-        if (contest.phaseAt(Instant.now()) != com.cplusplus.backend.domain.contest.ContestPhase.UPCOMING) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Chỉ có thể hủy đăng ký khi kỳ thi chưa bắt đầu"));
-        }
-
-        contestParticipantRepository.findByContestIdAndUserId(id, currentUser.getId())
-                .ifPresent(contestParticipantRepository::delete);
-
-        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/finish")
@@ -214,7 +197,7 @@ public class ContestController {
 
         return ResponseEntity.ok(Map.of(
                 "labels", labels,
-                "penaltyPerWrong", 20,
+                "penaltyPerWrong", 0,
                 "rows", standingRows
         ));
     }
@@ -225,7 +208,8 @@ public class ContestController {
         if (user == null) return false;
         if (user.isAdmin() || owner.getId().equals(user.getId())) return true;
         if (isContestManager(contest, user)) return true;
-        return contestRepository.isRegistered(contest.getId(), user.getId());
+        if (contestRepository.isRegistered(contest.getId(), user.getId())) return true;
+        return classroomRepository.isStudentInContestClassroom(contest.getId(), user.getId());
     }
 
     private Map<String, Object> toContestMap(Contest c, User user) {

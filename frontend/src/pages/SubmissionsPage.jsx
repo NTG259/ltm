@@ -350,7 +350,7 @@ export default function SubmissionsPage({ admin, teacher }) {
                           </Link>
                         </div>
                       </TableCell>
-                      <TableCell><VerdictTag submission={s} /></TableCell>
+                      <TableCell><VerdictTag submission={s} showIcon={false} /></TableCell>
                       {isStaff && <TableCell>{s.score ?? '—'}</TableCell>}
                       <TableCell className="font-mono text-sm text-muted-foreground">
                         {formatTime(s.timeMs)}{s.memoryKb ? ` / ${formatMemory(s.memoryKb)}` : ''}

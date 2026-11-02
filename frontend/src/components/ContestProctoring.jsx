@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
 import {
-  Alert,
   App,
   Badge,
   Button,
@@ -9,7 +8,6 @@ import {
   Empty,
   Input,
   Modal,
-  Progress,
   Radio,
   Row,
   Space,
@@ -22,15 +20,10 @@ import {
   Typography,
 } from 'antd'
 import {
-  AlertOutlined,
-  CheckCircleOutlined,
   ClockCircleOutlined,
   HistoryOutlined,
   ReloadOutlined,
-  SafetyCertificateOutlined,
   SearchOutlined,
-  WarningOutlined,
-  WifiOutlined,
 } from '@ant-design/icons'
 import { api } from '../api'
 import { useFetch, useNow, useSocket } from '../lib/hooks'
@@ -41,7 +34,7 @@ export default function ContestProctoring({ contestId }) {
   const now = useNow(5000)
   const { data, loading, reload, setData } = useFetch(() => api.getProctorStatus(contestId), [contestId])
   const [search, setSearch] = useState('')
-  const [filterMode, setFilterMode] = useState('all') // 'all' | 'online' | 'violating' | 'high_risk'
+  const [filterMode, setFilterMode] = useState('all') // 'all' | 'online' | 'violating'
   const [selectedUser, setSelectedUser] = useState(null) // user xem timeline modal
   const [realtimePresence, setRealtimePresence] = useState({})
 
@@ -52,8 +45,6 @@ export default function ContestProctoring({ contestId }) {
       return { ...p, online: isOnline }
     })
   }, [data?.participants, realtimePresence])
-
-  const recentViolations = useMemo(() => data?.recentViolations || [], [data?.recentViolations])
 
   // Lắng nghe sự kiện PROCTOR_ALERT và PRESENCE_UPDATE từ WebSocket
   useSocket(
@@ -87,7 +78,7 @@ export default function ContestProctoring({ contestId }) {
           duration: 4.5,
         })
 
-        // Cập nhật danh sách thí sinh và recent violations realtime
+        // Cập nhật danh sách thí sinh realtime
         setData((prev) => {
           if (!prev) return prev
           const updatedParticipants = (prev.participants || []).map((p) => {
@@ -112,22 +103,9 @@ export default function ContestProctoring({ contestId }) {
             return p
           })
 
-          const updatedRecent = [
-            {
-              id: Date.now(),
-              username: msg.username,
-              fullName: msg.fullName || msg.username,
-              type: msg.violationType,
-              details: msg.details,
-              createdAt: msg.timestamp || Date.now(),
-            },
-            ...(prev.recentViolations || []).slice(0, 49),
-          ]
-
           return {
             ...prev,
             participants: updatedParticipants,
-            recentViolations: updatedRecent,
           }
         })
       },
@@ -139,11 +117,8 @@ export default function ContestProctoring({ contestId }) {
   const stats = useMemo(() => {
     const total = participants.length
     const online = participants.filter((p) => p.online).length
-    const clean = participants.filter((p) => !p.tabSwitchCount || p.tabSwitchCount === 0).length
-    const warning = participants.filter((p) => p.tabSwitchCount >= 1 && p.tabSwitchCount < 3).length
-    const highRisk = participants.filter((p) => p.tabSwitchCount >= 3).length
-    const totalSwitches = participants.reduce((sum, p) => sum + (p.tabSwitchCount || 0), 0)
-    return { total, online, clean, warning, highRisk, totalSwitches }
+    const violating = participants.filter((p) => p.tabSwitchCount > 0).length
+    return { total, online, violating }
   }, [participants])
 
   // Lọc danh sách thí sinh
@@ -153,7 +128,6 @@ export default function ContestProctoring({ contestId }) {
       .filter((p) => {
         if (filterMode === 'online' && !p.online) return false
         if (filterMode === 'violating' && (!p.tabSwitchCount || p.tabSwitchCount === 0)) return false
-        if (filterMode === 'high_risk' && (p.tabSwitchCount || 0) < 3) return false
         if (!q) return true
         return (
           (p.username && p.username.toLowerCase().includes(q)) ||
@@ -174,7 +148,7 @@ export default function ContestProctoring({ contestId }) {
 
   const columns = [
     {
-      title: 'Tài khoản / MSSV',
+      title: 'MSSV',
       dataIndex: 'username',
       width: 150,
       render: (v) => <span className="mono" style={{ fontWeight: 600 }}>{v}</span>,
@@ -201,56 +175,14 @@ export default function ContestProctoring({ contestId }) {
         ),
     },
     {
-      title: 'Đánh giá rủi ro',
-      width: 170,
-      render: (_, r) => {
-        const count = r.tabSwitchCount || 0
-        if (count === 0) {
-          return (
-            <Tag color="success" icon={<CheckCircleOutlined />}>
-              Nghiêm túc (0)
-            </Tag>
-          )
-        }
-        if (count < 3) {
-          return (
-            <Tag color="warning" icon={<WarningOutlined />}>
-              Cảnh báo ({count})
-            </Tag>
-          )
-        }
-        return (
-          <Tag color="error" icon={<AlertOutlined />} style={{ fontWeight: 600 }}>
-            Nguy cơ cao ({count})
-          </Tag>
-        )
-      },
-    },
-    {
       title: 'Số lần rời màn hình',
       dataIndex: 'tabSwitchCount',
       width: 180,
       sorter: (a, b) => (a.tabSwitchCount || 0) - (b.tabSwitchCount || 0),
       render: (v) => {
         const count = v || 0
-        const percent = Math.min(100, (count / 5) * 100)
-        const status = count === 0 ? 'success' : count < 3 ? 'normal' : 'exception'
         return (
-          <Space direction="vertical" size={2} style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-              <b>{count} lần</b>
-              <span className="mono muted" style={{ fontSize: 11 }}>
-                {count >= 3 ? 'Đáng ngờ' : count > 0 ? 'Nhắc nhở' : 'An toàn'}
-              </span>
-            </div>
-            <Progress
-              percent={percent}
-              size="small"
-              status={status}
-              showInfo={false}
-              strokeColor={count >= 3 ? '#ef4444' : count > 0 ? '#f59e0b' : '#10b981'}
-            />
-          </Space>
+          <b>{count} lần</b>
         )
       },
     },
@@ -288,20 +220,6 @@ export default function ContestProctoring({ contestId }) {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      {/* Cảnh báo nổi bật nếu có thí sinh vi phạm nhiều */}
-      {stats.highRisk > 0 && (
-        <Alert
-          type="error"
-          showIcon
-          icon={<AlertOutlined />}
-          message={
-            <span>
-              Phát hiện <b>{stats.highRisk} thí sinh</b> có hành vi rời tab liên tục (&ge; 3 lần). Giám thị cần chú ý kiểm tra!
-            </span>
-          }
-        />
-      )}
-
       {/* Thẻ thống kê tổng quan */}
       <Row gutter={[12, 12]}>
         <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
@@ -309,7 +227,6 @@ export default function ContestProctoring({ contestId }) {
             <Statistic
               title="Tổng thí sinh"
               value={stats.total}
-              prefix={<SafetyCertificateOutlined style={{ color: 'var(--primary)' }} />}
             />
           </Card>
         </Col>
@@ -319,17 +236,6 @@ export default function ContestProctoring({ contestId }) {
               title="Đang Online"
               value={stats.online}
               valueStyle={{ color: '#10b981' }}
-              prefix={<WifiOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
-          <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
-            <Statistic
-              title="Làm bài nghiêm túc"
-              value={stats.clean}
-              valueStyle={{ color: '#10b981' }}
-              prefix={<CheckCircleOutlined />}
             />
           </Card>
         </Col>
@@ -337,122 +243,57 @@ export default function ContestProctoring({ contestId }) {
           <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
             <Statistic
               title="Cảnh báo rời tab"
-              value={stats.warning}
+              value={stats.violating}
               valueStyle={{ color: '#f59e0b' }}
-              prefix={<WarningOutlined />}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={8} md={4} style={{ flex: '1 1 20%', minWidth: 160 }}>
-          <Card size="small" style={{ background: 'var(--bg-elevated)' }}>
-            <Statistic
-              title="Nguy cơ cao (≥3 lần)"
-              value={stats.highRisk}
-              valueStyle={{ color: '#ef4444' }}
-              prefix={<AlertOutlined />}
             />
           </Card>
         </Col>
       </Row>
 
-      {/* Bảng thí sinh và Feed thời gian thực */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={16}>
-          <Card
-            title={
-              <Space>
-                <SafetyCertificateOutlined style={{ color: 'var(--primary)' }} />
-                <span>Danh sách thí sinh giám sát</span>
-                <Badge count={filteredParticipants.length} style={{ backgroundColor: 'var(--primary)' }} />
-              </Space>
-            }
-            extra={
-              <Button size="small" icon={<ReloadOutlined />} onClick={reload} loading={loading}>
-                Làm mới
-              </Button>
-            }
+      <Card
+        title={
+          <Space>
+            <span>Danh sách thí sinh giám sát</span>
+            <Badge count={filteredParticipants.length} style={{ backgroundColor: 'var(--primary)' }} />
+          </Space>
+        }
+        extra={
+          <Button size="small" icon={<ReloadOutlined />} onClick={reload} loading={loading}>
+            Làm mới
+          </Button>
+        }
+      >
+        <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+          <Input
+            placeholder="Tìm theo MSSV hoặc họ tên…"
+            prefix={<SearchOutlined style={{ color: 'var(--muted)' }} />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            allowClear
+            style={{ width: 240 }}
+          />
+          <Radio.Group
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value)}
+            optionType="button"
+            buttonStyle="solid"
+            size="middle"
           >
-            <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-              <Input
-                placeholder="Tìm theo MSSV hoặc họ tên…"
-                prefix={<SearchOutlined style={{ color: 'var(--muted)' }} />}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                allowClear
-                style={{ width: 240 }}
-              />
-              <Radio.Group
-                value={filterMode}
-                onChange={(e) => setFilterMode(e.target.value)}
-                optionType="button"
-                buttonStyle="solid"
-                size="middle"
-              >
-                <Radio.Button value="all">Tất cả ({stats.total})</Radio.Button>
-                <Radio.Button value="online">Đang Online ({stats.online})</Radio.Button>
-                <Radio.Button value="violating">Có rời tab ({stats.warning + stats.highRisk})</Radio.Button>
-                <Radio.Button value="high_risk">Nguy cơ cao ({stats.highRisk})</Radio.Button>
-              </Radio.Group>
-            </div>
+            <Radio.Button value="all">Tất cả ({stats.total})</Radio.Button>
+            <Radio.Button value="online">Đang Online ({stats.online})</Radio.Button>
+            <Radio.Button value="violating">Có rời tab ({stats.violating})</Radio.Button>
+          </Radio.Group>
+        </div>
 
-            <Table
-              rowKey="userId"
-              size="small"
-              columns={columns}
-              dataSource={filteredParticipants}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-              locale={{ emptyText: <Empty description="Không có thí sinh nào phù hợp bộ lọc" /> }}
-            />
-          </Card>
-        </Col>
-
-        {/* Cột Feed sự kiện vi phạm thời gian thực */}
-        <Col xs={24} lg={8}>
-          <Card
-            title={
-              <Space>
-                <span className="live-dot" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 8px #ef4444' }} />
-                <span>Nhật ký thời gian thực</span>
-                <Badge count={recentViolations.length} overflowCount={99} />
-              </Space>
-            }
-            styles={{ body: { maxHeight: 520, overflowY: 'auto', padding: '12px 16px' } }}
-          >
-            {recentViolations.length === 0 ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="Chưa có sự kiện vi phạm nào được ghi nhận"
-              />
-            ) : (
-              <Timeline
-                mode="left"
-                items={recentViolations.map((v) => ({
-                  color: '#ef4444',
-                  label: (
-                    <span className="mono muted" style={{ fontSize: 11 }}>
-                      {formatRelative(v.createdAt, now)}
-                    </span>
-                  ),
-                  children: (
-                    <div style={{ fontSize: 13, marginBottom: 8 }}>
-                      <div>
-                        <b>{v.fullName || v.username}</b>{' '}
-                        <span className="mono muted">({v.username})</span>
-                      </div>
-                      <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-                        {v.details || 'Rời màn hình làm bài thi'}
-                      </div>
-                      <div className="mono muted" style={{ fontSize: 11 }}>
-                        {formatDateTime(v.createdAt)}
-                      </div>
-                    </div>
-                  ),
-                }))}
-              />
-            )}
-          </Card>
-        </Col>
-      </Row>
+        <Table
+          rowKey="userId"
+          size="small"
+          columns={columns}
+          dataSource={filteredParticipants}
+          pagination={{ pageSize: 10, showSizeChanger: false }}
+          locale={{ emptyText: <Empty description="Không có thí sinh nào phù hợp bộ lọc" /> }}
+        />
+      </Card>
 
       {/* Modal xem lịch sử vi phạm chi tiết của một thí sinh */}
       <Modal

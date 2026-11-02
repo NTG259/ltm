@@ -1,4 +1,4 @@
-import { Download, Star } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { downloadCsv } from '../lib/exportCsv'
 import { Button } from './ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from './ui/empty'
@@ -36,7 +36,7 @@ export default function ContestStandings({ data, loading, currentUserId, problem
       { key: 'userId', label: 'MSSV' },
       { key: 'userName', label: 'Họ tên' },
       { key: 'solved', label: 'Số bài' },
-      { key: 'penalty', label: 'Phạt' },
+      { key: 'penalty', label: 'Thời gian' },
       ...labelHeaders,
     ], `standings-${contestTitle || 'contest'}.csv`)
   }
@@ -69,7 +69,7 @@ export default function ContestStandings({ data, loading, currentUserId, problem
             <TableHead>Thí sinh</TableHead>
             <TableHead className="text-center">Số bài</TableHead>
             <TableHead className="text-center">
-              <CellTooltip label={`Tổng phút tới khi AC + ${data.penaltyPerWrong ?? 20} phút cho mỗi lần sai`}>Phạt</CellTooltip>
+              <CellTooltip label="Tổng phút tính từ khi bắt đầu đến lúc AC">Thời gian</CellTooltip>
             </TableHead>
             {(data.labels || []).map((label) => (
               <TableHead key={label} className="text-center">
@@ -92,13 +92,12 @@ export default function ContestStandings({ data, loading, currentUserId, problem
                 const cell = row.cells[label]
                 if (!cell) return <TableCell key={label} />
                 const tooltip = cell.solved
-                  ? `AC ở phút ${cell.minute}${cell.wrong ? `, sai ${cell.wrong} lần trước đó` : ''}${cell.first ? ' – giải đầu tiên' : ''}`
+                  ? `AC ở phút ${cell.minute}${cell.wrong ? `, sai ${cell.wrong} lần trước đó` : ''}`
                   : cell.pending ? 'Đang chấm' : `Sai ${cell.wrong} lần`
                 return (
                   <TableCell key={label} className="text-center">
                     <CellTooltip label={tooltip}>
                       <span className="inline-flex min-w-12 items-center justify-center gap-1 rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium">
-                        {cell.first && <Star className="size-3 fill-current" />}
                         {cell.solved ? <>{cell.minute}′<small>{cell.wrong ? `+${cell.wrong}` : ''}</small></> : cell.pending ? '?' : `−${cell.wrong}`}
                       </span>
                     </CellTooltip>
@@ -109,10 +108,7 @@ export default function ContestStandings({ data, loading, currentUserId, problem
           ))}
         </TableBody>
       </Table>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-        <p className="text-xs text-muted-foreground">
-          Ô kết quả hiển thị phút AC và số lần sai. <Star className="inline size-3 fill-current" /> là người giải đầu tiên. Lỗi biên dịch không tính phạt.
-        </p>
+      <div className="flex justify-end border-t pt-3">
         <Button size="sm" variant="outline" onClick={exportCsv}>
           <Download data-icon="inline-start" />
           Xuất CSV
