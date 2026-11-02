@@ -7,9 +7,8 @@ import {
   Download,
   FileText,
   LockKeyhole,
-  Play,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../ui/empty'
@@ -29,8 +28,7 @@ function CoursePanelSkeleton() {
   )
 }
 
-export default function ClassroomCoursePanel({ course, loading, progress, classroomId }) {
-  const navigate = useNavigate()
+export default function ClassroomCoursePanel({ course, loading, progress }) {
   const units = useMemo(() => course?.units || [], [course])
   const completedIds = useMemo(
     () => new Set(progress?.completedUnitIds || []),
@@ -98,12 +96,6 @@ export default function ClassroomCoursePanel({ course, loading, progress, classr
                 <span>Chủ đề {units.findIndex((unit) => unit.id === activeUnit.id) + 1}</span>
                 <h2 className="text-lg font-semibold">{activeUnit.title}</h2>
               </div>
-              <Button
-                onClick={() => navigate(`/courses/${course.courseId}/learn/${activeUnit.id}?from=classroom&classroomId=${classroomId}`)}
-              >
-                <Play data-icon="inline-start" />
-                Vào bài học
-              </Button>
             </header>
 
             <div className="classroom-course__section-head">

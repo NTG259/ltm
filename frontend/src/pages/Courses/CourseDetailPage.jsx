@@ -14,8 +14,6 @@ import {
 import {
   ArrowLeftOutlined,
   CheckCircleFilled,
-  ReadOutlined,
-  RocketOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -181,22 +179,6 @@ export default function CourseDetailPage() {
                   {course.description || 'Hoàn thành tất cả các chủ đề theo thứ tự để nắm vững kiến thức.'}
                 </Typography.Paragraph>
 
-                {units.length > 0 && (
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<RocketOutlined />}
-                    onClick={() => navigate(`/courses/${id}/learn`)}
-                    style={{
-                      borderRadius: 8,
-                      fontWeight: 700,
-                      height: 42,
-                      paddingInline: 24,
-                    }}
-                  >
-                    {completedCount === 0 ? 'Bắt đầu học ngay' : 'Tiếp tục bài học'}
-                  </Button>
-                )}
               </div>
 
               {units.length > 0 && (
@@ -259,7 +241,7 @@ export default function CourseDetailPage() {
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                       }}
-                      onClick={() => navigate(`/courses/${id}/learn/${unit.id}`)}
+                      onClick={() => {}}
                       actions={[
                         <Button
                           key="toggle"
@@ -272,17 +254,6 @@ export default function CourseDetailPage() {
                           }}
                         >
                           {isDone ? '✓ Đã xong' : 'Đánh dấu xong'}
-                        </Button>,
-                        <Button
-                          key="learn"
-                          type={isDone ? 'default' : 'primary'}
-                          icon={<ReadOutlined />}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/courses/${id}/learn/${unit.id}`)
-                          }}
-                        >
-                          Vào học
                         </Button>,
                       ]}
                     >

@@ -33,7 +33,6 @@ const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroo
 const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
 const MyClassroomsPage = lazy(() => import('./pages/MyClassroomsPage'))
 const MyClassroomDetailPage = lazy(() => import('./pages/MyClassroomDetailPage'))
-const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
 const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
 const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
 const TeacherClassroomsPage = lazy(() => import('./pages/teacher/TeacherClassroomsPage'))
@@ -117,8 +116,6 @@ function AppRoutes() {
           >
             <Route path="/problems" element={<ProblemsPage />} />
             <Route path="/problems/:id" element={<WorkspacePage />} />
-            <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
-            <Route path="/courses/:courseId/learn/:unitId" element={<CourseLearnPage />} />
             <Route path="/contests" element={<ContestsPage />} />
             <Route path="/contests/:id" element={<ContestDetailPage />} />
             <Route path="/contests/:cid/problems/:label" element={<ContestWorkspacePage />} />
