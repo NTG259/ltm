@@ -1,43 +1,102 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { App } from 'antd'
 import {
-  Alert, App, Button, Empty, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Spin, Table, Tag, Tabs,
-  Typography, Upload,
-} from 'antd'
-import {
-  ArrowLeftOutlined, PlusOutlined, TrophyOutlined,
-  FilePdfOutlined, UploadOutlined, DeleteOutlined, PlayCircleOutlined, KeyOutlined,
-  ReloadOutlined, SearchOutlined, UserAddOutlined, IdcardOutlined, UserOutlined, FileTextOutlined,
-} from '@ant-design/icons'
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  GraduationCap,
+  Key,
+  Loader2,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Trophy,
+  Upload,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
 import { useFetch, useNow, useSocket } from '../../lib/hooks'
 import { formatDateTime, formatMemory, formatRelative, formatTime } from '../../lib/format'
 import VerdictTag from '../../components/VerdictTag'
 import { VERDICT_KEYS, VERDICTS } from '../../lib/verdicts'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../components/ui/alert-dialog'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { Card } from '../../components/ui/card'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../../components/ui/empty'
+import { Field, FieldError, FieldGroup, FieldLabel } from '../../components/ui/field'
+import { Input } from '../../components/ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../../components/ui/input-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../components/ui/select'
+import { Skeleton } from '../../components/ui/skeleton'
+import { Spinner } from '../../components/ui/spinner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import { Textarea } from '../../components/ui/textarea'
+
+const DIFFICULTY_VARIANT = { EASY: 'secondary', MEDIUM: 'outline', HARD: 'destructive' }
+const DIFFICULTY_LABEL = { EASY: 'Dễ', MEDIUM: 'Trung bình', HARD: 'Khó' }
 
 function phaseTag(c, now) {
-  if (now < c.startAt) return <Tag color="blue">Sắp diễn ra</Tag>
-  if (now < c.endAt) return <Tag color="green">Đang diễn ra</Tag>
-  return <Tag color="default">Đã kết thúc</Tag>
+  if (now < c.startAt) return <Badge variant="outline">Sắp diễn ra</Badge>
+  if (now < c.endAt) return <Badge>Đang diễn ra</Badge>
+  return <Badge variant="secondary">Đã kết thúc</Badge>
 }
 
-// ── Tab Sinh viên ──────────────────────────────────────────────────────────
+// ── Tab Sinh viên ─────────────────────────────────────────────────────────────
 function StudentsTab({ classroomId }) {
   const { message } = App.useApp()
+  const csvInputRef = useRef(null)
   const { data: students, loading, reload: refresh } = useFetch(
-    () => api.listClassroomStudents(classroomId), [classroomId]
+    () => api.listClassroomStudents(classroomId), [classroomId],
   )
-  const [resetModalOpen, setResetModalOpen] = useState(false)
+
+  // Add student dialog
+  const [addOpen, setAddOpen] = useState(false)
+  const [addMode, setAddMode] = useState('single')
+  const [adding, setAdding] = useState(false)
+  const [singleForm, setSingleForm] = useState({ studentId: '', fullName: '' })
+  const [singleErrors, setSingleErrors] = useState({})
+  const [batchText, setBatchText] = useState('')
+
+  // Reset password dialog
   const [resetTarget, setResetTarget] = useState(null)
   const [newPassword, setNewPassword] = useState('')
   const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState('')
 
-  // State cho Modal thêm sinh viên thủ công / danh sách nhanh
-  const [addModalVisible, setAddModalVisible] = useState(false)
-  const [addMode, setAddMode] = useState('single')
-  const [adding, setAdding] = useState(false)
-  const [singleForm] = Form.useForm()
-  const [batchText, setBatchText] = useState('')
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const parsedStudents = useMemo(() => {
     if (!batchText.trim()) return []
@@ -54,15 +113,34 @@ function StudentsTab({ classroomId }) {
       .filter(Boolean)
   }, [batchText])
 
-  const handleAddSingle = async (values) => {
+  const openAdd = () => {
+    setSingleForm({ studentId: '', fullName: '' })
+    setSingleErrors({})
+    setBatchText('')
+    setAddMode('single')
+    setAddOpen(true)
+  }
+
+  const validateSingle = () => {
+    const errs = {}
+    const sid = singleForm.studentId.trim()
+    if (!sid) errs.studentId = 'Vui lòng nhập MSSV'
+    else if (!/^[A-Za-z0-9._-]{3,32}$/.test(sid)) errs.studentId = 'MSSV gồm 3-32 ký tự chữ, số (VD: B24DCCN101)'
+    if (!singleForm.fullName.trim()) errs.fullName = 'Vui lòng nhập họ và tên'
+    setSingleErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const handleAddSingle = async (e) => {
+    e.preventDefault()
+    if (!validateSingle()) return
     setAdding(true)
     try {
-      const studentId = values.studentId.trim().toUpperCase()
-      const fullName = values.fullName.trim()
+      const studentId = singleForm.studentId.trim().toUpperCase()
+      const fullName = singleForm.fullName.trim()
       await api.addClassroomStudent(classroomId, { studentId, fullName })
       message.success(`Đã thêm sinh viên ${studentId} (${fullName}) vào lớp`)
-      singleForm.resetFields()
-      setAddModalVisible(false)
+      setAddOpen(false)
       refresh()
     } catch (e) {
       message.error(e.message)
@@ -72,30 +150,18 @@ function StudentsTab({ classroomId }) {
   }
 
   const handleAddBatch = async () => {
-    if (!batchText.trim()) {
-      message.warning('Vui lòng nhập hoặc dán danh sách sinh viên vào ô bên dưới')
-      return
-    }
-
-    if (parsedStudents.length === 0) {
-      message.warning('Không tìm thấy dòng nào hợp lệ (cần có MSSV)')
-      return
-    }
-
+    if (!batchText.trim()) { message.warning('Vui lòng nhập hoặc dán danh sách sinh viên'); return }
+    if (parsedStudents.length === 0) { message.warning('Không tìm thấy dòng nào hợp lệ (cần có MSSV)'); return }
     setAdding(true)
     try {
       const res = await api.addClassroomStudent(classroomId, { students: parsedStudents })
-      if (res.errors && res.errors.length > 0) {
-        message.warning(
-          `Đã thêm ${res.added} sinh viên. Có ${res.errors.length} lỗi:\n${res.errors.slice(0, 3).join(', ')}${
-            res.errors.length > 3 ? '...' : ''
-          }`,
-        )
+      if (res.errors?.length > 0) {
+        message.warning(`Đã thêm ${res.added} sinh viên. Có ${res.errors.length} lỗi:\n${res.errors.slice(0, 3).join(', ')}${res.errors.length > 3 ? '...' : ''}`)
       } else {
         message.success(`Đã thêm thành công ${res.added ?? parsedStudents.length} sinh viên vào lớp!`)
       }
       setBatchText('')
-      setAddModalVisible(false)
+      setAddOpen(false)
       refresh()
     } catch (e) {
       message.error(e.message)
@@ -104,7 +170,10 @@ function StudentsTab({ classroomId }) {
     }
   }
 
-  const handleImport = async (file) => {
+  const handleImport = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
     try {
       const res = await api.importClassroomStudents(classroomId, file)
       message.success(`Đã import ${res.imported} sinh viên`)
@@ -112,28 +181,37 @@ function StudentsTab({ classroomId }) {
     } catch (e) {
       message.error(e.message)
     }
-    return false
   }
 
-  const handleRemove = async (userId) => {
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
     try {
-      await api.removeClassroomStudent(classroomId, userId)
+      await api.removeClassroomStudent(classroomId, deleteTarget.userId)
       message.success('Đã xoá sinh viên')
       refresh()
     } catch (e) {
       message.error(e.message)
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
     }
+  }
+
+  const openReset = (student) => {
+    setResetTarget(student)
+    setNewPassword(student.username.length >= 8 ? student.username : (student.username + '12345678').substring(0, 8))
+    setResetError('')
   }
 
   const handleResetPassword = async () => {
     if (!resetTarget) return
+    if (newPassword.length < 8) { setResetError('Mật khẩu tối thiểu 8 ký tự'); return }
     setResetting(true)
     try {
       await api.resetClassroomStudentPassword(classroomId, resetTarget.userId, newPassword)
       message.success(`Đã đặt lại mật khẩu cho ${resetTarget.username}`)
-      setResetModalOpen(false)
       setResetTarget(null)
-      setNewPassword('')
       refresh()
     } catch (e) {
       message.error(e.message)
@@ -142,344 +220,346 @@ function StudentsTab({ classroomId }) {
     }
   }
 
-  const openReset = (student) => {
-    setResetTarget(student)
-    setNewPassword(student.username.length >= 8 ? student.username : (student.username + '12345678').substring(0, 8))
-    setResetModalOpen(true)
-  }
-
-  const columns = [
-    { title: 'MSSV', dataIndex: 'username', className: 'mono', width: 140 },
-    { title: 'Họ tên', dataIndex: 'fullName' },
-    {
-      title: 'Mật khẩu ban đầu',
-      dataIndex: 'importedPassword',
-      width: 160,
-      render: (v) => v ? <span className="mono" style={{ color: 'var(--primary)', fontWeight: 600 }}>{v}</span> : '—',
-    },
-    {
-      title: 'Ngày thêm',
-      dataIndex: 'joinedAt',
-      width: 130,
-      render: (v) => new Date(v).toLocaleDateString('vi-VN'),
-    },
-    {
-      title: '',
-      width: 140,
-      align: 'right',
-      render: (_, r) => (
-        <Space size="small">
-          <Button size="small" icon={<KeyOutlined />} onClick={() => openReset(r)} title="Đặt lại mật khẩu">
-            Reset
-          </Button>
-          <Popconfirm title="Xoá sinh viên này khỏi lớp?" onConfirm={() => handleRemove(r.userId)} okButtonProps={{ danger: true }}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ]
-
   return (
-    <div style={{ padding: 20 }}>
-      <Space style={{ marginBottom: 16 }}>
-        <Button
-          type="primary"
-          icon={<UserAddOutlined />}
-          onClick={() => {
-            singleForm.resetFields()
-            setAddModalVisible(true)
-          }}
-        >
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex gap-2">
+        <Button size="sm" onClick={openAdd}>
+          <UserPlus data-icon="inline-start" />
           Thêm sinh viên
         </Button>
-        <Upload accept=".csv" beforeUpload={handleImport} showUploadList={false}>
-          <Button icon={<UploadOutlined />}>Import CSV</Button>
-        </Upload>
-      </Space>
+        <Button size="sm" variant="outline" onClick={() => csvInputRef.current?.click()}>
+          <Upload data-icon="inline-start" />
+          Import CSV
+        </Button>
+        <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
+      </div>
 
-      {!loading && (!students || students.length === 0) ? (
-        <Empty description="Chưa có sinh viên trong lớp. Nhấn 'Thêm sinh viên' hoặc 'Import CSV' để thêm." />
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 5 }, (_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : !students?.length ? (
+        <Empty className="min-h-48">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Users /></EmptyMedia>
+            <EmptyTitle>Chưa có sinh viên</EmptyTitle>
+            <EmptyDescription>Nhấn "Thêm sinh viên" hoặc "Import CSV" để thêm.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <Table rowKey="userId" columns={columns} dataSource={students || []} loading={loading} pagination={{ pageSize: 20 }} size="small" />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-32">MSSV</TableHead>
+              <TableHead>Họ tên</TableHead>
+              <TableHead className="w-36">Mật khẩu ban đầu</TableHead>
+              <TableHead className="w-28">Ngày thêm</TableHead>
+              <TableHead className="w-28 text-right">Thao tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {students.map((s) => (
+              <TableRow key={s.userId}>
+                <TableCell className="font-mono text-sm">{s.username}</TableCell>
+                <TableCell>{s.fullName}</TableCell>
+                <TableCell>
+                  {s.importedPassword
+                    ? <span className="font-mono text-sm font-semibold text-primary">{s.importedPassword}</span>
+                    : <span className="text-muted-foreground">—</span>}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {new Date(s.joinedAt).toLocaleDateString('vi-VN')}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button size="icon-sm" variant="ghost" title="Đặt lại mật khẩu" onClick={() => openReset(s)}>
+                      <Key />
+                    </Button>
+                    <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" title="Xoá" onClick={() => setDeleteTarget(s)}>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
 
-      {/* Modal Thêm sinh viên thủ công / danh sách nhanh */}
-      <Modal
-        title={
-          <Space>
-            <UserAddOutlined style={{ color: '#4f46e5' }} />
-            <span>Thêm sinh viên vào lớp</span>
-          </Space>
-        }
-        open={addModalVisible}
-        onCancel={() => setAddModalVisible(false)}
-        footer={null}
-        destroyOnClose
-        centered
-        width={540}
-      >
-        <Segmented
-          block
-          value={addMode}
-          onChange={setAddMode}
-          style={{ marginBottom: 20 }}
-          options={[
-            { value: 'single', label: 'Thêm từng sinh viên', icon: <UserOutlined /> },
-            { value: 'batch', label: 'Dán danh sách nhanh (Paste)', icon: <FileTextOutlined /> },
-          ]}
-        />
+      {/* Add student dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Thêm sinh viên vào lớp</DialogTitle>
+          </DialogHeader>
 
-        {addMode === 'single' ? (
-          <Form
-            form={singleForm}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={handleAddSingle}
-          >
-            <Form.Item
-              name="studentId"
-              label="Mã sinh viên (MSSV)"
-              rules={[
-                { required: true, message: 'Vui lòng nhập MSSV' },
-                {
-                  pattern: /^[A-Za-z0-9._-]{3,32}$/,
-                  message: 'MSSV gồm 3-32 ký tự chữ, số (VD: B24DCCN101)',
-                },
-              ]}
-              normalize={(v) => v?.toUpperCase()}
-            >
-              <Input
-                prefix={<IdcardOutlined />}
-                placeholder="VD: B24DCCN101"
-                className="mono"
-                autoFocus
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="fullName"
-              label="Họ và tên sinh viên"
-              rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập họ và tên' }]}
-            >
-              <Input prefix={<UserOutlined />} placeholder="VD: Nguyễn Văn An" />
-            </Form.Item>
-
-            <Alert
-              type="info"
-              showIcon
-              message="Tự động khởi tạo tài khoản"
-              description="Nếu sinh viên chưa có tài khoản, hệ thống sẽ tự động tạo hồ sơ với mật khẩu ban đầu bằng MSSV. Mật khẩu sẽ hiển thị ở cột 'Mật khẩu ban đầu' để bạn gửi cho sinh viên."
-              style={{ marginBottom: 20 }}
-            />
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <Button onClick={() => setAddModalVisible(false)}>Hủy</Button>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={adding}
-                icon={<UserAddOutlined />}
-              >
-                Thêm vào lớp
-              </Button>
-            </div>
-          </Form>
-        ) : (
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 8,
-              }}
-            >
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                Dán danh sách từ Excel/Word (mỗi dòng 1 sinh viên dạng <code>MSSV, Họ tên</code>):
-              </Typography.Text>
-              <Button
-                size="small"
-                type="link"
-                style={{ padding: 0 }}
-                onClick={() =>
-                  setBatchText(
-                    'B24DCCN001, Nguyễn Văn An\nB24DCCN002, Trần Thị Bình\nB24DCCN003, Lê Hoàng Cường'
-                  )
-                }
-              >
-                Dán dữ liệu mẫu
-              </Button>
-            </div>
-            <Input.TextArea
-              rows={6}
-              value={batchText}
-              onChange={(e) => setBatchText(e.target.value)}
-              placeholder="Nhập hoặc dán danh sách vào đây (mỗi sinh viên một dòng)...&#10;Ví dụ:&#10;B24DCCN001, Nguyễn Văn An&#10;B24DCCN002, Trần Thị Bình"
-              className="mono"
-              style={{ marginBottom: 12 }}
-            />
-
-            {parsedStudents.length > 0 ? (
-              <div
-                style={{
-                  marginBottom: 14,
-                  padding: '8px 12px',
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  borderRadius: 6,
-                  color: '#059669',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                <span>✓</span>
-                <span>
-                  Đã nhận diện <b>{parsedStudents.length}</b> sinh viên hợp lệ sẵn sàng thêm vào lớp
-                </span>
+          <Tabs value={addMode} onValueChange={setAddMode}>
+            <TabsList className="w-full">
+              <TabsTrigger value="single" className="flex-1">Thêm từng sinh viên</TabsTrigger>
+              <TabsTrigger value="batch" className="flex-1">Dán danh sách nhanh</TabsTrigger>
+            </TabsList>
+            <TabsContent value="single" className="mt-4">
+              <form onSubmit={handleAddSingle}>
+                <FieldGroup className="gap-4">
+                  <Field data-invalid={!!singleErrors.studentId}>
+                    <FieldLabel>Mã sinh viên (MSSV)</FieldLabel>
+                    <Input
+                      placeholder="VD: B24DCCN101"
+                      className="font-mono uppercase"
+                      value={singleForm.studentId}
+                      onChange={(e) => {
+                        setSingleForm((f) => ({ ...f, studentId: e.target.value.toUpperCase() }))
+                        setSingleErrors((err) => ({ ...err, studentId: '' }))
+                      }}
+                      autoFocus
+                    />
+                    <FieldError>{singleErrors.studentId}</FieldError>
+                  </Field>
+                  <Field data-invalid={!!singleErrors.fullName}>
+                    <FieldLabel>Họ và tên sinh viên</FieldLabel>
+                    <Input
+                      placeholder="VD: Nguyễn Văn An"
+                      value={singleForm.fullName}
+                      onChange={(e) => {
+                        setSingleForm((f) => ({ ...f, fullName: e.target.value }))
+                        setSingleErrors((err) => ({ ...err, fullName: '' }))
+                      }}
+                    />
+                    <FieldError>{singleErrors.fullName}</FieldError>
+                  </Field>
+                  <p className="text-sm text-muted-foreground rounded-md border bg-muted/50 p-3">
+                    Nếu sinh viên chưa có tài khoản, hệ thống sẽ tự tạo với mật khẩu ban đầu bằng MSSV. Mật khẩu hiển thị ở cột "Mật khẩu ban đầu".
+                  </p>
+                </FieldGroup>
+                <DialogFooter className="mt-4">
+                  <DialogClose render={<Button variant="outline" type="button" />}>Hủy</DialogClose>
+                  <Button type="submit" disabled={adding}>
+                    {adding && <Spinner data-icon="inline-start" />}
+                    <UserPlus data-icon="inline-start" />
+                    Thêm vào lớp
+                  </Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+            <TabsContent value="batch" className="mt-4">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">Dán danh sách từ Excel (mỗi dòng: <code>MSSV, Họ tên</code>):</p>
+                  <Button size="sm" variant="link" className="h-auto p-0 text-xs"
+                    onClick={() => setBatchText('B24DCCN001, Nguyễn Văn An\nB24DCCN002, Trần Thị Bình\nB24DCCN003, Lê Hoàng Cường')}>
+                    Dán mẫu
+                  </Button>
+                </div>
+                <Textarea
+                  rows={6}
+                  value={batchText}
+                  onChange={(e) => setBatchText(e.target.value)}
+                  placeholder={'Nhập hoặc dán danh sách vào đây...\nVí dụ:\nB24DCCN001, Nguyễn Văn An\nB24DCCN002, Trần Thị Bình'}
+                  className="font-mono text-sm"
+                />
+                {parsedStudents.length > 0 && (
+                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    ✓ Đã nhận diện <strong>{parsedStudents.length}</strong> sinh viên hợp lệ sẵn sàng thêm vào lớp
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground rounded-md border bg-muted/50 p-2">
+                  Hỗ trợ phân cách bằng dấu phẩy, chấm phẩy hoặc Tab (copy từ Excel). Dòng chỉ có MSSV sẽ dùng MSSV làm họ tên.
+                </p>
               </div>
-            ) : null}
+              <DialogFooter className="mt-4">
+                <DialogClose render={<Button variant="outline" type="button" />}>Hủy</DialogClose>
+                <Button onClick={handleAddBatch} disabled={adding}>
+                  {adding && <Spinner data-icon="inline-start" />}
+                  Thêm danh sách{parsedStudents.length > 0 ? ` (${parsedStudents.length})` : ''}
+                </Button>
+              </DialogFooter>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
 
-            <Alert
-              type="info"
-              showIcon
-              message="Định dạng hỗ trợ"
-              description="Hỗ trợ phân cách bằng dấu phẩy, chấm phẩy hoặc khoảng trắng Tab (khi copy trực tiếp từ Excel). Dòng chỉ có MSSV sẽ tự gán MSSV làm họ tên."
-              style={{ marginBottom: 20 }}
+      {/* Reset password dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(v) => !v && setResetTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Đặt lại mật khẩu</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <strong>{resetTarget?.username}</strong> · {resetTarget?.fullName}
+          </p>
+          <Field data-invalid={!!resetError}>
+            <FieldLabel>Mật khẩu mới (tối thiểu 8 ký tự)</FieldLabel>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setResetError('') }}
+              placeholder="Nhập mật khẩu mới..."
             />
+            <FieldError>{resetError}</FieldError>
+          </Field>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" type="button" />}>Hủy</DialogClose>
+            <Button onClick={handleResetPassword} disabled={resetting}>
+              {resetting && <Spinner data-icon="inline-start" />}
+              Đặt lại mật khẩu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <Button onClick={() => setAddModalVisible(false)}>Hủy</Button>
-              <Button
-                type="primary"
-                onClick={handleAddBatch}
-                loading={adding}
-                icon={<UserAddOutlined />}
-              >
-                Thêm danh sách{parsedStudents.length > 0 ? ` (${parsedStudents.length})` : ''}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        title={`Đặt lại mật khẩu: ${resetTarget?.username} (${resetTarget?.fullName})`}
-        open={resetModalOpen}
-        onOk={handleResetPassword}
-        onCancel={() => setResetModalOpen(false)}
-        confirmLoading={resetting}
-        okText="Đặt lại mật khẩu"
-        cancelText="Hủy"
-      >
-        <div style={{ marginTop: 12, marginBottom: 8, fontSize: 13, color: 'var(--text-2)' }}>
-          Nhập mật khẩu mới (tối thiểu 8 ký tự):
-        </div>
-        <Input.Password
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          placeholder="Mật khẩu mới..."
-          style={{ width: '100%' }}
-        />
-      </Modal>
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá sinh viên khỏi lớp?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sinh viên <strong>{deleteTarget?.username}</strong> ({deleteTarget?.fullName}) sẽ bị xoá khỏi lớp. Không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting && <Spinner data-icon="inline-start" />}
+              Xoá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
-// ── Tab Kỳ thi ────────────────────────────────────────────────────────────
+// ── Tab Kỳ thi ────────────────────────────────────────────────────────────────
 function ContestsTab({ classroomId }) {
   const now = useNow(30000)
   const { message } = App.useApp()
   const { data: contests, loading, reload } = useFetch(
-    () => api.listClassroomContests(classroomId), [classroomId]
+    () => api.listClassroomContests(classroomId), [classroomId],
   )
   const { data: available } = useFetch(() => api.teacherAvailableContests(), [])
   const [assignOpen, setAssignOpen] = useState(false)
   const [selectedContest, setSelectedContest] = useState(null)
   const [assigning, setAssigning] = useState(false)
-  const assignedIds = new Set((contests || []).map((contest) => contest.contestId))
-  const availableToAssign = (available || []).filter((contest) => !assignedIds.has(contest.id))
+  const assignedIds = new Set((contests || []).map((c) => c.contestId))
+  const availableToAssign = (available || []).filter((c) => !assignedIds.has(c.id))
 
   const assign = async () => {
     if (!selectedContest) return
     setAssigning(true)
     try {
-      await api.assignClassroomContest(classroomId, selectedContest)
+      await api.assignClassroomContest(classroomId, Number(selectedContest))
       message.success('Đã gán kỳ thi vào lớp')
       setAssignOpen(false)
       setSelectedContest(null)
       reload()
-    } catch (error) {
-      message.error(error.message)
+    } catch (err) {
+      message.error(err.message)
     } finally {
       setAssigning(false)
     }
   }
 
-  const columns = [
-    {
-      title: 'Kỳ thi',
-      dataIndex: 'title',
-      render: (t, r) => (
-        <Link to={`/contests/${r.contestId}`} style={{ fontWeight: 600 }}>
-          <TrophyOutlined style={{ marginRight: 6 }} />{t}
-        </Link>
-      ),
-    },
-    { title: 'Bắt đầu', dataIndex: 'startAt', width: 170, render: (v) => formatDateTime(v) },
-    { title: 'Kết thúc', dataIndex: 'endAt', width: 170, render: (v) => formatDateTime(v) },
-    { title: 'Trạng thái', width: 140, render: (_, r) => phaseTag(r, now) },
-    {
-      title: '',
-      width: 120,
-      render: (_, r) => (
-        <Link to={`/teacher/classrooms/${classroomId}/contests/${r.contestId}/monitor`}>
-          <Button size="small" type="primary" ghost icon={<TrophyOutlined />}>
-            Giám sát
-          </Button>
-        </Link>
-      ),
-    },
-  ]
-
   return (
-    <div style={{ padding: 20 }}>
-      <Button icon={<PlusOutlined />} onClick={() => setAssignOpen(true)} disabled={!availableToAssign.length} style={{ marginBottom: 12 }}>
-        Gán kỳ thi có sẵn
-      </Button>
-      {!loading && (!contests || contests.length === 0) ? (
-        <Empty description="Lớp này chưa có kỳ thi nào." />
+    <div className="flex flex-col gap-4 p-4">
+      <div>
+        <Button size="sm" disabled={!availableToAssign.length} onClick={() => setAssignOpen(true)}>
+          <Plus data-icon="inline-start" />
+          Gán kỳ thi có sẵn
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : !contests?.length ? (
+        <Empty className="min-h-48">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Trophy /></EmptyMedia>
+            <EmptyTitle>Chưa có kỳ thi</EmptyTitle>
+            <EmptyDescription>Lớp này chưa có kỳ thi nào.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <Table rowKey="contestId" columns={columns} dataSource={contests || []} loading={loading} pagination={false} size="small" />
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Kỳ thi</TableHead>
+              <TableHead className="w-44">Bắt đầu</TableHead>
+              <TableHead className="w-44">Kết thúc</TableHead>
+              <TableHead className="w-32">Trạng thái</TableHead>
+              <TableHead className="w-28 text-right">Thao tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {contests.map((c) => (
+              <TableRow key={c.contestId}>
+                <TableCell>
+                  <Link to={`/contests/${c.contestId}`} className="font-medium hover:underline flex items-center gap-1.5">
+                    <Trophy className="size-4 text-muted-foreground" />
+                    {c.title}
+                  </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDateTime(c.startAt)}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">{formatDateTime(c.endAt)}</TableCell>
+                <TableCell>{phaseTag(c, now)}</TableCell>
+                <TableCell className="text-right">
+                  <Link to={`/teacher/classrooms/${classroomId}/contests/${c.contestId}/monitor`}>
+                    <Button size="sm" variant="outline">Giám sát</Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       )}
-      <Modal open={assignOpen} title="Gán kỳ thi có sẵn" onOk={assign} onCancel={() => setAssignOpen(false)}
-        confirmLoading={assigning} okText="Gán vào lớp" cancelText="Hủy">
-        <Select style={{ width: '100%', marginTop: 12 }} value={selectedContest} onChange={setSelectedContest}
-          placeholder="Chọn kỳ thi do admin hoặc bạn tạo"
-          options={availableToAssign.map((contest) => ({ value: contest.id, label: contest.title }))} />
-      </Modal>
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Gán kỳ thi có sẵn</DialogTitle>
+          </DialogHeader>
+          <Select value={selectedContest || ''} onValueChange={setSelectedContest}>
+            <SelectTrigger>
+              <SelectValue placeholder="Chọn kỳ thi do admin hoặc bạn tạo" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableToAssign.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" type="button" />}>Hủy</DialogClose>
+            <Button onClick={assign} disabled={!selectedContest || assigning}>
+              {assigning && <Spinner data-icon="inline-start" />}
+              Gán vào lớp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-// ── Tab Khóa học ──────────────────────────────────────────────────────────
+// ── Tab Khóa học ──────────────────────────────────────────────────────────────
 function CourseTab({ classroomId }) {
   const { message } = App.useApp()
+  const pdfInputRef = useRef(null)
   const [selectedUnit, setSelectedUnit] = useState(null)
   const [assignOpen, setAssignOpen] = useState(false)
   const [assigningId, setAssigningId] = useState(null)
   const [uploading, setUploading] = useState(false)
-
-  const { data: courseData, loading, reload: refresh } = useFetch(
-    () => api.getClassroomCourse(classroomId).catch(() => null), [classroomId]
-  )
-  const { data: allCourses } = useFetch(() => api.listCourses(), [])
-  const { data: allProblems } = useFetch(() => api.listProblems(), [])
   const [problemModalOpen, setProblemModalOpen] = useState(false)
   const [selectedProblemId, setSelectedProblemId] = useState(null)
   const [addingProblem, setAddingProblem] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
+
+  const { data: courseData, loading, reload: refresh } = useFetch(
+    () => api.getClassroomCourse(classroomId).catch(() => null), [classroomId],
+  )
+  const { data: allCourses } = useFetch(() => api.listCourses(), [])
+  const { data: allProblems } = useFetch(() => api.listProblems(), [])
 
   const units = courseData?.units || []
   const activeUnit = selectedUnit != null
@@ -489,7 +569,7 @@ function CourseTab({ classroomId }) {
   const handleAssign = async () => {
     if (!assigningId) return
     try {
-      await api.assignClassroomCourse(classroomId, assigningId)
+      await api.assignClassroomCourse(classroomId, Number(assigningId))
       message.success('Đã gán khóa học')
       setAssignOpen(false)
       refresh()
@@ -508,8 +588,10 @@ function CourseTab({ classroomId }) {
     }
   }
 
-  const handleUpload = async (file) => {
-    if (!activeUnit) return false
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !activeUnit) return
+    e.target.value = ''
     setUploading(true)
     try {
       await api.uploadUnitFile(activeUnit.id, file)
@@ -520,24 +602,43 @@ function CourseTab({ classroomId }) {
     } finally {
       setUploading(false)
     }
-    return false
   }
 
-  const handleDeleteFile = async (unitId, fileId) => {
-    try {
-      await api.deleteUnitFile(unitId, fileId)
-      message.success('Đã xoá file')
-      refresh()
-    } catch (e) {
-      message.error(e.message)
-    }
+  const handleDeleteFile = (unitId, fileId) => {
+    setConfirmAction({
+      label: 'Xoá file tài liệu này?',
+      action: async () => {
+        try {
+          await api.deleteUnitFile(unitId, fileId)
+          message.success('Đã xoá file')
+          refresh()
+        } catch (e) {
+          message.error(e.message)
+        }
+      },
+    })
+  }
+
+  const handleRemoveProblem = (unitId, problemId) => {
+    setConfirmAction({
+      label: 'Gỡ bài tập này khỏi chương?',
+      action: async () => {
+        try {
+          await api.removeUnitProblem(unitId, problemId)
+          message.success('Đã gỡ bài tập khỏi chương')
+          refresh()
+        } catch (e) {
+          message.error(e.message)
+        }
+      },
+    })
   }
 
   const handleAssignProblem = async () => {
     if (!activeUnit || !selectedProblemId) return
     setAddingProblem(true)
     try {
-      await api.assignUnitProblem(activeUnit.id, selectedProblemId)
+      await api.assignUnitProblem(activeUnit.id, Number(selectedProblemId))
       message.success('Đã thêm bài tập vào chương')
       setProblemModalOpen(false)
       setSelectedProblemId(null)
@@ -549,47 +650,49 @@ function CourseTab({ classroomId }) {
     }
   }
 
-  const handleRemoveProblem = async (unitId, problemId) => {
-    try {
-      await api.removeUnitProblem(unitId, problemId)
-      message.success('Đã gỡ bài tập khỏi chương')
-      refresh()
-    } catch (e) {
-      message.error(e.message)
-    }
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-3 p-6">
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+    )
   }
-
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}><Spin /></div>
 
   if (!courseData) {
     return (
-      <div style={{ padding: 40, textAlign: 'center' }}>
-        <Empty
-          description="Lớp này chưa được gán khóa học"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-        <Button type="primary" icon={<PlusOutlined />} style={{ marginTop: 16 }} onClick={() => setAssignOpen(true)}>
+      <div className="flex flex-col items-center gap-4 p-10">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><GraduationCap /></EmptyMedia>
+            <EmptyTitle>Lớp chưa được gán khóa học</EmptyTitle>
+            <EmptyDescription>Gán một khóa học để quản lý nội dung giảng dạy.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+        <Button onClick={() => setAssignOpen(true)}>
+          <Plus data-icon="inline-start" />
           Gán khóa học
         </Button>
 
-        <Modal
-          title="Gán khóa học cho lớp"
-          open={assignOpen}
-          onOk={handleAssign}
-          onCancel={() => setAssignOpen(false)}
-          okText="Xác nhận"
-          cancelText="Huỷ"
-        >
-          <div style={{ marginBottom: 12, color: 'var(--text-2)', fontSize: 13 }}>
-            Mỗi lớp chỉ gán được 1 khóa học.
-          </div>
-          <Select
-            style={{ width: '100%' }}
-            placeholder="Chọn khóa học"
-            onChange={setAssigningId}
-            options={(allCourses || []).map((c) => ({ value: c.id, label: c.title }))}
-          />
-        </Modal>
+        <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle>Gán khóa học cho lớp</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">Mỗi lớp chỉ gán được 1 khóa học.</p>
+            <Select value={assigningId || ''} onValueChange={setAssigningId}>
+              <SelectTrigger><SelectValue placeholder="Chọn khóa học" /></SelectTrigger>
+              <SelectContent>
+                {(allCourses || []).map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" type="button" />}>Huỷ</DialogClose>
+              <Button onClick={handleAssign} disabled={!assigningId}>Xác nhận</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
@@ -597,173 +700,200 @@ function CourseTab({ classroomId }) {
   return (
     <>
       {/* Course header */}
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)' }}>
-        <span style={{ fontWeight: 600 }}>📗 {courseData.title}</span>
-        <Tag>{units.length} chương</Tag>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-          <Button size="small" onClick={() => setAssignOpen(true)}>Đổi khóa học</Button>
-          <Popconfirm title="Huỷ gán khóa học?" onConfirm={handleUnassign}>
-            <Button size="small" danger>Huỷ gán</Button>
-          </Popconfirm>
+      <div className="flex items-center gap-3 border-b px-4 py-3">
+        <span className="font-semibold">📗 {courseData.title}</span>
+        <Badge variant="secondary">{units.length} chương</Badge>
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setAssignOpen(true)}>Đổi khóa học</Button>
+          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
+            onClick={() => setConfirmAction({ label: 'Huỷ gán khóa học?', action: handleUnassign })}>
+            Huỷ gán
+          </Button>
         </div>
       </div>
 
-      {/* Sidebar + content */}
-      <div style={{ display: 'flex', minHeight: 420 }}>
+      <div className="flex" style={{ minHeight: 420 }}>
         {/* Sidebar chương */}
-        <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface)' }}>
-          <div style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-2)', borderBottom: '1px solid var(--border)' }}>
+        <div className="w-56 shrink-0 border-r">
+          <div className="border-b px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Danh sách chương
           </div>
           {units.map((unit) => (
-            <div
+            <button
               key={unit.id}
+              type="button"
               onClick={() => setSelectedUnit(unit.id)}
-              style={{
-                padding: '10px 14px', fontSize: 13, cursor: 'pointer', lineHeight: 1.4,
-                borderLeft: `3px solid ${activeUnit?.id === unit.id ? 'var(--primary)' : 'transparent'}`,
-                background: activeUnit?.id === unit.id ? 'var(--primary-bg, #ede9fe)' : 'transparent',
-                color: activeUnit?.id === unit.id ? 'var(--primary)' : 'var(--text-2)',
-                fontWeight: activeUnit?.id === unit.id ? 600 : 400,
-                transition: 'all .15s',
-              }}
+              className={[
+                'block w-full px-3 py-2.5 text-left text-sm transition-colors',
+                'border-l-2',
+                activeUnit?.id === unit.id
+                  ? 'border-primary bg-primary/5 font-semibold text-primary'
+                  : 'border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              ].join(' ')}
             >
               {unit.title}
-            </div>
+            </button>
           ))}
         </div>
 
-        {/* Nội dung chương */}
+        {/* Unit content */}
         {activeUnit ? (
-          <div style={{ flex: 1, padding: 20, overflow: 'auto' }}>
-            <Typography.Title level={5} style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
-              {activeUnit.title}
-            </Typography.Title>
+          <div className="flex-1 overflow-auto p-4">
+            <h3 className="mb-4 border-b pb-3 text-sm font-semibold">{activeUnit.title}</h3>
 
-            {/* Files */}
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-2)', marginBottom: 8 }}>
-              Tài liệu PDF
-            </div>
-            <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
-              {(activeUnit.files || []).map((f) => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }}>
-                  <FilePdfOutlined style={{ fontSize: 18, color: '#ef4444', flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{f.filename}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-2)' }}>{f.fileSize ? (f.fileSize / 1024 / 1024).toFixed(1) + ' MB' : ''}</span>
-                  <Popconfirm title="Xoá file này?" onConfirm={() => handleDeleteFile(activeUnit.id, f.id)}>
-                    <Button size="small" danger icon={<DeleteOutlined />} />
-                  </Popconfirm>
-                </div>
-              ))}
-              {(activeUnit.files || []).length === 0 && (
-                <div style={{ color: 'var(--text-2)', fontSize: 13, fontStyle: 'italic' }}>Chưa có tài liệu nào</div>
+            {/* PDF files */}
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tài liệu PDF</p>
+            <div className="mb-3 flex flex-col gap-2">
+              {(activeUnit.files || []).length === 0 ? (
+                <p className="text-sm italic text-muted-foreground">Chưa có tài liệu nào</p>
+              ) : (
+                activeUnit.files.map((f) => (
+                  <div key={f.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                    <FileText className="size-4 shrink-0 text-red-500" />
+                    <span className="flex-1 text-sm font-medium">{f.filename}</span>
+                    {f.fileSize && <span className="text-xs text-muted-foreground">{(f.fileSize / 1024 / 1024).toFixed(1)} MB</span>}
+                    <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteFile(activeUnit.id, f.id)}>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                ))
               )}
-            </Space>
-            <Upload accept=".pdf" beforeUpload={handleUpload} showUploadList={false}>
-              <Button icon={<UploadOutlined />} loading={uploading} style={{ marginBottom: 24 }}>
+            </div>
+            <div className="mb-5">
+              <Button size="sm" variant="outline" disabled={uploading} onClick={() => pdfInputRef.current?.click()}>
+                {uploading ? <Loader2 className="animate-spin size-4" /> : <Upload data-icon="inline-start" />}
                 Tải lên PDF
               </Button>
-            </Upload>
+              <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
+            </div>
 
             {/* Problems */}
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--text-2)', marginBottom: 8 }}>
-              Bài tập lập trình
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Bài tập lập trình</p>
+            <div className="mb-3">
+              {(activeUnit.problems || []).length === 0 ? (
+                <p className="text-sm italic text-muted-foreground mb-2">Chưa có bài tập nào</p>
+              ) : (
+                <div className="mb-2 overflow-hidden rounded-md border">
+                  {activeUnit.problems.map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 border-b px-3 py-2 last:border-b-0">
+                      <Link to={`/teacher/problems/${p.id}`} className="flex flex-1 items-center gap-2 font-medium hover:underline">
+                        <Play className="size-4 text-primary" />
+                        {p.title}
+                      </Link>
+                      <Badge variant={DIFFICULTY_VARIANT[p.difficulty] || 'secondary'}>
+                        {DIFFICULTY_LABEL[p.difficulty] || p.difficulty}
+                      </Badge>
+                      <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveProblem(activeUnit.id, p.id)}>
+                        <X />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button size="sm" variant="outline" onClick={() => setProblemModalOpen(true)}>
+                <Plus data-icon="inline-start" />
+                Chọn bài tập có sẵn
+              </Button>
             </div>
-            {(activeUnit.problems || []).length === 0 ? (
-              <div style={{ color: 'var(--text-2)', fontSize: 13, fontStyle: 'italic', marginBottom: 12 }}>Chưa có bài tập nào</div>
-            ) : (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 12 }}>
-                {(activeUnit.problems || []).map((p) => (
-                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
-                    <Link to={`/teacher/problems/${p.id}`} style={{ flex: 1, fontWeight: 500 }}>
-                      <PlayCircleOutlined style={{ marginRight: 6, color: 'var(--primary)' }} />
-                      {p.title}
-                    </Link>
-                    <Tag color={p.difficulty === 'EASY' ? 'green' : p.difficulty === 'MEDIUM' ? 'orange' : 'red'}>
-                      {p.difficulty}
-                    </Tag>
-                    <Popconfirm title="Gỡ bài tập này khỏi chương?" onConfirm={() => handleRemoveProblem(activeUnit.id, p.id)}>
-                      <Button size="small" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                  </div>
-                ))}
-              </div>
-            )}
-            <Space>
-              <Button icon={<PlusOutlined />} onClick={() => setProblemModalOpen(true)}>Chọn bài tập có sẵn</Button>
-            </Space>
-
-            <Modal
-              title="Thêm bài tập vào chương"
-              open={problemModalOpen}
-              onOk={handleAssignProblem}
-              onCancel={() => setProblemModalOpen(false)}
-              confirmLoading={addingProblem}
-              okText="Gắn vào chương"
-              cancelText="Hủy"
-            >
-              <div style={{ marginBottom: 8, fontSize: 13, color: 'var(--text-2)' }}>
-                Chọn bài tập từ kho chung để đưa vào chương học:
-              </div>
-              <Select
-                style={{ width: '100%' }}
-                placeholder="Chọn bài tập"
-                value={selectedProblemId}
-                onChange={setSelectedProblemId}
-                showSearch
-                optionFilterProp="label"
-                options={(allProblems || []).map((p) => ({
-                  value: p.id,
-                  label: `#${p.id} ${p.title} (${p.difficulty})`,
-                }))}
-              />
-            </Modal>
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Empty description="Chọn chương bên trái để xem nội dung" />
+          <div className="flex flex-1 items-center justify-center">
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Chọn chương bên trái</EmptyTitle>
+                <EmptyDescription>để xem và chỉnh sửa nội dung</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           </div>
         )}
       </div>
 
-      {/* Assign modal */}
-      <Modal
-        title="Đổi khóa học"
-        open={assignOpen}
-        onOk={handleAssign}
-        onCancel={() => setAssignOpen(false)}
-        okText="Xác nhận"
-        cancelText="Huỷ"
-      >
-        <Select
-          style={{ width: '100%' }}
-          placeholder="Chọn khóa học"
-          defaultValue={courseData?.courseId}
-          onChange={setAssigningId}
-          options={(allCourses || []).map((c) => ({ value: c.id, label: c.title }))}
-        />
-      </Modal>
+      {/* Change course dialog */}
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Đổi khóa học</DialogTitle></DialogHeader>
+          <Select defaultValue={String(courseData?.courseId)} onValueChange={setAssigningId}>
+            <SelectTrigger><SelectValue placeholder="Chọn khóa học" /></SelectTrigger>
+            <SelectContent>
+              {(allCourses || []).map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>{c.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" type="button" />}>Huỷ</DialogClose>
+            <Button onClick={handleAssign}>Xác nhận</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add problem dialog */}
+      <Dialog open={problemModalOpen} onOpenChange={setProblemModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Thêm bài tập vào chương</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Chọn bài tập từ kho chung để đưa vào chương học:</p>
+          <Select value={selectedProblemId || ''} onValueChange={setSelectedProblemId}>
+            <SelectTrigger><SelectValue placeholder="Chọn bài tập" /></SelectTrigger>
+            <SelectContent>
+              {(allProblems || []).map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>#{p.id} {p.title} ({p.difficulty})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" type="button" />}>Hủy</DialogClose>
+            <Button onClick={handleAssignProblem} disabled={!selectedProblemId || addingProblem}>
+              {addingProblem && <Spinner data-icon="inline-start" />}
+              Gắn vào chương
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Shared confirm dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(v) => !v && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmAction?.label}</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => { confirmAction?.action(); setConfirmAction(null) }}>
+              Xác nhận
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
 
-// ── Tab Bài nộp ──────────────────────────────────────────────────────────
+// ── Tab Bài nộp ───────────────────────────────────────────────────────────────
+const VERDICT_OPTIONS = [
+  { value: 'all', label: 'Tất cả kết quả' },
+  { value: 'PENDING', label: 'Đang chờ / đang chấm' },
+  ...VERDICT_KEYS.map((v) => ({ value: v, label: `${v} – ${VERDICTS[v].label}` })),
+]
+
 function ClassroomSubmissionsTab({ classroomId }) {
   const navigate = useNavigate()
   const now = useNow(10000)
   const [student, setStudent] = useState('')
-  const [problemId, setProblemId] = useState(null)
-  const [verdict, setVerdict] = useState(null)
+  const [problemId, setProblemId] = useState('all')
+  const [verdict, setVerdict] = useState('all')
   const [page, setPage] = useState(0)
+  const PAGE_SIZE = 50
 
   const subs = useFetch(
     () => api.listSubmissions({
       classroomId,
       userId: student || undefined,
-      problemId: problemId || undefined,
-      verdict: verdict || undefined,
+      problemId: problemId !== 'all' ? Number(problemId) : undefined,
+      verdict: verdict !== 'all' ? verdict : undefined,
       page,
-      size: 50,
+      size: PAGE_SIZE,
     }),
     [classroomId, student, problemId, verdict, page],
   )
@@ -783,185 +913,171 @@ function ClassroomSubmissionsTab({ classroomId }) {
         const next = i < 0 ? [row, ...list] : list.map((x, idx) => idx === i ? { ...x, ...row } : x)
         return Array.isArray(prev) ? next : { ...prev, submissions: next }
       })
-    }, [setData])
+    }, [setData]),
   )
 
   const rows = subs.data?.submissions || (Array.isArray(subs.data) ? subs.data : [])
   const total = subs.data?.total || rows.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  const columns = [
-    {
-      title: 'Mã bài',
-      dataIndex: 'id',
-      width: 85,
-      render: (id) => (
-        <span className="mono" style={{ fontWeight: 600 }}>
-          #{id}
-        </span>
-      ),
-    },
-    {
-      title: 'Sinh viên',
-      dataIndex: 'userId',
-      render: (u, r) => (
-        <div>
-          <div style={{ fontWeight: 600 }}>{r.userName || u}</div>
-          <Tag color="geekblue" className="mono" style={{ marginTop: 2 }}>{u}</Tag>
-        </div>
-      ),
-    },
-    {
-      title: 'Đề bài',
-      dataIndex: 'problemTitle',
-      render: (t, r) => (
-        <span style={{ fontWeight: 500 }}>
-          #{r.problemId} {t}
-        </span>
-      ),
-    },
-    {
-      title: 'Kết quả',
-      dataIndex: 'verdict',
-      width: 140,
-      render: (_, r) => <VerdictTag submission={r} />,
-    },
-    {
-      title: 'Điểm',
-      dataIndex: 'score',
-      width: 70,
-      align: 'right',
-      render: (v) => <span className="mono">{v ?? '—'}</span>,
-    },
-    {
-      title: 'Thời gian',
-      dataIndex: 'timeMs',
-      width: 90,
-      align: 'right',
-      render: (v) => <span className="mono">{formatTime(v)}</span>,
-    },
-    {
-      title: 'Bộ nhớ',
-      dataIndex: 'memoryKb',
-      width: 90,
-      align: 'right',
-      render: (v) => <span className="mono">{formatMemory(v)}</span>,
-    },
-    {
-      title: 'Thời điểm',
-      dataIndex: 'createdAt',
-      width: 130,
-      render: (v) => (
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          {formatRelative(v, now)}
-        </span>
-      ),
-    },
+  const problemOptions = [
+    { value: 'all', label: 'Tất cả đề bài' },
+    ...(Array.isArray(problems.data) ? problems.data : (problems.data?.problems || [])).map((p) => ({
+      value: String(p.id),
+      label: `#${p.id} ${p.title}`,
+    })),
   ]
 
   return (
-    <div style={{ padding: 20 }}>
-      <Space wrap size={12} style={{ marginBottom: 16 }}>
-        <Input
-          allowClear
-          prefix={<SearchOutlined />}
-          placeholder="MSSV hoặc họ tên"
-          value={student}
-          onChange={(e) => { setStudent(e.target.value); setPage(0) }}
-          style={{ width: 200 }}
-        />
-        <Select
-          allowClear
-          placeholder="Đề bài"
-          value={problemId}
-          onChange={(val) => { setProblemId(val); setPage(0) }}
-          style={{ width: 240 }}
-          showSearch={{ optionFilterProp: 'label' }}
-          options={(Array.isArray(problems.data) ? problems.data : (problems.data?.problems || [])).map((p) => ({
-            value: p.id,
-            label: `#${p.id} ${p.title}`,
-          }))}
-        />
-        <Select
-          allowClear
-          placeholder="Kết quả"
-          value={verdict}
-          onChange={(val) => { setVerdict(val); setPage(0) }}
-          style={{ width: 180 }}
-          options={[
-            { value: 'PENDING', label: 'Đang chờ / đang chấm' },
-            ...VERDICT_KEYS.map((v) => ({ value: v, label: `${v} – ${VERDICTS[v].label}` })),
-          ]}
-        />
-        <Button icon={<ReloadOutlined />} onClick={reload}>Làm mới</Button>
-        <Typography.Text type="secondary">{total} bài nộp</Typography.Text>
-      </Space>
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex flex-wrap gap-2">
+        <InputGroup className="w-48">
+          <InputGroupAddon><Search className="size-4" /></InputGroupAddon>
+          <InputGroupInput
+            placeholder="MSSV hoặc họ tên"
+            value={student}
+            onChange={(e) => { setStudent(e.target.value); setPage(0) }}
+          />
+        </InputGroup>
 
-      <Table
-        rowKey="id"
-        columns={columns}
-        dataSource={rows}
-        loading={subs.loading}
-        size="small"
-        pagination={{
-          current: page + 1,
-          pageSize: 50,
-          total,
-          onChange: (p) => setPage(p - 1),
-          showSizeChanger: false,
-        }}
-        onRow={(r) => ({
-          onClick: () => navigate(`/teacher/submissions/${r.id}`),
-          style: { cursor: 'pointer' },
-        })}
-      />
+        <Select value={problemId} onValueChange={(v) => { setProblemId(v); setPage(0) }}>
+          <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {problemOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={verdict} onValueChange={(v) => { setVerdict(v); setPage(0) }}>
+          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {VERDICT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button size="sm" variant="outline" onClick={reload}>
+          <RefreshCw data-icon="inline-start" />
+          Làm mới
+        </Button>
+        <span className="flex items-center text-sm text-muted-foreground">{total} bài nộp</span>
+      </div>
+
+      {subs.loading ? (
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+      ) : rows.length === 0 ? (
+        <Empty className="min-h-40">
+          <EmptyHeader>
+            <EmptyTitle>Không có bài nộp</EmptyTitle>
+            <EmptyDescription>Chưa có bài nộp nào phù hợp với bộ lọc.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-20">Mã</TableHead>
+              <TableHead>Sinh viên</TableHead>
+              <TableHead>Đề bài</TableHead>
+              <TableHead className="w-36">Kết quả</TableHead>
+              <TableHead className="w-16 text-right">Điểm</TableHead>
+              <TableHead className="w-24 text-right">Thời gian</TableHead>
+              <TableHead className="w-24 text-right">Bộ nhớ</TableHead>
+              <TableHead className="w-28 text-right">Thời điểm</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow
+                key={r.id}
+                className="cursor-pointer"
+                onClick={() => navigate(`/teacher/submissions/${r.id}`)}
+              >
+                <TableCell className="font-mono text-sm font-semibold">#{r.id}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{r.userName || r.userId}</div>
+                  <div className="font-mono text-xs text-muted-foreground">{r.userId}</div>
+                </TableCell>
+                <TableCell className="font-medium">
+                  #{r.problemId} {r.problemTitle}
+                </TableCell>
+                <TableCell><VerdictTag submission={r} /></TableCell>
+                <TableCell className="text-right font-mono text-sm">{r.score ?? '—'}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatTime(r.timeMs)}</TableCell>
+                <TableCell className="text-right font-mono text-sm">{formatMemory(r.memoryKb)}</TableCell>
+                <TableCell className="text-right text-xs text-muted-foreground">
+                  {formatRelative(r.createdAt, now)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+
+      {total > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            Trang {page + 1} / {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft data-icon="inline-start" />
+              Trước
+            </Button>
+            <Button size="sm" variant="outline" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
+              Sau
+              <ChevronRight data-icon="inline-end" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TeacherClassroomDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { data: classroom, loading } = useFetch(() => api.getClassroom(id), [id])
 
-  const tabItems = [
-    { key: 'students', label: `👥 Sinh viên`, children: <StudentsTab classroomId={id} /> },
-    { key: 'contests', label: `🏆 Kỳ thi`, children: <ContestsTab classroomId={id} /> },
-    { key: 'course', label: `📖 Khóa học`, children: <CourseTab classroomId={id} /> },
-    { key: 'submissions', label: `📝 Bài nộp`, children: <ClassroomSubmissionsTab classroomId={id} /> },
-  ]
-
   return (
-    <App>
-      <div style={{ maxWidth: 1100, margin: '32px auto', padding: '0 16px' }}>
-        <Button icon={<ArrowLeftOutlined />} style={{ marginBottom: 16 }} onClick={() => navigate('/teacher/classrooms')}>
-          Quay lại
+    <div className="page flex flex-col gap-5">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate('/teacher/classrooms')}>
+          <ArrowLeft data-icon="inline-start" />
+          Lớp học
         </Button>
-
         {loading ? (
-          <Spin />
+          <Skeleton className="h-7 w-48" />
         ) : (
           <>
-            <Typography.Title level={3} style={{ marginBottom: 4 }}>
-              {classroom?.name || '…'}
-            </Typography.Title>
-            {classroom?.semester && <Tag color="purple" style={{ marginBottom: 16 }}>{classroom.semester}</Tag>}
-
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-              <Tabs
-                items={tabItems}
-                defaultActiveKey="students"
-                tabBarStyle={{ margin: 0, padding: '0 16px', background: 'var(--surface)' }}
-                renderTabBar={(props, DefaultTabBar) => (
-                  <div style={{ borderBottom: '1px solid var(--border)' }}>
-                    <DefaultTabBar {...props} />
-                  </div>
-                )}
-              />
-            </div>
+            <h1 className="text-lg font-semibold">{classroom?.name || '…'}</h1>
+            {classroom?.semester && <Badge variant="secondary">{classroom.semester}</Badge>}
           </>
         )}
       </div>
-    </App>
+
+      <Card className="overflow-hidden">
+        <Tabs defaultValue="students">
+          <div className="border-b px-1">
+            <TabsList variant="line" className="h-10 gap-0 rounded-none bg-transparent p-0">
+              <TabsTrigger value="students" className="rounded-none px-4 h-full">👥 Sinh viên</TabsTrigger>
+              <TabsTrigger value="contests" className="rounded-none px-4 h-full">🏆 Kỳ thi</TabsTrigger>
+              <TabsTrigger value="course" className="rounded-none px-4 h-full">📖 Khóa học</TabsTrigger>
+              <TabsTrigger value="submissions" className="rounded-none px-4 h-full">📝 Bài nộp</TabsTrigger>
+            </TabsList>
+          </div>
+          <TabsContent value="students"><StudentsTab classroomId={id} /></TabsContent>
+          <TabsContent value="contests"><ContestsTab classroomId={id} /></TabsContent>
+          <TabsContent value="course"><CourseTab classroomId={id} /></TabsContent>
+          <TabsContent value="submissions"><ClassroomSubmissionsTab classroomId={id} /></TabsContent>
+        </Tabs>
+      </Card>
+    </div>
   )
 }
