@@ -1,12 +1,51 @@
 import { useMemo, useRef, useState } from 'react'
-import { Button, Card, Input, Progress, Segmented, Select, Space, Table, Tag, Tooltip } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { ArrowUpDown, BookOpen, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch } from '../lib/hooks'
-import { DIFFICULTIES } from '../lib/verdicts'
 import { percent } from '../lib/format'
+import { DIFFICULTIES } from '../lib/verdicts'
+import StudentPageHeader from '../components/student/StudentPageHeader'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '../components/ui/input-group'
+import { Progress } from '../components/ui/progress'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select'
+import { Skeleton } from '../components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
+
+const PAGE_SIZE = 20
+const DIFFICULTY_OPTIONS = [
+  { value: 'all', label: 'Tất cả độ khó' },
+  ...Object.entries(DIFFICULTIES).map(([value, item]) => ({ value, label: item.label })),
+]
+
+function ProblemTableSkeleton() {
+  return (
+    <div className="flex flex-col gap-3 p-4" aria-busy="true" aria-label="Đang tải bài tập">
+      {Array.from({ length: 7 }, (_, index) => (
+        <Skeleton key={index} className="h-11 w-full" />
+      ))}
+    </div>
+  )
+}
 
 export default function ProblemsPage() {
   const { user } = useAuth()
@@ -15,22 +54,16 @@ export default function ProblemsPage() {
   const [difficulty, setDifficulty] = useState('')
   const [tag, setTag] = useState(null)
   const [page, setPage] = useState(1)
-  const PAGE_SIZE = 20
-
+  const [rateSort, setRateSort] = useState('none')
   const debounceRef = useRef(null)
   const [debouncedQ, setDebouncedQ] = useState('')
 
-  const handleQueryChange = (e) => {
-    const val = e.target.value
-    setQuery(val)
+  const handleQueryChange = (event) => {
+    const value = event.target.value
+    setQuery(value)
     setPage(1)
     clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => setDebouncedQ(val), 300)
-  }
-
-  const handleDifficultyChange = (val) => {
-    setDifficulty(val === 'all' ? '' : val)
-    setPage(1)
+    debounceRef.current = setTimeout(() => setDebouncedQ(value), 300)
   }
 
   const problems = useFetch(
@@ -41,186 +74,210 @@ export default function ProblemsPage() {
 
   const myStatus = useMemo(() => {
     const map = {}
-    ;(mine.data || []).forEach((s) => {
-      if (s.verdict === 'AC') map[s.problemId] = 'solved'
-      else if (!map[s.problemId]) map[s.problemId] = 'tried'
+    ;(mine.data || []).forEach((submission) => {
+      if (submission.verdict === 'AC') map[submission.problemId] = 'solved'
+      else if (!map[submission.problemId]) map[submission.problemId] = 'tried'
     })
     return map
   }, [mine.data])
 
-  const rows = (problems.data?.problems || []).filter((p) => !tag || (p.tags || []).includes(tag))
-  const total = problems.data?.total ?? 0
   const tags = useMemo(
-    () => [...new Set((problems.data?.problems || []).flatMap((p) => p.tags || []))],
+    () => [...new Set((problems.data?.problems || []).flatMap((problem) => problem.tags || []))],
     [problems.data],
   )
-  const solved = Object.values(myStatus).filter((v) => v === 'solved').length
+  const tagOptions = useMemo(() => [
+    { value: 'all', label: 'Tất cả chủ đề' },
+    ...tags.map((value) => ({ value, label: value })),
+  ], [tags])
+  const rows = useMemo(() => {
+    const visible = (problems.data?.problems || []).filter(
+      (problem) => !tag || (problem.tags || []).includes(tag),
+    )
+    if (rateSort === 'none') return visible
+    return [...visible].sort((left, right) => {
+      const delta = percent(left.acceptedSubmissions, left.totalSubmissions)
+        - percent(right.acceptedSubmissions, right.totalSubmissions)
+      return rateSort === 'asc' ? delta : -delta
+    })
+  }, [problems.data, rateSort, tag])
+
+  const total = problems.data?.total ?? 0
+  const solved = Object.values(myStatus).filter((status) => status === 'solved').length
+  const solvedPercent = total ? Math.round((solved / total) * 100) : 0
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const cycleRateSort = () => {
+    setRateSort((current) => current === 'none' ? 'desc' : current === 'desc' ? 'asc' : 'none')
+  }
 
   return (
-    <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Kho bài tập</h1>
-          <p>Chọn bài, viết lời giải và nộp bài.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '6px 14px',
-              borderRadius: 999,
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    <div className="page flex flex-col gap-5">
+      <StudentPageHeader
+        title="Kho bài tập"
+        description="Chọn bài phù hợp, luyện tập theo chủ đề và theo dõi tiến độ của bạn."
+        actions={(
+          <div className="flex min-w-48 flex-col gap-1.5 rounded-lg border bg-card px-3 py-2">
+            <div className="flex items-center justify-between gap-4 text-xs">
+              <span className="text-muted-foreground">Đã giải</span>
+              <strong className="font-mono">{solved}/{total || '…'}</strong>
+            </div>
+            <Progress value={solvedPercent} aria-label={`Đã giải ${solvedPercent}% bài tập`} />
+          </div>
+        )}
+      />
+
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>Bộ lọc bài tập</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-3">
+          <InputGroup className="w-full sm:w-72">
+            <InputGroupAddon><Search /></InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              placeholder="Tìm theo tên hoặc mã bài (#1)…"
+              value={query}
+              onChange={handleQueryChange}
+              aria-label="Tìm bài tập"
+            />
+          </InputGroup>
+
+          <Select
+            items={DIFFICULTY_OPTIONS}
+            value={difficulty || 'all'}
+            onValueChange={(value) => {
+              setDifficulty(value === 'all' ? '' : value)
+              setPage(1)
             }}
           >
-            <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Đã giải</span>
-            <b style={{ color: 'var(--text)', fontSize: 14, fontFamily: 'var(--mono)' }}>
-              {solved}/{total || '…'}
-            </b>
-            <Progress
-              percent={total ? Math.round((solved / total) * 100) : 0}
-              size={[64, 6]}
-              showInfo={false}
-              strokeColor="#10b981"
-            />
-          </div>
-        </div>
-      </div>
+            <SelectTrigger className="w-full sm:w-40" aria-label="Lọc theo độ khó">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">Tất cả độ khó</SelectItem>
+                {Object.entries(DIFFICULTIES).map(([value, item]) => (
+                  <SelectItem key={value} value={value}>{item.label}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
 
-      <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 14 } }}>
-        <Space wrap size={12} style={{ width: '100%' }}>
-          <Input
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder="Tìm theo tên hoặc mã bài (#1)…"
-            value={query}
-            onChange={handleQueryChange}
-            style={{ width: 300 }}
-          />
-          <Segmented
-            value={difficulty || 'all'}
-            onChange={handleDifficultyChange}
-            options={[
-              { value: 'all', label: 'Tất cả' },
-              ...Object.entries(DIFFICULTIES).map(([k, v]) => ({ value: k, label: v.label })),
-            ]}
-          />
-          <Select
-            allowClear
-            placeholder="Chủ đề"
-            value={tag}
-            onChange={setTag}
-            style={{ width: 200 }}
-            options={tags.map((t) => ({ value: t, label: t }))}
-          />
-        </Space>
+          <Select items={tagOptions} value={tag || 'all'} onValueChange={(value) => setTag(value === 'all' ? null : value)}>
+            <SelectTrigger className="w-full sm:w-48" aria-label="Lọc theo chủ đề">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">Tất cả chủ đề</SelectItem>
+                {tags.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </CardContent>
       </Card>
 
-      <Card styles={{ body: { padding: 0 } }}>
-        <Table
-          rowKey="id"
-          loading={problems.loading}
-          dataSource={rows}
-          pagination={{
-            current: page,
-            pageSize: PAGE_SIZE,
-            total,
-            onChange: (p) => setPage(p),
-            showSizeChanger: false,
-            showTotal: (t) => `${t} bài`,
-          }}
-          scroll={{ x: 760 }}
-          rowClassName={(p) => {
-            if (myStatus[p.id] === 'solved') return 'row-problem-solved'
-            if (myStatus[p.id] === 'tried') return 'row-problem-failed'
-            return ''
-          }}
-          onRow={(p) => ({ onDoubleClick: () => navigate(`/problems/${p.id}`) })}
-          columns={[
-            { title: 'Mã', dataIndex: 'id', width: 70, render: (id) => <span className="mono muted">#{id}</span> },
-            {
-              title: 'Bài tập',
-              render: (_, p) => (
-                <div>
-                  <Link
-                    to={`/problems/${p.id}`}
-                    style={{
-                      fontWeight: 600,
-                      color:
-                        myStatus[p.id] === 'solved'
-                          ? '#15803d'
-                          : myStatus[p.id] === 'tried'
-                          ? '#b91c1c'
-                          : undefined,
-                    }}
-                  >
-                    {p.title}
-                  </Link>
-                  <div style={{ marginTop: 4 }}>
-                    {(p.tags || []).map((t) => (
-                      <Tag key={t} variant="filled" style={{ fontSize: 11 }}>
-                        {t}
-                      </Tag>
-                    ))}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              title: 'Giới hạn',
-              width: 120,
-              render: (_, p) => (
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {p.timeLimitMs / 1000}s · {p.memoryLimitMb}MB
-                </span>
-              ),
-            },
-            {
-              title: 'Tỉ lệ AC',
-              width: 170,
-              sorter: (a, b) =>
-                percent(a.acceptedSubmissions, a.totalSubmissions) - percent(b.acceptedSubmissions, b.totalSubmissions),
-              render: (_, p) => {
-                const r = percent(p.acceptedSubmissions, p.totalSubmissions)
-                return (
-                  <Tooltip title={`${p.acceptedSubmissions}/${p.totalSubmissions} bài nộp AC`}>
-                    <Progress percent={r} size="small" strokeColor={r >= 50 ? '#10b981' : r >= 25 ? '#f59e0b' : '#ef4444'} />
-                  </Tooltip>
-                )
-              },
-            },
-            {
-              title: 'Độ khó',
-              dataIndex: 'difficulty',
-              width: 120,
-              render: (d) => <span className={`diff-pill diff-pill-${d}`}>{DIFFICULTIES[d]?.label || d}</span>,
-            },
-            {
-              title: '',
-              width: 110,
-              align: 'right',
-              render: (_, p) => (
-                <Button
-                  type={myStatus[p.id] === 'solved' ? 'default' : myStatus[p.id] === 'tried' ? 'default' : 'primary'}
-                  size="small"
-                  style={
-                    myStatus[p.id] === 'solved'
-                      ? { borderColor: '#16a34a', color: '#16a34a', fontWeight: 600 }
-                      : myStatus[p.id] === 'tried'
-                      ? { borderColor: '#dc2626', color: '#dc2626', fontWeight: 600 }
-                      : undefined
-                  }
-                  onClick={() => navigate(`/problems/${p.id}`)}
-                >
-                  {myStatus[p.id] === 'solved' ? 'Đã giải' : myStatus[p.id] ? 'Làm tiếp' : 'Làm bài'}
-                </Button>
-              ),
-            },
-          ]}
-        />
+      <Card className="min-h-80">
+        <CardHeader className="border-b">
+          <CardTitle>Danh sách bài tập</CardTitle>
+          <CardAction>
+            <Button variant="ghost" size="sm" onClick={cycleRateSort}>
+              <ArrowUpDown data-icon="inline-start" />
+              Tỉ lệ AC {rateSort === 'desc' ? '↓' : rateSort === 'asc' ? '↑' : ''}
+            </Button>
+          </CardAction>
+        </CardHeader>
+
+        <CardContent className="px-0">
+          {problems.loading ? <ProblemTableSkeleton /> : rows.length === 0 ? (
+            <Empty className="min-h-64">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><BookOpen /></EmptyMedia>
+                <EmptyTitle>Không tìm thấy bài tập</EmptyTitle>
+                <EmptyDescription>Hãy thử thay đổi từ khóa hoặc bộ lọc hiện tại.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16">Mã</TableHead>
+                  <TableHead>Bài tập</TableHead>
+                  <TableHead>Giới hạn</TableHead>
+                  <TableHead className="min-w-36">Tỉ lệ AC</TableHead>
+                  <TableHead>Độ khó</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((problem) => {
+                  const acceptance = percent(problem.acceptedSubmissions, problem.totalSubmissions)
+                  const status = myStatus[problem.id]
+
+                  return (
+                    <TableRow key={problem.id}>
+                      <TableCell className="font-mono text-muted-foreground">#{problem.id}</TableCell>
+                      <TableCell className="min-w-64 whitespace-normal">
+                        <div className="flex flex-col gap-1.5">
+                          <Link to={`/problems/${problem.id}`} className="font-medium hover:underline">
+                            {problem.title}
+                          </Link>
+                          <div className="flex flex-wrap gap-1">
+                            {(problem.tags || []).map((problemTag) => (
+                              <Badge key={problemTag} variant="secondary">{problemTag}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {problem.timeLimitMs / 1000}s · {problem.memoryLimitMb}MB
+                      </TableCell>
+                      <TableCell>
+                        <div
+                          className="flex min-w-32 items-center gap-2"
+                          title={`${problem.acceptedSubmissions}/${problem.totalSubmissions} bài nộp AC`}
+                        >
+                          <Progress value={acceptance} className="w-24" />
+                          <span className="w-9 text-right font-mono text-xs">{acceptance}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={problem.difficulty === 'easy' ? 'secondary' : 'outline'}>
+                          {DIFFICULTIES[problem.difficulty]?.label || problem.difficulty}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant={status ? 'outline' : 'default'}
+                          size="sm"
+                          onClick={() => navigate(`/problems/${problem.id}`)}
+                        >
+                          {status === 'solved' ? 'Đã giải' : status ? 'Làm tiếp' : 'Làm bài'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+
+        {!problems.loading && total > PAGE_SIZE && (
+          <CardFooter className="justify-between">
+            <span className="text-sm text-muted-foreground">Trang {page}/{pageCount} · {total} bài</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                <ChevronLeft data-icon="inline-start" />
+                Trước
+              </Button>
+              <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={() => setPage(page + 1)}>
+                Sau
+                <ChevronRight data-icon="inline-end" />
+              </Button>
+            </div>
+          </CardFooter>
+        )}
       </Card>
     </div>
   )

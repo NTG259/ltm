@@ -75,9 +75,21 @@ public class ContestController {
         User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         List<Contest> list = contestRepository.findAllByOrderByStartAtDesc();
 
+        List<Long> ids = list.stream().map(Contest::getId).toList();
+        java.util.Map<Long, String> classroomNames = new java.util.HashMap<>();
+        if (!ids.isEmpty()) {
+            classroomContestRepository.findAllWithClassroomByContestIdIn(ids)
+                    .forEach(cc -> classroomNames.put(cc.getId().getContestId(), cc.getClassroom().getName()));
+        }
+
         List<Map<String, Object>> result = list.stream()
                 .filter(c -> canViewContest(c, currentUser))
-                .map(c -> toContestMap(c, currentUser)).toList();
+                .map(c -> {
+                    Map<String, Object> m = toContestMap(c, currentUser);
+                    String cn = classroomNames.get(c.getId());
+                    if (cn != null) m.put("classroomName", cn);
+                    return m;
+                }).toList();
         return ResponseEntity.ok(result);
     }
 
@@ -88,7 +100,11 @@ public class ContestController {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + id));
 
         if (!canViewContest(contest, currentUser)) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(toContestMap(contest, currentUser));
+        Map<String, Object> m = toContestMap(contest, currentUser);
+        classroomContestRepository.findAllWithClassroomByContestId(contest.getId())
+                .stream().findFirst()
+                .ifPresent(cc -> m.put("classroomName", cc.getClassroom().getName()));
+        return ResponseEntity.ok(m);
     }
 
     @PostMapping("/{id}/register")
@@ -133,6 +149,32 @@ public class ContestController {
                 .ifPresent(contestParticipantRepository::delete);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/finish")
+    @Transactional
+    public ResponseEntity<?> finishContest(@PathVariable Long id, HttpServletRequest req) {
+        User currentUser = (User) req.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập"));
+        }
+
+        ContestParticipant participant = contestParticipantRepository.findByContestIdAndUserId(id, currentUser.getId())
+                .orElse(null);
+        if (participant == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Bạn chưa đăng ký kỳ thi này"));
+        }
+        if (participant.isFinished()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "already_finished"));
+        }
+
+        participant.finish(Instant.now());
+        contestParticipantRepository.save(participant);
+
+        return ResponseEntity.ok(Map.of(
+                "finished", true,
+                "finishedAt", participant.getFinishedAt().toEpochMilli()
+        ));
     }
 
     @GetMapping("/{id}/standings")
@@ -188,8 +230,12 @@ public class ContestController {
     private Map<String, Object> toContestMap(Contest c, User user) {
         boolean isStaff = user != null && (user.isAdmin() || isContestManager(c, user));
         boolean isRegistered = user != null && contestRepository.isRegistered(c.getId(), user.getId());
+        boolean isFinished = user != null && contestParticipantRepository
+                .findByContestIdAndUserId(c.getId(), user.getId())
+                .map(ContestParticipant::isFinished)
+                .orElse(false);
         long participantCount = contestRepository.countParticipants(c.getId());
-        return com.cplusplus.backend.dto.DtoMapper.toContestMap(c, isStaff, isRegistered, participantCount);
+        return com.cplusplus.backend.dto.DtoMapper.toContestMap(c, isStaff, isRegistered, isFinished, participantCount);
     }
 
     @PostMapping("/{id}/proctor/violation")
