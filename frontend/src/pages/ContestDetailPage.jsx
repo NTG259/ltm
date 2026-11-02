@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { App, Breadcrumb, Button, Card, Empty, Popconfirm, Result, Space, Spin, Table, Tabs, Tag, Tooltip, Typography } from 'antd'
-import { CheckCircleFilled, DiffOutlined, ExclamationCircleFilled, LockOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
+import { AlertCircle, CheckCircle2, FileDiff, Lock, SearchX, Shield } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -12,16 +11,37 @@ import ContestStandings from '../components/ContestStandings'
 import ContestProctoring from '../components/ContestProctoring'
 import ContestPlagiarism from '../components/ContestPlagiarism'
 import VerdictTag from '../components/VerdictTag'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from '../components/ui/alert-dialog'
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../components/ui/empty'
+import { Spinner } from '../components/ui/spinner'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+
+const STATUS_BADGE = {
+  RUNNING: 'default',
+  UPCOMING: 'secondary',
+  ENDED: 'outline',
+}
 
 function ProblemsTab({ contest, status, mySubs, canSolve }) {
   const { isAdmin, isLecturer } = useAuth()
   const navigate = useNavigate()
   if (status === 'UPCOMING')
     return (
-      <Empty
-        image={<LockOutlined style={{ fontSize: 40, color: 'var(--muted)' }} />}
-        description="Đề bài sẽ hiện khi kỳ thi bắt đầu"
-      />
+      <Empty className="border-0 py-12">
+        <EmptyHeader>
+          <Lock className="size-8 text-muted-foreground/50 mb-2" />
+          <EmptyTitle>Đề bài sẽ hiện khi kỳ thi bắt đầu</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     )
 
   const mine = {}
@@ -29,91 +49,110 @@ function ProblemsTab({ contest, status, mySubs, canSolve }) {
     if (s.verdict === 'AC') mine[s.problemId] = 'solved'
     else if (!mine[s.problemId]) mine[s.problemId] = 'tried'
   })
-  const open = (p) => navigate(isAdmin ? `/admin/contests/${contest.id}/problems/${p.label}` : isLecturer ? `/teacher/contests/${contest.id}/problems/${p.label}` : status === 'ENDED' ? `/problems/${p.problemId}` : `/contests/${contest.id}/problems/${p.label}`)
+  const open = (p) => navigate(isAdmin ? `/admin/contests/${contest.id}/problems/${p.label}` : isLecturer ? `/teacher/contests/${contest.id}/problems/${p.label}` : `/contests/${contest.id}/problems/${p.label}`)
 
   return (
-    <Table
-      rowKey="label"
-      pagination={false}
-      dataSource={contest.problems}
-      onRow={(p) => ({ onClick: () => canSolve && open(p), style: { cursor: canSolve ? 'pointer' : undefined } })}
-      columns={[
-        {
-          title: '',
-          width: 44,
-          align: 'center',
-          render: (_, p) =>
-            mine[p.problemId] === 'solved' ? (
-              <CheckCircleFilled style={{ color: '#10b981' }} />
-            ) : mine[p.problemId] ? (
-              <ExclamationCircleFilled style={{ color: '#f59e0b' }} />
-            ) : null,
-        },
-        { title: 'Bài', dataIndex: 'label', width: 60, render: (v) => <b style={{ fontSize: 16 }}>{v}</b> },
-        { title: 'Tên bài', dataIndex: 'title', render: (v) => <span style={{ fontWeight: 500 }}>{v}</span> },
-        {
-          title: 'Giới hạn',
-          width: 130,
-          render: (_, p) => (
-            <span className="mono muted" style={{ fontSize: 12 }}>
-              {p.timeLimitMs / 1000}s · {p.memoryLimitMb}MB
-            </span>
-          ),
-        },
-        {
-          title: 'Đã giải',
-          width: 110,
-          render: (_, p) => (
-            <Tooltip title={`${p.solvedCount} thí sinh AC / ${p.attemptCount} thí sinh đã nộp`}>
-              <span className="mono">
-                {p.solvedCount}/{p.attemptCount}
-              </span>
-            </Tooltip>
-          ),
-        },
-        {
-          title: '',
-          width: 110,
-          align: 'right',
-          render: (_, p) =>
-            canSolve && (
-              <Button size="small" type={status === 'RUNNING' ? 'primary' : 'default'} onClick={() => open(p)}>
-                {status === 'RUNNING' ? 'Làm bài' : 'Luyện tập'}
-              </Button>
-            ),
-        },
-      ]}
-    />
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-10"><span className="sr-only">Trạng thái</span></TableHead>
+          <TableHead className="w-16">Bài</TableHead>
+          <TableHead>Tên bài</TableHead>
+          <TableHead>Giới hạn</TableHead>
+          <TableHead>Đã giải</TableHead>
+          <TableHead><span className="sr-only">Thao tác</span></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {contest.problems.map((problem) => (
+          <TableRow key={problem.label}>
+            <TableCell className="text-center">
+              {mine[problem.problemId] === 'solved' ? (
+                <CheckCircle2 className="size-4 text-primary" aria-label="Đã giải" />
+              ) : mine[problem.problemId] ? (
+                <AlertCircle className="size-4 text-muted-foreground" aria-label="Đã thử" />
+              ) : null}
+            </TableCell>
+            <TableCell className="font-mono text-base font-semibold">{problem.label}</TableCell>
+            <TableCell className="font-medium">{problem.title}</TableCell>
+            <TableCell className="font-mono text-xs text-muted-foreground">
+              {problem.timeLimitMs / 1000}s · {problem.memoryLimitMb}MB
+            </TableCell>
+            <TableCell className="font-mono" title={`${problem.solvedCount} thí sinh AC / ${problem.attemptCount} thí sinh đã nộp`}>
+              {problem.solvedCount}/{problem.attemptCount}
+            </TableCell>
+            <TableCell className="text-right">
+              {canSolve && (
+                <Button size="sm" variant={status === 'RUNNING' ? 'default' : 'outline'} onClick={() => open(problem)}>
+                  {status === 'RUNNING' ? 'Làm bài' : 'Luyện tập'}
+                </Button>
+              )}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
 function SubmissionsTab({ subs, labels, showUser }) {
   const { isAdmin, isLecturer } = useAuth()
   const now = useNow(15000)
+  const [page, setPage] = useState(1)
+  const pageSize = 15
+  const pageCount = Math.max(1, Math.ceil(subs.length / pageSize))
+  const visibleSubs = subs.slice((page - 1) * pageSize, page * pageSize)
+
+  if (!subs.length) {
+    return (
+      <Empty className="border-0 py-12">
+        <EmptyHeader>
+          <EmptyTitle>Chưa có bài nộp</EmptyTitle>
+          <EmptyDescription>Các lần nộp bài trong kỳ thi sẽ xuất hiện tại đây.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
+  }
+
   return (
-    <Table
-      rowKey="id"
-      size="small"
-      dataSource={subs}
-      pagination={{ pageSize: 15, hideOnSinglePage: true }}
-      locale={{ emptyText: 'Chưa có bài nộp' }}
-      columns={[
-        {
-          title: 'ID',
-          dataIndex: 'id',
-          width: 80,
-          render: (id) => (
-            <Link to={isAdmin ? `/admin/submissions/${id}` : isLecturer ? `/teacher/submissions/${id}` : `/submissions/${id}`} className="mono">
-              #{id}
-            </Link>
-          ),
-        },
-        { title: 'Thời điểm', dataIndex: 'createdAt', width: 130, render: (v) => formatRelative(v, now) },
-        ...(showUser ? [{ title: 'Thí sinh', render: (_, s) => `${s.userName} (${s.userId})` }] : []),
-        { title: 'Bài', render: (_, s) => `${labels[s.problemId] ?? '?'}. ${s.problemTitle}` },
-        { title: 'Kết quả', width: 160, render: (_, s) => <VerdictTag submission={s} /> },
-      ]}
-    />
+    <div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID</TableHead>
+            <TableHead>Thời điểm</TableHead>
+            {showUser && <TableHead>Thí sinh</TableHead>}
+            <TableHead>Bài</TableHead>
+            <TableHead>Kết quả</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {visibleSubs.map((submission) => (
+            <TableRow key={submission.id}>
+              <TableCell>
+                <Link
+                  to={isAdmin ? `/admin/submissions/${submission.id}` : isLecturer ? `/teacher/submissions/${submission.id}` : `/submissions/${submission.id}`}
+                  className="font-mono text-primary underline-offset-4 hover:underline"
+                >
+                  #{submission.id}
+                </Link>
+              </TableCell>
+              <TableCell>{formatRelative(submission.createdAt, now)}</TableCell>
+              {showUser && <TableCell>{submission.userName} ({submission.userId})</TableCell>}
+              <TableCell>{labels[submission.problemId] ?? '?'}. {submission.problemTitle}</TableCell>
+              <TableCell><VerdictTag submission={submission} /></TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {pageCount > 1 && (
+        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+          <span className="mr-auto text-sm text-muted-foreground">Trang {page}/{pageCount}</span>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Trước</Button>
+          <Button variant="outline" size="sm" disabled={page === pageCount} onClick={() => setPage((value) => value + 1)}>Sau</Button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -121,12 +160,12 @@ export default function ContestDetailPage() {
   const { id } = useParams()
   const { user, isAdmin, isLecturer } = useAuth()
   const isStaff = isAdmin || isLecturer
-  const { message } = App.useApp()
   const navigate = useNavigate()
   const now = useNow(1000)
   const [tab, setTab] = useState('problems')
   const [registering, setRegistering] = useState(false)
   const [unregistering, setUnregistering] = useState(false)
+  const [feedback, setFeedback] = useState(null)
   const contest = useFetch(() => api.getContest(id, user), [id, user])
   const standings = useFetch(() => api.contestStandings(id), [id])
   const subs = useFetch(
@@ -134,17 +173,24 @@ export default function ContestDetailPage() {
     [id, user.id, isStaff],
   )
   const c = contest.data
+  const contestId = c?.id
+  const isRegistered = c?.registered
   const status = c ? liveStatus(c, now) : null
   const { reload: reloadContest } = contest
   const { reload: reloadStandings } = standings
   const { reload: reloadSubs } = subs
 
-  // Kỳ thi vừa bắt đầu/kết thúc → tải lại một lần để nhận đề bài.
   const prevStatus = useRef(null)
   useEffect(() => {
     if (prevStatus.current && status && prevStatus.current !== status) reloadContest()
     prevStatus.current = status
   }, [status, reloadContest])
+
+  useEffect(() => {
+    if (!isStaff && contestId && status === 'RUNNING' && !isRegistered) {
+      api.registerContest(contestId, user).then(reloadContest).catch(() => {})
+    }
+  }, [contestId, status, isRegistered, isStaff, user, reloadContest])
 
   useSocket(
     useCallback(
@@ -163,23 +209,32 @@ export default function ContestDetailPage() {
 
   if (contest.error)
     return (
-      <Result
-        status="404"
-        title="Không tìm thấy kỳ thi"
-        extra={<Button onClick={() => navigate('/contests')}>Danh sách kỳ thi</Button>}
-      />
+      <Card className="mx-auto max-w-xl">
+        <CardContent>
+          <Empty className="border-0 py-12">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><SearchX /></EmptyMedia>
+              <EmptyTitle>Không tìm thấy kỳ thi</EmptyTitle>
+              <EmptyDescription>Kỳ thi không tồn tại hoặc bạn không có quyền truy cập.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => navigate('/contests')}>Danh sách kỳ thi</Button>
+            </EmptyContent>
+          </Empty>
+        </CardContent>
+      </Card>
     )
-  if (!c) return <Spin style={{ display: 'block', margin: 80 }} />
+  if (!c) return <div className="flex justify-center py-20"><Spinner className="size-6 text-muted-foreground" /></div>
 
   const register = async () => {
     setRegistering(true)
     try {
       await api.registerContest(c.id, user)
-      message.success('Đăng ký thành công')
+      setFeedback({ type: 'success', title: 'Đăng ký thành công', message: 'Bạn đã được thêm vào danh sách thí sinh.' })
       reloadContest()
       reloadStandings()
     } catch (e) {
-      message.error(e.message)
+      setFeedback({ type: 'error', title: 'Không thể đăng ký', message: e.message })
     } finally {
       setRegistering(false)
     }
@@ -189,157 +244,164 @@ export default function ContestDetailPage() {
     setUnregistering(true)
     try {
       await api.unregisterContest(c.id)
-      message.success('Đã hủy đăng ký')
+      setFeedback({ type: 'success', title: 'Đã hủy đăng ký', message: 'Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu.' })
       reloadContest()
       reloadStandings()
     } catch (e) {
-      message.error(e.message)
+      setFeedback({ type: 'error', title: 'Không thể hủy đăng ký', message: e.message })
     } finally {
       setUnregistering(false)
     }
   }
 
-  const canSolve = isStaff || status === 'ENDED' || (status === 'RUNNING' && c.registered)
+  const canSolve = isStaff || status === 'ENDED' || status === 'RUNNING'
   const myRow = standings.data?.rows.find((r) => r.userId === user.id)
+  const badgeVariant = STATUS_BADGE[status] || STATUS_BADGE.ENDED
 
   return (
-    <div className="page">
-      <Breadcrumb
-        style={{ marginBottom: 12 }}
-        items={[{ title: <Link to={isStaff ? (isAdmin ? '/admin/contests' : '/teacher/contests') : '/contests'}>Kỳ thi</Link> }, { title: c.title }]}
-      />
-      <Card style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1, minWidth: 260, display: 'grid', gap: 8 }}>
-            <Space wrap size={6}>
-              <Tag color={CONTEST_STATUS[status].color}>{CONTEST_STATUS[status].label}</Tag>
-              <Tag>ICPC</Tag>
-              {c.registered && <Tag color="success">Đã đăng ký</Tag>}
-            </Space>
-            <Typography.Title level={3} style={{ margin: 0 }}>
-              {c.title}
-            </Typography.Title>
-            <div className="contest-meta">
-              <span>Bắt đầu: {formatDateTime(c.startAt)}</span>
-              <span>Thời lượng: {formatDuration(c.durationMin)}</span>
-              <span>{c.participantCount} thí sinh</span>
-              {myRow && (
-                <span>
-                  Hạng của bạn: <b style={{ color: 'var(--text)' }}>#{myRow.rank}</b> · {myRow.solved} bài · phạt {myRow.penalty}
-                </span>
-              )}
-            </div>
-          </div>
-          <div style={{ display: 'grid', gap: 10, justifyItems: 'end' }}>
-            <ContestClock contest={c} />
-            {!isStaff && !c.registered && status === 'UPCOMING' && (
-              <Button type="primary" size="large" loading={registering} onClick={register}>
-                Đăng ký tham gia
-              </Button>
-            )}
-            {!isStaff && c.registered && status === 'UPCOMING' && (
-              <Popconfirm
-                title="Hủy đăng ký kỳ thi?"
-                description="Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu."
-                okText="Hủy đăng ký"
-                cancelText="Giữ lại"
-                okButtonProps={{ danger: true }}
-                onConfirm={unregister}
-              >
-                <Button size="large" loading={unregistering} danger>
-                  Hủy đăng ký
-                </Button>
-              </Popconfirm>
-            )}
-          </div>
-        </div>
-      </Card>
+    <div className="page flex flex-col gap-3">
+      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Link
+          to={isStaff ? (isAdmin ? '/admin/contests' : '/teacher/contests') : '/contests'}
+          className="hover:text-foreground transition-colors"
+        >
+          Kỳ thi
+        </Link>
+        <span>/</span>
+        <span className="text-foreground font-medium truncate">{c.title}</span>
+      </nav>
 
-      {status === 'RUNNING' && !c.registered && !isStaff && (
-        <Card size="small" style={{ marginBottom: 16 }}>
-          <Typography.Text type="warning">Bạn cần đăng ký để xem đề và nộp bài trong kỳ thi này.</Typography.Text>
-        </Card>
+      {feedback && (
+        <Alert variant={feedback.type === 'error' ? 'destructive' : 'default'}>
+          {feedback.type === 'error' ? <AlertCircle /> : <CheckCircle2 />}
+          <AlertTitle>{feedback.title}</AlertTitle>
+          <AlertDescription>{feedback.message}</AlertDescription>
+        </Alert>
       )}
 
-      <Card styles={{ body: { paddingTop: 4 } }}>
-        <Tabs
-          activeKey={tab}
-          onChange={setTab}
-          items={[
-            {
-              key: 'problems',
-              label: 'Đề bài',
-              children:
-                status === 'RUNNING' && !c.registered && !isStaff ? (
-                  <Empty description="Đăng ký để xem đề bài" />
-                ) : (
-                  <ProblemsTab contest={c} status={status} mySubs={subs.data || []} canSolve={canSolve} />
-                ),
-            },
-            {
-              key: 'standings',
-              label: 'Xếp hạng',
-              children: (
-                <ContestStandings
-                  data={standings.data}
-                  loading={standings.loading && !standings.data}
-                  currentUserId={user.id}
-                  problems={c.problems}
-                  contestTitle={c.title}
-                />
-              ),
-            },
-            {
-              key: 'subs',
-              label: 'Bài nộp',
-              children: <SubmissionsTab subs={subs.data || []} labels={labels} showUser={isStaff} />,
-            },
-            ...(isStaff
-              ? [
-                  {
-                    key: 'proctor',
-                    label: (
-                      <Space size={6}>
-                        <SafetyCertificateOutlined style={{ color: '#ef4444' }} />
-                        <span>Giám sát</span>
-                      </Space>
-                    ),
-                    children: <ContestProctoring contestId={c.id} />,
-                  },
-                  {
-                    key: 'plagiarism',
-                    label: (
-                      <Space size={6}>
-                        <DiffOutlined style={{ color: '#f59e0b' }} />
-                        <span>Chống đạo văn</span>
-                      </Space>
-                    ),
-                    children: <ContestPlagiarism contestId={c.id} />,
-                  },
-                ]
-              : []),
-            {
-              key: 'rules',
-              label: 'Thể lệ',
-              children: (
-                <div className="statement" style={{ padding: '4px 0' }}>
-                  <p>{c.description}</p>
-                  <h3>Cách tính điểm (ICPC)</h3>
-                  <p>
-                    Xếp hạng theo số bài giải đúng (AC). Nếu bằng nhau, ai có tổng thời gian phạt ít hơn xếp trên. Thời gian phạt
-                    của mỗi bài = số phút từ lúc bắt đầu đến khi AC + {standings.data?.penaltyPerWrong ?? 20} phút cho mỗi lần nộp
-                    sai trước đó. Lỗi biên dịch (CE) và vi phạm bảo mật (SEC) không bị tính phạt.
-                  </p>
-                  <h3>Quy định</h3>
-                  <p>
-                    Chỉ thí sinh đã đăng ký mới được nộp bài. Ngôn ngữ C++17. Bài nộp sau khi kỳ thi kết thúc không được tính vào
-                    bảng xếp hạng.
-                  </p>
-                </div>
-              ),
-            },
-          ]}
-        />
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant={badgeVariant}>{CONTEST_STATUS[status]?.label}</Badge>
+            <Badge variant="secondary">ICPC</Badge>
+            {c.registered && <Badge variant="outline">Đã đăng ký</Badge>}
+          </div>
+          <CardTitle>{c.title}</CardTitle>
+          <CardDescription>
+            Bắt đầu: {formatDateTime(c.startAt)} · {formatDuration(c.durationMin)} · {c.participantCount} thí sinh
+            {myRow && (
+              <> · Hạng của bạn: <b className="text-foreground">#{myRow.rank}</b> · {myRow.solved} bài · phạt {myRow.penalty}</>
+            )}
+          </CardDescription>
+          <CardAction className="flex flex-col items-end gap-2 pl-4">
+              <ContestClock contest={c} />
+              {!isStaff && c.registered && status === 'RUNNING' && !c.finished && (
+                <Button size="lg" onClick={() => navigate(`/contests/${c.id}/exam`)}>
+                  Vào phòng thi
+                </Button>
+              )}
+              {!isStaff && c.finished && (
+                <span className="text-xs text-muted-foreground">Bạn đã nộp bài</span>
+              )}
+              {!isStaff && !c.registered && status === 'UPCOMING' && (
+                <Button size="lg" disabled={registering} onClick={register}>
+                  {registering && <Spinner data-icon="inline-start" />}
+                  Đăng ký tham gia
+                </Button>
+              )}
+              {!isStaff && c.registered && status === 'UPCOMING' && (
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={<Button variant="destructive" size="lg" disabled={unregistering} />}
+                  >
+                    {unregistering && <Spinner data-icon="inline-start" />}
+                    Hủy đăng ký
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Hủy đăng ký kỳ thi?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Bạn có thể đăng ký lại trước khi kỳ thi bắt đầu.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Giữ lại</AlertDialogCancel>
+                      <AlertDialogAction variant="destructive" onClick={unregister}>
+                        Hủy đăng ký
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+          </CardAction>
+        </CardHeader>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0 pt-2">
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList variant="line" className="px-4 w-full justify-start rounded-none border-b border-border/50">
+              <TabsTrigger value="problems">Đề bài</TabsTrigger>
+              <TabsTrigger value="standings">Xếp hạng</TabsTrigger>
+              <TabsTrigger value="subs">Bài nộp</TabsTrigger>
+              {isStaff && (
+                <TabsTrigger value="proctor">
+                  <Shield className="text-destructive" />
+                  Giám sát
+                </TabsTrigger>
+              )}
+              {isStaff && (
+                <TabsTrigger value="plagiarism">
+                  <FileDiff className="text-amber-600" />
+                  Chống đạo văn
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="rules">Thể lệ</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="problems">
+              <ProblemsTab contest={c} status={status} mySubs={subs.data || []} canSolve={canSolve} />
+            </TabsContent>
+            <TabsContent value="standings" className="p-4">
+              <ContestStandings
+                data={standings.data}
+                loading={standings.loading && !standings.data}
+                currentUserId={user.id}
+                problems={c.problems}
+                contestTitle={c.title}
+              />
+            </TabsContent>
+            <TabsContent value="subs">
+              <SubmissionsTab subs={subs.data || []} labels={labels} showUser={isStaff} />
+            </TabsContent>
+            {isStaff && (
+              <TabsContent value="proctor" className="p-4">
+                <ContestProctoring contestId={c.id} />
+              </TabsContent>
+            )}
+            {isStaff && (
+              <TabsContent value="plagiarism" className="p-4">
+                <ContestPlagiarism contestId={c.id} />
+              </TabsContent>
+            )}
+            <TabsContent value="rules" className="p-4">
+              <div className="statement">
+                <p>{c.description}</p>
+                <h3>Cách tính điểm (ICPC)</h3>
+                <p>
+                  Xếp hạng theo số bài giải đúng (AC). Nếu bằng nhau, ai có tổng thời gian phạt ít hơn xếp trên. Thời gian phạt
+                  của mỗi bài = số phút từ lúc bắt đầu đến khi AC + {standings.data?.penaltyPerWrong ?? 20} phút cho mỗi lần nộp
+                  sai trước đó. Lỗi biên dịch (CE) và vi phạm bảo mật (SEC) không bị tính phạt.
+                </p>
+                <h3>Quy định</h3>
+                <p>
+                  Chỉ thí sinh đã đăng ký mới được nộp bài. Ngôn ngữ C++17. Bài nộp sau khi kỳ thi kết thúc không được tính vào
+                  bảng xếp hạng.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
       </Card>
     </div>
   )

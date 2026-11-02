@@ -2,6 +2,8 @@ package com.cplusplus.backend.repository;
 
 import com.cplusplus.backend.domain.course.CourseUnitProblem;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,4 +19,7 @@ public interface CourseUnitProblemRepository extends JpaRepository<CourseUnitPro
     List<CourseUnitProblem> findByProblemId(Long problemId);
 
     void deleteByUnitIdAndProblemId(Long unitId, Long problemId);
+
+    @Query("SELECT COUNT(cup) FROM CourseUnitProblem cup WHERE cup.unit.course.id = :courseId")
+    long countByCourseId(@Param("courseId") Long courseId);
 }

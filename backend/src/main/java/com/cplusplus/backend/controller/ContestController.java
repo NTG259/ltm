@@ -84,6 +84,7 @@ public class ContestController {
 
         List<Map<String, Object>> result = list.stream()
                 .filter(c -> canViewContest(c, currentUser))
+                .filter(c -> currentUser == null || currentUser.isAdminOrLecturer() || classroomNames.containsKey(c.getId()))
                 .map(c -> {
                     Map<String, Object> m = toContestMap(c, currentUser);
                     String cn = classroomNames.get(c.getId());

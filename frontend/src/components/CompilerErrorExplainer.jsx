@@ -1,184 +1,91 @@
 import { useMemo, useState } from 'react'
-import {
-  Alert,
-  App,
-  Badge,
-  Button,
-  Card,
-  Radio,
-  Space,
-  Tag,
-} from 'antd'
-import {
-  AlertOutlined,
-  BulbOutlined,
-  CheckOutlined,
-  CodeOutlined,
-  CopyOutlined,
-  WarningOutlined,
-} from '@ant-design/icons'
+import { AlertCircle, Check, Code2, Copy, Lightbulb, TriangleAlert } from 'lucide-react'
 import { explainCompileLog } from '../lib/compilerExplainer'
+import { Alert, AlertDescription, AlertTitle } from './ui/alert'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 
 export default function CompilerErrorExplainer({ compileLog }) {
-  const { message } = App.useApp()
-  const [viewMode, setViewMode] = useState('vi') // 'vi' | 'raw'
+  const [viewMode, setViewMode] = useState('vi')
   const [copied, setCopied] = useState(false)
-
   const analysis = useMemo(() => explainCompileLog(compileLog), [compileLog])
 
   const copyLog = () => {
     if (!compileLog) return
     navigator.clipboard?.writeText(compileLog).then(() => {
       setCopied(true)
-      message.success('Đã sao chép log lỗi biên dịch')
       setTimeout(() => setCopied(false), 2000)
     })
   }
 
-  if (!compileLog || !compileLog.trim()) {
-    return (
-      <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-        Không có thông tin lỗi biên dịch.
-      </div>
-    )
+  if (!compileLog?.trim()) {
+    return <p className="text-sm text-muted-foreground">Không có thông tin lỗi biên dịch.</p>
   }
 
   return (
-    <div style={{ display: 'grid', gap: 10, width: '100%' }}>
-      {/* Thanh điều khiển trên cùng */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
-        <Space size={6} wrap>
-          <Tag color="error" icon={<AlertOutlined />} style={{ fontWeight: 600 }}>
-            Lỗi biên dịch g++ (CE)
-          </Tag>
-          {analysis.errors.length > 0 && (
-            <Badge
-              count={`${analysis.errors.length} lỗi phát hiện`}
-              style={{ backgroundColor: '#ef4444', fontSize: 11 }}
-            />
-          )}
-        </Space>
-
-        <Space size={8}>
-          <Radio.Group
-            size="small"
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value)}
-            optionType="button"
-            buttonStyle="solid"
-          >
-            <Radio.Button value="vi">
-              <BulbOutlined style={{ marginRight: 4 }} />
-              Giải thích Tiếng Việt
-            </Radio.Button>
-            <Radio.Button value="raw">
-              <CodeOutlined style={{ marginRight: 4 }} />
-              Log gốc g++ (English)
-            </Radio.Button>
-          </Radio.Group>
-          <Button
-            size="small"
-            type="text"
-            icon={copied ? <CheckOutlined /> : <CopyOutlined />}
-            onClick={copyLog}
-            title="Sao chép log lỗi"
-          >
+    <div className="grid w-full gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="destructive"><AlertCircle data-icon="inline-start" /> Lỗi biên dịch g++ (CE)</Badge>
+          {analysis.errors.length > 0 && <Badge variant="outline">{analysis.errors.length} lỗi phát hiện</Badge>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border bg-muted/40 p-1">
+            <Button size="sm" variant={viewMode === 'vi' ? 'default' : 'ghost'} onClick={() => setViewMode('vi')}>
+              <Lightbulb data-icon="inline-start" /> Giải thích
+            </Button>
+            <Button size="sm" variant={viewMode === 'raw' ? 'default' : 'ghost'} onClick={() => setViewMode('raw')}>
+              <Code2 data-icon="inline-start" /> Log gốc
+            </Button>
+          </div>
+          <Button size="sm" variant="outline" onClick={copyLog}>
+            {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
             {copied ? 'Đã chép' : 'Sao chép'}
           </Button>
-        </Space>
+        </div>
       </div>
 
-      {/* Xem giải thích tiếng Việt */}
-      {viewMode === 'vi' ? (
-        analysis.hasExplanation ? (
-          <div style={{ display: 'grid', gap: 10 }}>
-            {analysis.errors.map((err, idx) => (
-              <Card
-                key={idx}
-                size="small"
-                style={{
-                  borderLeft: `4px solid ${err.severity === 'warning' ? '#f59e0b' : '#ef4444'}`,
-                  background: 'var(--bg-elevated, #1c1c1f)',
-                }}
-                styles={{ body: { padding: '10px 14px' } }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
-                  {err.severity === 'warning' ? (
-                    <WarningOutlined style={{ color: '#f59e0b', marginTop: 3 }} />
-                  ) : (
-                    <AlertOutlined style={{ color: '#ef4444', marginTop: 3 }} />
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <b style={{ fontSize: 13, color: 'var(--text, #f4f4f5)' }}>
-                        {err.titleVi}
-                      </b>
-                      {err.line && (
-                        <Tag color="volcano" style={{ fontSize: 11, margin: 0 }}>
-                          Dòng {err.line}
-                          {err.column ? `, Cột ${err.column}` : ''}
-                        </Tag>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary, #a1a1aa)', marginTop: 4 }}>
-                      {err.explanationVi}
-                    </div>
-
-                    {err.suggestionVi && (
-                      <div
-                        style={{
-                          marginTop: 6,
-                          padding: '6px 10px',
-                          background: 'rgba(234, 179, 8, 0.08)',
-                          borderLeft: '2px solid #eab308',
-                          borderRadius: 4,
-                          fontSize: 12,
-                          color: '#facc15',
-                        }}
-                      >
-                        <b>💡 Gợi ý sửa:</b> {err.suggestionVi}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
-
-            <Alert
-              type="info"
-              showIcon
-              style={{ fontSize: 12 }}
-              message={
-                <span>
-                  <b>Mẹo:</b> Các dòng code có lỗi đã được viền đỏ nổi bật trong trình soạn thảo. Sau khi sửa xong các gợi ý trên, hãy bấm <b>Chạy thử</b> hoặc <b>Nộp bài</b> lại nhé!
-                </span>
-              }
-            />
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
-            <Alert
-              type="warning"
-              showIcon
-              message="Chưa có mẫu giải thích cụ thể cho lỗi này. Dưới đây là chi tiết thông báo gốc từ g++:"
-            />
-            <pre className="console-log">{compileLog}</pre>
-          </div>
-        )
+      {viewMode === 'raw' ? (
+        <pre className="console-log m-0 max-h-96 overflow-y-auto">{compileLog}</pre>
+      ) : analysis.hasExplanation ? (
+        <div className="grid gap-3">
+          {analysis.errors.map((error, index) => (
+            <Card key={`${error.line || 'unknown'}-${index}`} size="sm">
+              <CardHeader>
+                <CardTitle className="flex flex-wrap items-center gap-2">
+                  {error.severity === 'warning' ? <TriangleAlert /> : <AlertCircle />}
+                  {error.titleVi}
+                  {error.line && <Badge variant="outline">Dòng {error.line}{error.column ? `, cột ${error.column}` : ''}</Badge>}
+                </CardTitle>
+                <CardDescription>{error.explanationVi}</CardDescription>
+              </CardHeader>
+              {error.suggestionVi && (
+                <CardContent>
+                  <Alert>
+                    <Lightbulb />
+                    <AlertTitle>Gợi ý sửa</AlertTitle>
+                    <AlertDescription>{error.suggestionVi}</AlertDescription>
+                  </Alert>
+                </CardContent>
+              )}
+            </Card>
+          ))}
+          <Alert>
+            <Lightbulb />
+            <AlertTitle>Mẹo</AlertTitle>
+            <AlertDescription>Sửa các dòng được đánh dấu, sau đó chạy thử hoặc nộp bài lại.</AlertDescription>
+          </Alert>
+        </div>
       ) : (
-        /* Xem log thô tiếng Anh */
-        <pre className="console-log" style={{ margin: 0, maxHeight: 360, overflowY: 'auto' }}>
-          {compileLog}
-        </pre>
+        <div className="grid gap-2">
+          <Alert variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>Chưa có giải thích cụ thể</AlertTitle>
+            <AlertDescription>Kiểm tra thông báo gốc từ g++ bên dưới.</AlertDescription>
+          </Alert>
+          <pre className="console-log">{compileLog}</pre>
+        </div>
       )}
     </div>
   )

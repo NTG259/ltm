@@ -144,6 +144,15 @@ public final class DtoMapper {
             boolean isAdmin,
             boolean isRegistered,
             long participantCount) {
+        return toContestMap(c, isAdmin, isRegistered, false, participantCount);
+    }
+
+    public static Map<String, Object> toContestMap(
+            Contest c,
+            boolean isAdmin,
+            boolean isRegistered,
+            boolean isFinished,
+            long participantCount) {
         if (c == null) return null;
         Instant now = Instant.now();
         com.cplusplus.backend.domain.contest.ContestPhase phase = c.phaseAt(now);
@@ -158,6 +167,7 @@ public final class DtoMapper {
         map.put("status", phase.name());
         map.put("participantCount", participantCount);
         map.put("registered", isRegistered);
+        map.put("finished", isFinished);
 
         if (isAdmin) {
             List<Long> pids = c.getProblems() != null

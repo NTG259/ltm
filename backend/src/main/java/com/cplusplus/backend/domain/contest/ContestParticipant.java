@@ -79,6 +79,9 @@ public class ContestParticipant {
     @Column(name = "last_violation_at")
     private Instant lastViolationAt;
 
+    @Column(name = "finished_at")
+    private Instant finishedAt;
+
     protected ContestParticipant() {
     }
 
@@ -119,6 +122,12 @@ public class ContestParticipant {
         this.lastViolationAt = at;
         return this.tabSwitchCount;
     }
+
+    public boolean isFinished() { return finishedAt != null; }
+
+    public void finish(Instant at) { this.finishedAt = at; }
+
+    public Instant getFinishedAt() { return finishedAt; }
 
     @Override
     public boolean equals(Object o) {

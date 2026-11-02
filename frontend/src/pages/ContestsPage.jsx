@@ -142,7 +142,6 @@ export default function ContestsPage() {
     <div className="page flex flex-col gap-5">
       <StudentPageHeader
         title="Kỳ thi"
-        description="Theo dõi lịch thi, đăng ký và vào phòng thi đúng thời gian."
         actions={(
           <Tabs value={filter} onValueChange={setFilter}>
             <TabsList>

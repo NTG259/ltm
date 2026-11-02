@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Progress, Space, Tooltip, Typography } from 'antd'
 import { testStatusLabel, testTone, VERDICTS } from '../lib/verdicts'
 import { formatMemory, formatTime } from '../lib/format'
 import { useAuth } from '../auth/context'
 import CompilerErrorExplainer from './CompilerErrorExplainer'
+import { Progress } from './ui/progress'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 function DiffLine({ actual, expected }) {
   const aTokens = (actual || '').split(/(\s+)/)
@@ -34,15 +35,15 @@ function TestDetail({ test }) {
   const failed = VERDICTS[test.status] && test.status !== 'AC'
   const ran = test.status !== 'PENDING' && test.status !== 'SKIPPED' && test.status !== 'RUNNING'
   return (
-    <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-      <Typography.Text>
+    <div className="flex w-full flex-col gap-2">
+      <span>
         <b>Test #{test.index}</b>
         <span className="muted">
           {' · '}
           {testStatusLabel(test.status)}
           {test.timeMs != null && ` · ${formatTime(test.timeMs)} · ${formatMemory(test.memoryKb)}`}
         </span>
-      </Typography.Text>
+      </span>
       <div className="io-grid">
         <div className="io-box">
           <div className="io-box-head">Input</div>
@@ -72,11 +73,11 @@ function TestDetail({ test }) {
         </div>
       </div>
       {test.status === 'WA' && (
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        <span className="text-xs text-muted-foreground">
           Phần tô đỏ là chỗ khác với đáp án.
-        </Typography.Text>
+        </span>
       )}
-    </Space>
+    </div>
   )
 }
 
@@ -91,11 +92,11 @@ export default function TestResults({ submission: s }) {
   }
   if (s.verdict === 'SEC') {
     return (
-      <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+      <p className="text-sm text-muted-foreground">
         Không được dùng: <span className="inline-code">windows.h</span> <span className="inline-code">system()</span>{' '}
         <span className="inline-code">fork()</span> <span className="inline-code">exec…()</span> và các lệnh gọi hệ điều hành
         khác.
-      </Typography.Text>
+      </p>
     )
   }
   if (!s.tests?.length) return null
@@ -107,18 +108,15 @@ export default function TestResults({ submission: s }) {
   // Sinh viên chỉ thấy tổng đúng/sai, không thấy test nào sai
   if (!isAdmin) {
     return (
-      <Space direction="vertical" size={8} style={{ width: '100%' }}>
-        <Typography.Text>
+      <div className="flex w-full flex-col gap-2">
+        <span>
           <b>{passed}/{total}</b> test đúng
-        </Typography.Text>
+        </span>
         <Progress
-          percent={pct}
-          strokeColor={passed === total ? '#52c41a' : '#f5222d'}
-          showInfo={false}
-          size="small"
-          style={{ margin: 0 }}
+          value={pct}
+          aria-label={`${passed}/${total} test đúng`}
         />
-      </Space>
+      </div>
     )
   }
 
@@ -129,31 +127,30 @@ export default function TestResults({ submission: s }) {
   const skipped = s.tests.filter((t) => t.status === 'SKIPPED').length
 
   return (
-    <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div className="flex w-full flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="test-chips">
           {s.tests.map((t) => (
-            <Tooltip key={t.index} title={`Test #${t.index}: ${testStatusLabel(t.status)}`}>
-              <span
-                role="button"
-                tabIndex={0}
+            <Tooltip key={t.index}>
+              <TooltipTrigger
+                render={<button type="button" />}
                 aria-label={`Test ${t.index}: ${testStatusLabel(t.status)}`}
                 className={`test-chip tone-${testTone(t.status)}${selected.index === t.index ? ' selected' : ''}`}
                 onClick={() => setPicked(t.index)}
-                onKeyDown={(e) => e.key === 'Enter' && setPicked(t.index)}
               >
                 {t.index}
-              </span>
+              </TooltipTrigger>
+              <TooltipContent>Test #{t.index}: {testStatusLabel(t.status)}</TooltipContent>
             </Tooltip>
           ))}
         </div>
         {skipped > 0 && s.status === 'FINISHED' && (
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          <span className="text-xs text-muted-foreground">
             Dừng chấm sau test sai đầu tiên, {skipped} test còn lại không chạy.
-          </Typography.Text>
+          </span>
         )}
       </div>
       <TestDetail test={selected} />
-    </Space>
+    </div>
   )
 }

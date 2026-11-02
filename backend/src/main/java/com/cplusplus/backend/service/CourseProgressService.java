@@ -101,19 +101,18 @@ public class CourseProgressService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getCourseProgress(User user, Long courseId) {
-        List<CourseUnit> units = courseUnitRepository.findByCourseIdOrderByOrderIndexAsc(courseId);
         List<Long> completedRaw = progressRepository.findCompletedUnitIdsNative(user.getId(), courseId);
         Set<Long> completedUnitIds = new HashSet<>(completedRaw != null ? completedRaw : List.of());
 
-        int total = units.size();
-        int completed = completedUnitIds.size();
-        int percent = total > 0 ? (int) Math.round(((double) completed / total) * 100) : 0;
+        long totalProblems = unitProblemRepository.countByCourseId(courseId);
+        long solvedProblems = progressRepository.countSolvedSlots(user.getId(), courseId);
+        int percent = totalProblems > 0 ? (int) Math.round(((double) solvedProblems / totalProblems) * 100) : 0;
 
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("courseId", courseId);
         res.put("completedUnitIds", new ArrayList<>(completedUnitIds));
-        res.put("completedCount", completed);
-        res.put("totalUnits", total);
+        res.put("totalProblems", totalProblems);
+        res.put("solvedProblems", solvedProblems);
         res.put("percent", percent);
         return res;
     }

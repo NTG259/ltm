@@ -320,15 +320,6 @@ export default function AdminContestsPage({ teacher = false }) {
       <AdminPageHeader
         eyebrow={teacher ? 'Tổ chức học tập' : 'Thi cử'}
         title="Quản lý kỳ thi"
-        description={teacher
-          ? 'Tổ chức và quản lý các kỳ thi lập trình, giám sát thí sinh và phát hiện gian lận.'
-          : 'Tạo kỳ thi từ ngân hàng đề, đặt lịch và theo dõi bảng xếp hạng trực tiếp.'}
-        actions={
-          <Button onClick={() => setEditing({})}>
-            <Plus data-icon="inline-start" />
-            Tạo kỳ thi
-          </Button>
-        }
       />
 
       <div className="stat-metrics">
@@ -350,22 +341,28 @@ export default function AdminContestsPage({ teacher = false }) {
         </div>
       </div>
 
-      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <Card className="h-[66vh] min-h-0 flex flex-col overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Danh sách kỳ thi</p>
             <p className="text-xs text-muted-foreground">{filtered.length} kỳ thi{search.trim() ? ` cho "${search.trim()}"` : ', sắp xếp theo thời gian mới nhất'}</p>
           </div>
-          <InputGroup className="w-full sm:w-64">
-            <InputGroupAddon><Search /></InputGroupAddon>
-            <InputGroupInput
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm tên kỳ thi"
-              aria-label="Tìm kỳ thi"
-            />
-          </InputGroup>
+          <div className="flex flex-wrap items-center gap-2">
+            <InputGroup className="w-full sm:w-64">
+              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupInput
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm tên kỳ thi"
+                aria-label="Tìm kỳ thi"
+              />
+            </InputGroup>
+            <Button onClick={() => setEditing({})}>
+              <Plus data-icon="inline-start" />
+              Tạo kỳ thi
+            </Button>
+          </div>
         </div>
         <CardContent className="px-0 flex-1 min-h-0 overflow-y-auto">
           {list.loading ? <LoadingRows /> : filtered.length === 0 ? (

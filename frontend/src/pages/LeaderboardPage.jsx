@@ -6,6 +6,7 @@ import { api } from '../api'
 import { useAuth } from '../auth/context'
 import { useFetch, useSocket } from '../lib/hooks'
 import { downloadCsv } from '../lib/exportCsv'
+import StudentLeaderboardView from '../components/student/StudentLeaderboardView'
 
 const SORT_OPTIONS = [
   { value: 'submissions', label: 'Nhiều lượt nộp nhất' },
@@ -86,6 +87,24 @@ export default function LeaderboardPage() {
       rank: rows.findIndex((candidate) => candidate[sortMode] === row[sortMode]) + 1,
     })).filter((r) => !q || r.title.toLocaleLowerCase('vi-VN').includes(q) || String(r.problemId).includes(q))
   }, [problemRank.data, search, sortMode])
+
+  if (!isStaff) {
+    return (
+      <StudentLeaderboardView
+        rows={studentRows}
+        loading={studentRank.loading}
+        error={studentRank.error}
+        scopeReady={scopeReady}
+        scopeLoading={classes.loading}
+        scopeError={classes.error}
+        myRow={myRow}
+        userId={user?.id}
+        search={search}
+        onSearchChange={setSearch}
+        updatedAt={studentRank.data?.updatedAt}
+      />
+    )
+  }
 
   const studentColumns = [
     { title: '#', dataIndex: 'rank', width: 60, align: 'center', render: (v) => <b>{v}</b> },

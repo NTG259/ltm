@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Alert, Button, Typography } from 'antd'
-import { CheckOutlined, CopyOutlined } from '@ant-design/icons'
+import { Check, Copy } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from './ui/alert'
+import { Button } from './ui/button'
 
 function CodeBlock({ language, code }) {
   const [copied, setCopied] = useState(false)
@@ -35,12 +36,11 @@ function CodeBlock({ language, code }) {
           {language || 'C++'}
         </span>
         <Button
-          type="text"
-          size="small"
-          icon={copied ? <CheckOutlined style={{ color: '#22c55e' }} /> : <CopyOutlined />}
-          style={{ color: 'var(--text-2)', fontSize: 12 }}
+          variant="ghost"
+          size="sm"
           onClick={handleCopy}
         >
+          {copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}
           {copied ? 'Đã sao chép' : 'Sao chép'}
         </Button>
       </div>
@@ -160,20 +160,12 @@ export default function MarkdownViewer({ content = '' }) {
       }
 
       elements.push(
-        <Alert
-          key={`alert-${elements.length}`}
-          type={alertType}
-          showIcon
-          message={alertTitle}
-          description={
-            <div style={{ fontSize: 13.5, lineHeight: 1.6, marginTop: 4 }}>
-              {quoteLines.map((q, idx) => (
-                <div key={idx}>{renderInline(q)}</div>
-              ))}
-            </div>
-          }
-          style={{ margin: '16px 0', borderRadius: 8 }}
-        />
+        <Alert key={`alert-${elements.length}`} variant={alertType === 'warning' ? 'destructive' : 'default'} className="my-4">
+          <AlertTitle>{alertTitle}</AlertTitle>
+          <AlertDescription>
+            {quoteLines.map((q, idx) => <div key={idx}>{renderInline(q)}</div>)}
+          </AlertDescription>
+        </Alert>
       )
       continue
     }
@@ -181,62 +173,48 @@ export default function MarkdownViewer({ content = '' }) {
     // 3. Headings
     if (line.startsWith('#### ')) {
       elements.push(
-        <Typography.Title
+        <h4
           key={`h4-${elements.length}`}
-          level={5}
-          style={{ marginTop: 18, marginBottom: 8, color: 'var(--text)' }}
+          className="mt-5 mb-2 font-heading text-base font-medium"
         >
           {renderInline(line.replace('#### ', ''))}
-        </Typography.Title>
+        </h4>
       )
       i++
       continue
     }
     if (line.startsWith('### ')) {
       elements.push(
-        <Typography.Title
+        <h3
           key={`h3-${elements.length}`}
-          level={4}
-          style={{ marginTop: 22, marginBottom: 8, color: 'var(--primary)' }}
+          className="mt-6 mb-2 font-heading text-lg font-medium text-primary"
         >
           {renderInline(line.replace('### ', ''))}
-        </Typography.Title>
+        </h3>
       )
       i++
       continue
     }
     if (line.startsWith('## ')) {
       elements.push(
-        <Typography.Title
+        <h2
           key={`h2-${elements.length}`}
-          level={3}
-          style={{
-            marginTop: 26,
-            marginBottom: 12,
-            paddingBottom: 6,
-            borderBottom: '1px solid var(--border)',
-          }}
+          className="mt-7 mb-3 border-b pb-2 font-heading text-xl font-medium"
         >
           {renderInline(line.replace('## ', ''))}
-        </Typography.Title>
+        </h2>
       )
       i++
       continue
     }
     if (line.startsWith('# ')) {
       elements.push(
-        <Typography.Title
+        <h1
           key={`h1-${elements.length}`}
-          level={2}
-          style={{
-            marginTop: 16,
-            marginBottom: 16,
-            paddingBottom: 8,
-            borderBottom: '2px solid var(--border)',
-          }}
+          className="mt-4 mb-4 border-b-2 pb-2 font-heading text-2xl font-semibold"
         >
           {renderInline(line.replace('# ', ''))}
-        </Typography.Title>
+        </h1>
       )
       i++
       continue

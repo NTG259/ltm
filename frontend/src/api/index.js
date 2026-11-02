@@ -48,6 +48,13 @@ export function storeSession(session) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('cj:session-change'))
   }
+  if (session?.token) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'AUTH', token: session.token }))
+    } else {
+      connect()
+    }
+  }
 }
 
 async function http(method, path, body) {
@@ -106,6 +113,7 @@ export const api = {
   getContest: (id) => http('GET', `/contests/${id}`),
   registerContest: (id) => http('POST', `/contests/${id}/register`),
   unregisterContest: (id) => http('DELETE', `/contests/${id}/register`),
+  finishContest: (id) => http('POST', `/contests/${id}/finish`),
   contestStandings: (id) => http('GET', `/contests/${id}/standings`),
   reportViolation: (id, data) => http('POST', `/contests/${id}/proctor/violation`, data),
   getProctorStatus: (id) => http('GET', `/contests/${id}/proctor/status`),
@@ -360,6 +368,11 @@ if (typeof document !== 'undefined') {
       }
     }
   })
+}
+
+// Eager connect on page load if already logged in
+if (typeof document !== 'undefined' && storageGet(TOKEN_KEY)) {
+  connect()
 }
 
 export function subscribe(fn) {

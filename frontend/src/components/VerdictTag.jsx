@@ -1,6 +1,6 @@
-import { Tooltip } from 'antd'
-import { CheckCircleFilled, ClockCircleOutlined, LoadingOutlined } from '@ant-design/icons'
+import { CheckCircle2, Clock3, LoaderCircle } from 'lucide-react'
 import { statusLabel, STATUSES, VERDICTS } from '../lib/verdicts'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 /** Nhãn kết quả: hiển thị trạng thái trung gian nếu bài chưa chấm xong. */
 export default function VerdictTag({ submission, verdict, status, progress, size, full }) {
@@ -12,8 +12,8 @@ export default function VerdictTag({ submission, verdict, status, progress, size
   if (s !== 'FINISHED') {
     const meta = STATUSES[s] || STATUSES.IN_QUEUE
     return (
-      <span className={`${cls} tone-${meta.tone}`} style={{ fontFamily: 'inherit', fontWeight: 500 }}>
-        {s === 'IN_QUEUE' ? <ClockCircleOutlined /> : <LoadingOutlined />}
+      <span className={`${cls} tone-${meta.tone} font-sans font-medium`}>
+        {s === 'IN_QUEUE' ? <Clock3 /> : <LoaderCircle className="animate-spin" />}
         {statusLabel({ status: s, progress: p })}
       </span>
     )
@@ -21,11 +21,12 @@ export default function VerdictTag({ submission, verdict, status, progress, size
   const meta = VERDICTS[v]
   if (!meta) return <span className={`${cls} tone-pending`}>—</span>
   return (
-    <Tooltip title={`${meta.label} – ${meta.desc}`}>
-      <span className={`${cls} tone-${meta.tone}`}>
-        {v === 'AC' && <CheckCircleFilled />}
+    <Tooltip>
+      <TooltipTrigger render={<span className={`${cls} tone-${meta.tone}`} />}>
+        {v === 'AC' && <CheckCircle2 />}
         {full ? meta.label : meta.short}
-      </span>
+      </TooltipTrigger>
+      <TooltipContent>{meta.label} – {meta.desc}</TooltipContent>
     </Tooltip>
   )
 }

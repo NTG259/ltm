@@ -1,119 +1,123 @@
-import { Button, Table, Tooltip, Typography } from 'antd'
-import { DownloadOutlined, StarFilled } from '@ant-design/icons'
+import { Download, Star } from 'lucide-react'
 import { downloadCsv } from '../lib/exportCsv'
+import { Button } from './ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from './ui/empty'
+import { Skeleton } from './ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
-/** Bảng xếp hạng ICPC. Ô: thời điểm AC (phút) + số lần sai; xanh = AC, đỏ = chưa AC, vàng = đang chấm. */
+function CellTooltip({ label, children }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="inline-flex cursor-help" />}>{children}</TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Bảng xếp hạng ICPC. Ô hiển thị phút AC và số lần nộp sai trước đó. */
 export default function ContestStandings({ data, loading, currentUserId, problems = [], contestTitle }) {
-  const titles = Object.fromEntries(problems.map((p) => [p.label, p.title]))
+  const titles = Object.fromEntries(problems.map((problem) => [problem.label, problem.title]))
 
   const exportCsv = () => {
     if (!data?.rows?.length) return
     const labelHeaders = (data.labels || []).map((label) => ({
       label,
-      value: (r) => {
-        const c = r.cells[label]
-        if (!c) return ''
-        if (c.solved) return `AC ${c.minute}'${c.wrong ? ` (+${c.wrong})` : ''}`
-        if (c.pending) return 'Đang chấm'
-        return c.wrong ? `-${c.wrong}` : ''
+      value: (row) => {
+        const cell = row.cells[label]
+        if (!cell) return ''
+        if (cell.solved) return `AC ${cell.minute}'${cell.wrong ? ` (+${cell.wrong})` : ''}`
+        if (cell.pending) return 'Đang chấm'
+        return cell.wrong ? `-${cell.wrong}` : ''
       },
     }))
-    const headers = [
+    downloadCsv(data.rows, [
       { key: 'rank', label: 'Hạng' },
       { key: 'userId', label: 'MSSV' },
       { key: 'userName', label: 'Họ tên' },
       { key: 'solved', label: 'Số bài' },
       { key: 'penalty', label: 'Phạt' },
       ...labelHeaders,
-    ]
-    downloadCsv(data.rows, headers, `standings-${contestTitle || 'contest'}.csv`)
+    ], `standings-${contestTitle || 'contest'}.csv`)
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-2" aria-label="Đang tải bảng xếp hạng">
+        {Array.from({ length: 5 }, (_, index) => <Skeleton key={index} className="h-12 w-full" />)}
+      </div>
+    )
+  }
+
+  if (!data?.rows?.length) {
+    return (
+      <Empty className="border-0 py-10">
+        <EmptyHeader>
+          <EmptyTitle>Chưa có thí sinh</EmptyTitle>
+          <EmptyDescription>Bảng xếp hạng sẽ được cập nhật khi kỳ thi có người tham gia.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
   }
 
   return (
-    <Table
-      rowKey="userId"
-      size="middle"
-      loading={loading}
-      dataSource={data?.rows || []}
-      pagination={false}
-      scroll={{ x: 360 + (data?.labels.length || 0) * 80 }}
-      rowClassName={(r) => (r.userId === currentUserId ? 'ant-table-row-selected' : '')}
-      locale={{ emptyText: 'Chưa có thí sinh' }}
-      columns={[
-        { title: '#', dataIndex: 'rank', width: 52, align: 'center', fixed: 'left', render: (v) => <b>{v}</b> },
-        {
-          title: 'Thí sinh',
-          width: 200,
-          fixed: 'left',
-          render: (_, r) => (
-            <div>
-              <div style={{ fontWeight: 500 }}>{r.userName}</div>
-              <span className="mono muted" style={{ fontSize: 12 }}>
-                {r.userId}
-              </span>
-            </div>
-          ),
-        },
-        { title: 'Số bài', dataIndex: 'solved', width: 72, align: 'center', render: (v) => <b>{v}</b> },
-        {
-          title: (
-            <Tooltip title={`Tổng phút từ lúc bắt đầu tới khi AC + ${data?.penaltyPerWrong ?? 20} phút cho mỗi lần sai`}>
-              Phạt
-            </Tooltip>
-          ),
-          dataIndex: 'penalty',
-          width: 72,
-          align: 'center',
-          render: (v) => <span className="mono">{v}</span>,
-        },
-        ...(data?.labels || []).map((label) => ({
-          title: (
-            <Tooltip title={titles[label]}>
-              <b>{label}</b>
-            </Tooltip>
-          ),
-          key: label,
-          width: 80,
-          align: 'center',
-          render: (_, r) => {
-            const c = r.cells[label]
-            if (!c) return null
-            if (c.solved)
-              return (
-                <Tooltip
-                  title={`AC ở phút ${c.minute}${c.wrong ? `, sai ${c.wrong} lần trước đó` : ''}${c.first ? ' – giải đầu tiên' : ''}`}
-                >
-                  <span className={`lb-cell tone-ac${c.first ? ' first' : ''}`}>
-                    {c.first && <StarFilled style={{ fontSize: 10 }} />}
-                    {c.minute}′<small>{c.wrong ? `+${c.wrong}` : ''}</small>
-                  </span>
-                </Tooltip>
-              )
-            if (c.pending)
-              return (
-                <Tooltip title="Đang chấm">
-                  <span className="lb-cell tone-tle">?</span>
-                </Tooltip>
-              )
-            return (
-              <Tooltip title={`Sai ${c.wrong} lần`}>
-                <span className="lb-cell tone-wa">−{c.wrong}</span>
-              </Tooltip>
-            )
-          },
-        })),
-      ]}
-      footer={() => (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Ô xanh: phút AC (+ số lần sai). Ô đỏ: số lần sai. <StarFilled style={{ fontSize: 10, color: '#d97706' }} /> người giải
-            đầu tiên. Lỗi biên dịch không bị tính phạt.
-          </Typography.Text>
-          <Button size="small" icon={<DownloadOutlined />} onClick={exportCsv} disabled={!data?.rows?.length}>
-            Xuất CSV
-          </Button>
-        </div>
-      )}
-    />
+    <div className="space-y-3">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-14 text-center">#</TableHead>
+            <TableHead>Thí sinh</TableHead>
+            <TableHead className="text-center">Số bài</TableHead>
+            <TableHead className="text-center">
+              <CellTooltip label={`Tổng phút tới khi AC + ${data.penaltyPerWrong ?? 20} phút cho mỗi lần sai`}>Phạt</CellTooltip>
+            </TableHead>
+            {(data.labels || []).map((label) => (
+              <TableHead key={label} className="text-center">
+                <CellTooltip label={titles[label]}><strong>{label}</strong></CellTooltip>
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.rows.map((row) => (
+            <TableRow key={row.userId} data-state={row.userId === currentUserId ? 'selected' : undefined}>
+              <TableCell className="text-center font-semibold">{row.rank}</TableCell>
+              <TableCell>
+                <div className="font-medium">{row.userName}</div>
+                <div className="font-mono text-xs text-muted-foreground">{row.userId}</div>
+              </TableCell>
+              <TableCell className="text-center font-semibold">{row.solved}</TableCell>
+              <TableCell className="text-center font-mono">{row.penalty}</TableCell>
+              {(data.labels || []).map((label) => {
+                const cell = row.cells[label]
+                if (!cell) return <TableCell key={label} />
+                const tooltip = cell.solved
+                  ? `AC ở phút ${cell.minute}${cell.wrong ? `, sai ${cell.wrong} lần trước đó` : ''}${cell.first ? ' – giải đầu tiên' : ''}`
+                  : cell.pending ? 'Đang chấm' : `Sai ${cell.wrong} lần`
+                return (
+                  <TableCell key={label} className="text-center">
+                    <CellTooltip label={tooltip}>
+                      <span className="inline-flex min-w-12 items-center justify-center gap-1 rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium">
+                        {cell.first && <Star className="size-3 fill-current" />}
+                        {cell.solved ? <>{cell.minute}′<small>{cell.wrong ? `+${cell.wrong}` : ''}</small></> : cell.pending ? '?' : `−${cell.wrong}`}
+                      </span>
+                    </CellTooltip>
+                  </TableCell>
+                )
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+        <p className="text-xs text-muted-foreground">
+          Ô kết quả hiển thị phút AC và số lần sai. <Star className="inline size-3 fill-current" /> là người giải đầu tiên. Lỗi biên dịch không tính phạt.
+        </p>
+        <Button size="sm" variant="outline" onClick={exportCsv}>
+          <Download data-icon="inline-start" />
+          Xuất CSV
+        </Button>
+      </div>
+    </div>
   )
 }

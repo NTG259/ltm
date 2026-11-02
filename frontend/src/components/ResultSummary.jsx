@@ -1,7 +1,7 @@
-import { Progress, Typography } from 'antd'
-import { ClockCircleOutlined, LoadingOutlined, WarningOutlined } from '@ant-design/icons'
+import { Clock3, LoaderCircle, TriangleAlert } from 'lucide-react'
 import { explainVerdict, statusLabel, VERDICTS } from '../lib/verdicts'
 import { formatMemory, formatTime } from '../lib/format'
+import { Progress } from './ui/progress'
 
 /**
  * Tóm tắt một bài nộp trong một khối duy nhất:
@@ -12,16 +12,16 @@ export default function ResultSummary({ submission: s, problem, extra }) {
   if (!s) return null
   const failovers = (s.history || []).filter((h) => h.status === 'FAILOVER').length
   const note = (
-    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+    <span className="text-xs text-muted-foreground">
       Bài #{s.id}
       {s.workerId && ` · chấm bởi ${s.workerId}`}
       {failovers > 0 && (
-        <span style={{ color: '#d97706' }}>
+        <span className="text-destructive">
           {' '}
-          · <WarningOutlined /> máy chấm gặp sự cố, bài đã được tự động chấm lại
+          · <TriangleAlert className="inline size-3" /> máy chấm gặp sự cố, bài đã được tự động chấm lại
         </span>
       )}
-    </Typography.Text>
+    </span>
   )
 
   if (s.status !== 'FINISHED') {
@@ -30,12 +30,12 @@ export default function ResultSummary({ submission: s, problem, extra }) {
       <div className="result-summary tone-running">
         <div className="result-main">
           <div className="result-title">
-            {s.status === 'IN_QUEUE' ? <ClockCircleOutlined /> : <LoadingOutlined />} {statusLabel(s)}…
+            {s.status === 'IN_QUEUE' ? <Clock3 /> : <LoaderCircle className="animate-spin" />} {statusLabel(s)}…
           </div>
           {note}
         </div>
         {s.status === 'TESTING' && total > 0 && (
-          <Progress percent={Math.round((current / total) * 100)} showInfo={false} size="small" style={{ margin: 0 }} />
+          <Progress value={Math.round((current / total) * 100)} aria-label={`Tiến độ chấm ${current}/${total}`} />
         )}
       </div>
     )
@@ -56,7 +56,7 @@ export default function ResultSummary({ submission: s, problem, extra }) {
           <small>/100</small>
         </div>
         {ran && (
-          <div className="mono" style={{ fontSize: 12 }}>
+          <div className="font-mono text-xs">
             {formatTime(s.timeMs)} · {formatMemory(s.memoryKb)}
           </div>
         )}

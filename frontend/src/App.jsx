@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { App as AntApp, ConfigProvider, Spin } from 'antd'
 import viVN from 'antd/locale/vi_VN'
-import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import AuthProvider from './auth/AuthProvider'
 import { useAuth } from './auth/context'
 import { buildTheme, ThemeModeContext } from './theme'
@@ -10,6 +10,7 @@ import AdminLayout from './components/AdminLayout'
 import TeacherLayout from './components/TeacherLayout'
 import LoginPage from './pages/LoginPage'
 import ErrorBoundary from './components/ErrorBoundary'
+import { TooltipProvider } from './components/ui/tooltip'
 
 const ProblemsPage = lazy(() => import('./pages/ProblemsPage'))
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage'))
@@ -19,6 +20,7 @@ const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const ContestsPage = lazy(() => import('./pages/ContestsPage'))
 const ContestDetailPage = lazy(() => import('./pages/ContestDetailPage'))
 const ContestWorkspacePage = lazy(() => import('./pages/ContestWorkspacePage'))
+const ContestExamPage = lazy(() => import('./pages/ContestExamPage'))
 const AdminContestsPage = lazy(() => import('./pages/admin/AdminContestsPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'))
@@ -31,15 +33,11 @@ const AdminClassroomMonitorPage = lazy(() => import('./pages/admin/AdminClassroo
 const AdminContestMonitorPage = lazy(() => import('./pages/admin/AdminContestMonitorPage'))
 const MyClassroomsPage = lazy(() => import('./pages/MyClassroomsPage'))
 const MyClassroomDetailPage = lazy(() => import('./pages/MyClassroomDetailPage'))
-const CourseListPage = lazy(() => import('./pages/Courses/CourseListPage'))
-const CourseDetailPage = lazy(() => import('./pages/Courses/CourseDetailPage'))
 const CourseLearnPage = lazy(() => import('./pages/Courses/CourseLearnPage'))
 const AdminCoursesPage = lazy(() => import('./pages/admin/AdminCoursesPage'))
 const AdminCourseEditPage = lazy(() => import('./pages/admin/AdminCourseEditPage'))
 const TeacherClassroomsPage = lazy(() => import('./pages/teacher/TeacherClassroomsPage'))
 const TeacherClassroomDetailPage = lazy(() => import('./pages/teacher/TeacherClassroomDetailPage'))
-const TeacherProblemsPage = lazy(() => import('./pages/teacher/TeacherProblemsPage'))
-const TeacherContestsPage = lazy(() => import('./pages/teacher/TeacherContestsPage'))
 
 const THEME_KEY = 'cj.theme'
 
@@ -102,6 +100,13 @@ function AppRoutes() {
         <Routes>
           <Route path="/login" element={user ? <Navigate to={home} replace /> : <LoginPage />} />
 
+          {/* Exam page — isolated, no layout */}
+          <Route
+            element={<RequireRole allowedRoles={['student']}><Outlet /></RequireRole>}
+          >
+            <Route path="/contests/:cid/exam" element={<ContestExamPage />} />
+          </Route>
+
           {/* 1. Student routes (Dành riêng cho sinh viên) */}
           <Route
             element={
@@ -112,8 +117,6 @@ function AppRoutes() {
           >
             <Route path="/problems" element={<ProblemsPage />} />
             <Route path="/problems/:id" element={<WorkspacePage />} />
-            <Route path="/courses" element={<CourseListPage />} />
-            <Route path="/courses/:id" element={<CourseDetailPage />} />
             <Route path="/courses/:courseId/learn" element={<CourseLearnPage />} />
             <Route path="/courses/:courseId/learn/:unitId" element={<CourseLearnPage />} />
             <Route path="/contests" element={<ContestsPage />} />
@@ -122,6 +125,7 @@ function AppRoutes() {
             <Route path="/submissions" element={<SubmissionsPage />} />
             <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
             <Route path="/my-classrooms" element={<MyClassroomsPage />} />
+            <Route path="/my-classrooms/:id" element={<MyClassroomDetailPage />} />
             <Route path="/classrooms/:id" element={<MyClassroomDetailPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
@@ -211,13 +215,15 @@ export default function App() {
     <ThemeModeContext.Provider value={themeCtx}>
       <ConfigProvider theme={buildTheme(mode)} locale={viVN}>
         <AntApp>
-          <div className="app-root" data-theme={mode}>
-            <AuthProvider>
-              <HashRouter>
-                <AppRoutes />
-              </HashRouter>
-            </AuthProvider>
-          </div>
+          <TooltipProvider>
+            <div className="app-root" data-theme={mode}>
+              <AuthProvider>
+                <HashRouter>
+                  <AppRoutes />
+                </HashRouter>
+              </AuthProvider>
+            </div>
+          </TooltipProvider>
         </AntApp>
       </ConfigProvider>
     </ThemeModeContext.Provider>

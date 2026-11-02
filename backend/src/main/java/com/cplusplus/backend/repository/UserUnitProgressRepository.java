@@ -3,6 +3,7 @@ package com.cplusplus.backend.repository;
 import com.cplusplus.backend.domain.course.UserUnitProgress;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -32,4 +33,18 @@ public interface UserUnitProgressRepository extends JpaRepository<UserUnitProgre
               )
             """, nativeQuery = true)
     List<Long> findCompletedUnitIdsNative(Long userId, Long courseId);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM course_unit_problems cup
+            JOIN course_units cu ON cu.id = cup.unit_id
+            WHERE cu.course_id = :courseId
+              AND EXISTS (
+                SELECT 1 FROM submissions s
+                WHERE s.problem_id = cup.problem_id
+                  AND s.user_id = :userId
+                  AND s.verdict = 'AC'
+              )
+            """, nativeQuery = true)
+    long countSolvedSlots(@Param("userId") Long userId, @Param("courseId") Long courseId);
 }

@@ -480,7 +480,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
                           placeholder="Soạn nội dung bài học bằng định dạng Markdown..."
                           rows={22}
                           style={{
-                            fontFamily: 'Consolas, Monaco, monospace',
+                            fontFamily: 'var(--font-mono)',
                             fontSize: 13.5,
                             lineHeight: 1.6,
                             resize: 'vertical',
@@ -537,7 +537,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
                         onChange={(e) => setSampleInput(e.target.value)}
                         placeholder="Ví dụ: 10 20 hoặc dữ liệu mảng..."
                         rows={4}
-                        style={{ fontFamily: 'Consolas, Monaco, monospace', fontSize: 13 }}
+                        style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}
                       />
                     </div>
                   </div>

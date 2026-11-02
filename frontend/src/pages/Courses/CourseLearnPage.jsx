@@ -1,17 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Alert,
-  App,
   Button,
   Card,
-  Col,
   Divider,
   Empty,
-  Input,
   List,
   Progress,
   Result,
-  Row,
   Space,
   Spin,
   Tabs,
@@ -22,36 +18,28 @@ import {
 import {
   ArrowLeftOutlined,
   BookOutlined,
-  CaretRightOutlined,
   CheckCircleFilled,
-  CheckCircleOutlined,
   CodeOutlined,
   DownloadOutlined,
   FilePdfOutlined,
-  CopyOutlined,
   LeftOutlined,
-  LockOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  ReadOutlined,
   RightOutlined,
-  RocketOutlined,
-  ThunderboltOutlined,
   TrophyOutlined,
 } from '@ant-design/icons'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../auth/context'
 import { api } from '../../api'
 import { useFetch } from '../../lib/hooks'
-import MarkdownViewer from '../../components/MarkdownViewer'
-import CodeEditor from '../../components/CodeEditor'
-import VerdictTag from '../../components/VerdictTag'
-import { formatMemory, formatTime } from '../../lib/format'
 
 export default function CourseLearnPage() {
   const { courseId, unitId } = useParams()
   const navigate = useNavigate()
-  const { message } = App.useApp()
+  const [searchParams] = useSearchParams()
+  const fromClassroom = searchParams.get('from') === 'classroom'
+  const fromClassroomId = searchParams.get('classroomId')
+  const learnQuery = fromClassroom ? `?from=classroom&classroomId=${fromClassroomId}` : ''
 
   // Sidebar trạng thái thu gọn
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -79,7 +67,7 @@ export default function CourseLearnPage() {
 
   // Dữ liệu khóa học & tiến độ
   const { data: course, loading: courseLoading } = useFetch(() => api.getCourse(courseId), [courseId])
-  const { data: progress, reload: reloadProgress } = useFetch(() => api.getCourseProgress(courseId), [courseId])
+  const { data: progress } = useFetch(() => api.getCourseProgress(courseId), [courseId])
 
   // Cache tiến độ vào localStorage để hiển thị tức thì không bị chớp 0%
   const cacheKey = `cj.cache_progress_${courseId}`
@@ -142,9 +130,9 @@ export default function CourseLearnPage() {
   // Điều hướng nếu URL chưa có unitId
   useEffect(() => {
     if (currentUnit && (!unitId || String(unitId) !== String(currentUnit.id))) {
-      navigate(`/courses/${courseId}/learn/${currentUnit.id}`, { replace: true })
+      navigate(`/courses/${courseId}/learn/${currentUnit.id}${learnQuery}`, { replace: true })
     }
-  }, [currentUnit, unitId, courseId, navigate])
+  }, [currentUnit, unitId, courseId, learnQuery, navigate])
 
   // Nạp dữ liệu bài học & bài tập liên kết qua useFetch
   const unitIdKey = currentUnit?.id
@@ -172,95 +160,20 @@ export default function CourseLearnPage() {
     [unitIdKey]
   )
 
-  const lessonData = lessonBundle || null
   const unitProblems = lessonBundle?.problems || []
   const unitFiles = lessonBundle?.files || []
 
-  // Quản lý code & input khi người dùng gõ
-  const [editedCode, setEditedCode] = useState(null)
-  const [editedInput, setEditedInput] = useState(null)
-  const [codeRunning, setCodeRunning] = useState(false)
-  const [runResult, setRunResult] = useState(null)
-
-  const currentCode = editedCode !== null ? editedCode : (lessonData?.sampleCode || '')
-  const currentInput = editedInput !== null ? editedInput : (lessonData?.sampleInput || '')
-
   // Tab học đang chọn
-  const [activeTab, setActiveTab] = useState('theory')
-
-  // Đang bấm đánh dấu hoàn thành
-  const [updatingProgress, setUpdatingProgress] = useState(false)
+  const [activeTab, setActiveTab] = useState('exercises')
 
   const handleSelectUnit = (targetUnit) => {
-    setEditedCode(null)
-    setEditedInput(null)
-    setRunResult(null)
-    navigate(`/courses/${courseId}/learn/${targetUnit.id}`)
+    navigate(`/courses/${courseId}/learn/${targetUnit.id}${learnQuery}`)
   }
 
-  // Toggle trạng thái hoàn thành
-  const handleToggleComplete = async (uId = currentUnit?.id) => {
-    if (!uId) return
-    setUpdatingProgress(true)
-    try {
-      await api.toggleUnitProgress(uId)
-      message.success('Đã cập nhật tiến độ học tập!')
-      reloadProgress()
-    } catch (e) {
-      message.error(e.message || 'Không thể cập nhật tiến độ')
-    } finally {
-      setUpdatingProgress(false)
-    }
-  }
-
-  // Đánh dấu hoàn thành và chuyển sang bài kế tiếp
-  const handleCompleteAndNext = async () => {
-    if (!currentUnit) return
-    if (!completedSet.has(currentUnit.id)) {
-      await handleToggleComplete(currentUnit.id)
-    }
-    setEditedCode(null)
-    setEditedInput(null)
-    setRunResult(null)
+  const handleGoNext = () => {
     if (nextUnit) {
-      navigate(`/courses/${courseId}/learn/${nextUnit.id}`)
-    } else {
-      message.success('Chúc mừng bạn đã hoàn thành tất cả các bài học trong khóa này! 🎉')
+      navigate(`/courses/${courseId}/learn/${nextUnit.id}${learnQuery}`)
     }
-  }
-
-  // Chạy thử code C++
-  const handleRunCode = async () => {
-    if (!currentCode.trim()) {
-      message.warning('Mã nguồn C++ đang trống')
-      return
-    }
-    setCodeRunning(true)
-    setRunResult(null)
-    try {
-      const res = await api.runTest({
-        problemId: null,
-        sourceCode: currentCode,
-        input: currentInput || '',
-        expectedOutput: '',
-      })
-      setRunResult(res)
-    } catch (e) {
-      setRunResult({
-        verdict: 'RTE',
-        output: '',
-        stderr: e.message || 'Lỗi khi gửi yêu cầu thực thi',
-        timeMs: 0,
-        memoryKb: 0,
-      })
-    } finally {
-      setCodeRunning(false)
-    }
-  }
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(currentCode)
-    message.success('Đã sao chép mã nguồn C++!')
   }
 
   if (courseLoading) {
@@ -277,8 +190,8 @@ export default function CourseLearnPage() {
         status="404"
         title="Không tìm thấy khóa học"
         extra={
-          <Button type="primary" onClick={() => navigate('/courses')}>
-            Về danh sách khóa học
+          <Button type="primary" onClick={() => navigate(fromClassroom ? `/my-classrooms/${fromClassroomId}` : '/my-classrooms')}>
+            Về lớp học
           </Button>
         }
       />
@@ -292,16 +205,17 @@ export default function CourseLearnPage() {
         title="Khóa học đang ở bản nháp"
         subTitle="Nội dung khóa học này hiện đang được biên soạn và chưa được công khai cho sinh viên."
         extra={
-          <Button type="primary" onClick={() => navigate('/courses')}>
-            Về danh sách khóa học
+          <Button type="primary" onClick={() => navigate(fromClassroom ? `/my-classrooms/${fromClassroomId}` : '/my-classrooms')}>
+            Về lớp học
           </Button>
         }
       />
     )
   }
 
-  const completedCount = completedSet.size
-  const progressPercent = units.length > 0 ? Math.round((completedCount / units.length) * 100) : 0
+  const progressPercent = activeProgress?.percent ?? 0
+  const progressSolved = activeProgress?.solvedProblems ?? 0
+  const progressTotal = activeProgress?.totalProblems ?? 0
   const isCurrentDone = currentUnit ? completedSet.has(currentUnit.id) : false
 
   return (
@@ -340,9 +254,9 @@ export default function CourseLearnPage() {
           <Button
             type="text"
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate(`/courses/${courseId}`)}
+            onClick={() => navigate(fromClassroom ? `/my-classrooms/${fromClassroomId}` : '/my-classrooms')}
           >
-            Quay lại khóa học
+            {fromClassroom ? 'Về lớp học' : 'Lớp học của tôi'}
           </Button>
 
           <Divider type="vertical" style={{ margin: 0 }} />
@@ -355,30 +269,17 @@ export default function CourseLearnPage() {
           </div>
         </div>
 
-        {/* Tiến độ và nút Đánh dấu hoàn thành */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Typography.Text type="secondary" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-              Tiến độ: <b style={{ color: 'var(--text)' }}>{completedCount}/{units.length} bài</b> ({progressPercent}%)
-            </Typography.Text>
-            <Progress
-              percent={progressPercent}
-              showInfo={false}
-              strokeColor="#16a34a"
-              style={{ width: 90, margin: 0 }}
-            />
-          </div>
-
-          {currentUnit && (
-            <Button
-              type={isCurrentDone ? 'default' : 'primary'}
-              icon={isCurrentDone ? <CheckCircleFilled style={{ color: '#16a34a' }} /> : <CheckCircleOutlined />}
-              loading={updatingProgress}
-              onClick={() => handleToggleComplete(currentUnit.id)}
-            >
-              {isCurrentDone ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
-            </Button>
-          )}
+        {/* Tiến độ */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+            Tiến độ: <b style={{ color: 'var(--text)' }}>{progressSolved}/{progressTotal} bài tập</b> ({progressPercent}%)
+          </Typography.Text>
+          <Progress
+            percent={progressPercent}
+            showInfo={false}
+            strokeColor="#16a34a"
+            style={{ width: 90, margin: 0 }}
+          />
         </div>
       </div>
 
@@ -537,38 +438,8 @@ export default function CourseLearnPage() {
                 activeKey={activeTab}
                 onChange={setActiveTab}
                 items={[
-                  {
-                    key: 'theory',
-                    label: (
-                      <span>
-                        <ReadOutlined /> Lý thuyết bài giảng
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'code',
-                    label: (
-                      <span>
-                        <ThunderboltOutlined /> Code mẫu & Chạy thử C++
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'exercises',
-                    label: (
-                      <span>
-                        <RocketOutlined /> Bài tập thực hành ({unitProblems.length})
-                      </span>
-                    ),
-                  },
-                  {
-                    key: 'files',
-                    label: (
-                      <span>
-                        <FilePdfOutlined /> Tài liệu ({unitFiles.length})
-                      </span>
-                    ),
-                  },
+                  { key: 'exercises', label: `Bài tập (${unitProblems.length})` },
+                  { key: 'files', label: `Tài liệu (${unitFiles.length})` },
                 ]}
               />
             </div>
@@ -581,158 +452,7 @@ export default function CourseLearnPage() {
                 </div>
               ) : (
                 <>
-                  {/* TAB 1: LÝ THUYẾT */}
-                  {activeTab === 'theory' && (
-                    <Card
-                      style={{
-                        borderRadius: 12,
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                        border: '1px solid var(--border)',
-                        maxWidth: 1080,
-                        margin: '0 auto',
-                      }}
-                      styles={{ body: { padding: '28px 36px' } }}
-                    >
-                      {lessonData?.theoryContent ? (
-                        <MarkdownViewer content={lessonData.theoryContent} />
-                      ) : (
-                        <Empty
-                          image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={
-                            <span>
-                              Nội dung lý thuyết đang được cập nhật.
-                              {isAdmin && <><br /><Typography.Text type="secondary" style={{ fontSize: 12 }}>Nhấn <b>Chỉnh sửa khóa học</b> để thêm lý thuyết cho chủ đề này.</Typography.Text></>}
-                            </span>
-                          }
-                        />
-                      )}
-                    </Card>
-                  )}
-
-                  {/* TAB 2: CODE MẪU & CHẠY THỬ */}
-                  {activeTab === 'code' && (
-                    <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-                      <Card
-                        title={
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <CodeOutlined style={{ color: '#2563eb' }} />
-                              <span style={{ fontWeight: 600 }}>Mã nguồn C++ mẫu</span>
-                            </div>
-                            <Space>
-                              <Button icon={<CopyOutlined />} onClick={handleCopyCode}>
-                                Sao chép code
-                              </Button>
-                            </Space>
-                          </div>
-                        }
-                        style={{ borderRadius: 12, marginBottom: 20 }}
-                        styles={{ body: { padding: 0 } }}
-                      >
-                        <div style={{ height: 320 }}>
-                          <CodeEditor
-                            value={currentCode}
-                            onChange={setEditedCode}
-                            language="cpp"
-                          />
-                        </div>
-                      </Card>
-
-                      {/* Trình chạy trực tiếp */}
-                      <Card
-                        title={
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontWeight: 600 }}>Thử nghiệm đầu vào & Kết quả thực thi</span>
-                            <Button
-                              type="primary"
-                              icon={<CaretRightOutlined />}
-                              loading={codeRunning}
-                              onClick={handleRunCode}
-                              style={{ background: '#16a34a', borderColor: '#16a34a' }}
-                            >
-                              Chạy thử code
-                            </Button>
-                          </div>
-                        }
-                        style={{ borderRadius: 12 }}
-                      >
-                        <Row gutter={16}>
-                          <Col span={10}>
-                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: 'var(--text-2)' }}>
-                              Dữ liệu đầu vào (STDIN):
-                            </div>
-                            <Input.TextArea
-                              rows={5}
-                              value={currentInput}
-                              onChange={(e) => setEditedInput(e.target.value)}
-                              placeholder="Nhập dữ liệu test (nếu có)..."
-                              style={{ fontFamily: 'var(--mono)', fontSize: 13 }}
-                            />
-                          </Col>
-
-                          <Col span={14}>
-                            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, color: 'var(--text-2)' }}>
-                              Kết quả đầu ra (STDOUT):
-                            </div>
-                            <div
-                              style={{
-                                height: 115,
-                                padding: '10px 14px',
-                                background: 'var(--surface)',
-                                color: 'var(--text)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                fontFamily: 'var(--mono)',
-                                fontSize: 13,
-                                overflow: 'auto',
-                                whiteSpace: 'pre-wrap',
-                              }}
-                            >
-                              {runResult ? (
-                                runResult.output || (
-                                  <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>
-                                    (Không có dữ liệu in ra màn hình)
-                                  </span>
-                                )
-                              ) : (
-                                <span style={{ color: 'var(--muted)' }}>
-                                  Bấm "Chạy thử code" để xem kết quả xuất ra màn hình...
-                                </span>
-                              )}
-                            </div>
-
-                            {runResult && (
-                              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <VerdictTag verdict={runResult.verdict} />
-                                <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                                  Thời gian: <b>{formatTime(runResult.timeMs)}</b>
-                                </span>
-                                <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                                  Bộ nhớ: <b>{formatMemory(runResult.memoryKb)}</b>
-                                </span>
-                              </div>
-                            )}
-
-                            {runResult?.stderr && (
-                              <Alert
-                                type="error"
-                                showIcon
-                                message="Thông báo lỗi biên dịch / runtime"
-                                description={
-                                  <pre style={{ margin: 0, maxHeight: 100, overflow: 'auto', fontSize: 12 }}>
-                                    {runResult.stderr}
-                                  </pre>
-                                }
-                                style={{ marginTop: 10 }}
-                              />
-                            )}
-                          </Col>
-                        </Row>
-                      </Card>
-                    </div>
-                  )}
-
-                  {/* TAB 3: BÀI TẬP THỰC HÀNH */}
+                  {/* TAB BÀI TẬP THỰC HÀNH */}
                   {activeTab === 'exercises' && (
                     <div style={{ maxWidth: 1080, margin: '0 auto' }}>
                       <Alert
@@ -856,7 +576,7 @@ export default function CourseLearnPage() {
                       )}
                     </div>
                   )}
-                  {/* TAB 4: TÀI LIỆU ĐÍNH KÈM */}
+                  {/* TAB TÀI LIỆU ĐÍNH KÈM */}
                   {activeTab === 'files' && (
                     <div style={{ maxWidth: 960, margin: '0 auto' }}>
                       {unitFiles.length === 0 ? (
@@ -944,29 +664,19 @@ export default function CourseLearnPage() {
               </Typography.Text>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div>
               {nextUnit ? (
-                <Button
-                  type="primary"
-                  icon={<RightOutlined />}
-                  onClick={handleCompleteAndNext}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row-reverse',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  {isCurrentDone ? `Bài tiếp theo (${nextUnit.title})` : `Hoàn thành & Tiếp theo`}
+                <Button type="primary" icon={<RightOutlined />} onClick={handleGoNext}>
+                  Tiếp theo ({nextUnit.title})
                 </Button>
               ) : (
                 <Button
                   type="primary"
                   icon={<TrophyOutlined />}
                   style={{ background: '#16a34a', borderColor: '#16a34a' }}
-                  onClick={() => message.success('Bạn đã đến bài học cuối cùng của khóa học!')}
+                  disabled
                 >
-                  {isCurrentDone ? 'Đã hoàn thành toàn bộ khóa học!' : 'Hoàn thành khóa học'}
+                  Bài cuối khóa học
                 </Button>
               )}
             </div>
