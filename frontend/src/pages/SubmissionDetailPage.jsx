@@ -110,7 +110,7 @@ export default function SubmissionDetailPage() {
   )
 
   return (
-    <div className={`page page--fill flex flex-col gap-4${(isAdmin || isLecturer) ? ' page--fluid' : ''}`}>
+    <div className={`page flex flex-col gap-4 pb-12${(isAdmin || isLecturer) ? ' page--fluid' : ''}`}>
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" className="w-fit" onClick={() => navigate(returnPath)}>
           <ArrowLeft data-icon="inline-start" />
@@ -119,8 +119,8 @@ export default function SubmissionDetailPage() {
         <span className="text-sm text-muted-foreground">Bài nộp #{submission.id}</span>
       </div>
 
-      <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)] items-start">
+        <div className="flex min-w-0 flex-col gap-4">
           {(submission.tests?.length > 0 || ['CE', 'SEC'].includes(submission.verdict)) && (
             <Card>
               <CardHeader>
@@ -130,7 +130,7 @@ export default function SubmissionDetailPage() {
             </Card>
           )}
 
-          <Card className="flex min-h-0 flex-1 flex-col">
+          <Card className="flex flex-col">
             <CardHeader className="border-b">
               <CardTitle className="font-mono">solution.cpp</CardTitle>
               <CardAction className="flex flex-wrap justify-end gap-2">
@@ -151,13 +151,13 @@ export default function SubmissionDetailPage() {
                 )}
               </CardAction>
             </CardHeader>
-            <CardContent className="min-h-0 flex-1 px-0">
-              <CodeEditor value={submission.sourceCode} readOnly markedLines={marked} height="100%" minHeight="300px" />
+            <CardContent className="px-0">
+              <CodeEditor value={submission.sourceCode} readOnly markedLines={marked} height="480px" minHeight="360px" />
             </CardContent>
           </Card>
         </div>
 
-        <aside className="flex min-h-0 min-w-0 flex-col gap-4 overflow-y-auto">
+        <aside className="flex min-w-0 flex-col gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Thông tin bài nộp</CardTitle>
