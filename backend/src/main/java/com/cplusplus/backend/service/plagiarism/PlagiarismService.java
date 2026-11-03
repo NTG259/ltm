@@ -9,7 +9,10 @@ import com.cplusplus.backend.repository.PlagiarismMatchRepository;
 import com.cplusplus.backend.repository.PlagiarismReportRepository;
 import com.cplusplus.backend.repository.SubmissionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.*;
@@ -40,7 +43,7 @@ public class PlagiarismService {
      * Tạo report với status=RUNNING ngay lập tức và khởi chạy phân tích bất đồng bộ.
      * Controller trả về ngay mà không chặn HTTP thread.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PlagiarismReport runPlagiarismCheck(Long contestId) {
         Contest contest = contestRepository.findById(contestId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy kỳ thi #" + contestId));
@@ -49,8 +52,17 @@ public class PlagiarismService {
         report.setStatus("RUNNING");
         PlagiarismReport savedReport = reportRepository.save(report);
 
-        // Chạy phân tích trên thread pool async (không chặn request thread)
-        asyncWorker.execute(contest, savedReport.getId());
+        // Chạy phân tích trên thread pool async sau khi transaction đã commit
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    asyncWorker.execute(contest, savedReport.getId());
+                }
+            });
+        } else {
+            asyncWorker.execute(contest, savedReport.getId());
+        }
 
         return savedReport;
     }

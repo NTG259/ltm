@@ -348,6 +348,7 @@ public class ContestController {
     }
 
     @PostMapping("/{id}/plagiarism/run")
+    @Transactional
     public ResponseEntity<?> runPlagiarismCheck(@PathVariable Long id, HttpServletRequest servletReq) {
         User currentUser = (User) servletReq.getAttribute(AuthInterceptor.CURRENT_USER_ATTR);
         Contest contest = contestRepository.findById(id)

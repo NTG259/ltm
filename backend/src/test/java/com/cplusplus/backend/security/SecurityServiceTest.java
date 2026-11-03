@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,6 +22,7 @@ class SecurityServiceTest {
     @Mock UserRepository users;
     @Mock UserSessionRepository sessions;
     @Mock ClassroomStudentRepository classroomStudents;
+    @Mock ApplicationEventPublisher eventPublisher;
 
     @Test
     void loginDeterminesRoleFromStoredAccount() {
@@ -30,7 +32,7 @@ class SecurityServiceTest {
                 new BCryptPasswordEncoder().encode("admin123")
         );
         when(users.findByUsernameIgnoreCase("AdMiN")).thenReturn(Optional.of(admin));
-        SecurityService service = new SecurityService(users, sessions, classroomStudents);
+        SecurityService service = new SecurityService(users, sessions, classroomStudents, eventPublisher);
 
         SecurityService.AuthResult result = service.login("  AdMiN  ", "admin123");
 
@@ -44,7 +46,7 @@ class SecurityServiceTest {
         User student = User.student("B20DCCN001", "B20DCCN001");
         student.setPasswordHash(new BCryptPasswordEncoder().encode("CorrectPass2026"));
         when(users.findByUsernameIgnoreCase("B20DCCN001")).thenReturn(Optional.of(student));
-        SecurityService service = new SecurityService(users, sessions, classroomStudents);
+        SecurityService service = new SecurityService(users, sessions, classroomStudents, eventPublisher);
 
         assertThatThrownBy(() -> service.loginStudent("B20DCCN001", "WrongPass2026"))
                 .isInstanceOf(IllegalArgumentException.class)
