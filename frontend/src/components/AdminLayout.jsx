@@ -1,7 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Avatar, Button, Drawer, Dropdown, Layout, Space, Tooltip, Typography } from 'antd'
 import { MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons'
+import {
+  Activity,
+  BarChart2,
+  BookOpen,
+  Code2,
+  FileCheck2,
+  GraduationCap,
+  LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Trophy,
+  Users,
+} from 'lucide-react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 import { useAuth } from '../auth/context'
 import { useThemeMode } from '../theme'
 import { useOnlineCount, useSocketStatus } from '../lib/hooks'
@@ -18,20 +32,20 @@ const NAV_GROUPS = [
   {
     label: 'Vận hành',
     items: [
-      { key: '/admin/overview', label: 'Tổng quan' },
-      { key: '/admin', label: 'Giám sát máy chấm', exact: true },
-      { key: '/admin/submissions', label: 'Bài nộp' },
+      { key: '/admin/overview', label: 'Tổng quan', icon: LayoutDashboard },
+      { key: '/admin', label: 'Giám sát máy chấm', icon: Activity, exact: true },
+      { key: '/admin/submissions', label: 'Bài nộp', icon: FileCheck2 },
     ],
   },
   {
     label: 'Quản trị',
     items: [
-      { key: '/admin/lecturers', label: 'Giảng viên' },
-      { key: '/admin/problems', label: 'Đề bài' },
-      { key: '/admin/contests', label: 'Kỳ thi' },
-      { key: '/admin/courses', label: 'Khóa học' },
-      { key: '/admin/classrooms', label: 'Lớp học' },
-      { key: '/admin/leaderboard', label: 'Xếp hạng' },
+      { key: '/admin/lecturers', label: 'Giảng viên', icon: Users },
+      { key: '/admin/problems', label: 'Đề bài', icon: Code2 },
+      { key: '/admin/contests', label: 'Kỳ thi', icon: Trophy },
+      { key: '/admin/courses', label: 'Khóa học', icon: BookOpen },
+      { key: '/admin/classrooms', label: 'Lớp học', icon: GraduationCap },
+      { key: '/admin/leaderboard', label: 'Xếp hạng', icon: BarChart2 },
     ],
   },
 ]
@@ -54,46 +68,89 @@ function initials(name) {
     .toUpperCase()
 }
 
-function AdminBrand() {
-  return (
-    <Link to="/admin/overview" className="admin-brand" aria-label="CodeJudge Admin">
+function AdminBrand({ collapsed }) {
+  const brand = (
+    <Link to="/admin/overview" className={cn('admin-brand', collapsed && 'is-collapsed')} aria-label="CodeJudge Admin">
       <span className="admin-brand__mark">CJ</span>
-      <span className="admin-brand__copy">
-        <strong>CodeJudge</strong>
-        <small>Admin Console</small>
-      </span>
+      {!collapsed && (
+        <span className="admin-brand__copy">
+          <strong>CodeJudge</strong>
+          <small>Admin Console</small>
+        </span>
+      )}
     </Link>
   )
+
+  if (collapsed) {
+    return (
+      <Tooltip title="CodeJudge Admin Console" placement="right">
+        {brand}
+      </Tooltip>
+    )
+  }
+
+  return brand
 }
 
-function AdminNavigation({ pathname, onNavigate }) {
+function AdminNavigation({ pathname, onNavigate, collapsed }) {
   const current = findCurrentItem(pathname)
 
   return (
-    <nav className="admin-nav" aria-label="Điều hướng quản trị">
+    <nav className={cn('admin-nav', collapsed && 'is-collapsed')} aria-label="Điều hướng quản trị">
       {NAV_GROUPS.map((group) => (
         <div className="admin-nav__group" key={group.label}>
-          <div className="admin-nav__label">{group.label}</div>
+          {!collapsed ? (
+            <div className="admin-nav__label">{group.label}</div>
+          ) : (
+            <div className="admin-nav__divider" aria-hidden="true" />
+          )}
           <div className="admin-nav__items">
             {group.items.map((item) => {
+              const Icon = item.icon
               const selected = current.key === item.key
-              return (
+
+              const linkNode = (
                 <Link
-                  className={selected ? 'admin-nav__item is-active' : 'admin-nav__item'}
+                  className={cn(
+                    'admin-nav__item',
+                    selected && 'is-active',
+                    collapsed && 'is-collapsed',
+                  )}
                   key={item.key}
                   to={item.key}
                   aria-current={selected ? 'page' : undefined}
                   onClick={onNavigate}
                 >
-                  {item.label}
+                  {Icon && <Icon className="size-4 shrink-0" aria-hidden="true" />}
+                  {!collapsed && <span>{item.label}</span>}
                 </Link>
               )
+
+              if (collapsed) {
+                return (
+                  <Tooltip key={item.key} title={item.label} placement="right">
+                    {linkNode}
+                  </Tooltip>
+                )
+              }
+
+              return linkNode
             })}
           </div>
         </div>
       ))}
     </nav>
   )
+}
+
+const ADMIN_SIDEBAR_COLLAPSED_KEY = 'cj.admin.sidebar.collapsed'
+
+function readAdminSidebarCollapsed() {
+  try {
+    return localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === 'true'
+  } catch {
+    return false
+  }
 }
 
 export default function AdminLayout() {
@@ -105,6 +162,35 @@ export default function AdminLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
+  const [collapsed, setCollapsedState] = useState(readAdminSidebarCollapsed)
+
+  const setCollapsed = (value) => {
+    setCollapsedState((prev) => {
+      const next = typeof value === 'function' ? value(prev) : value
+      try {
+        localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        const target = event.target
+        const isEditing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
+        if (!isEditing) {
+          event.preventDefault()
+          setCollapsed((prev) => !prev)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const currentItem = findCurrentItem(location.pathname)
 
   const logoutUser = async () => {
@@ -113,13 +199,25 @@ export default function AdminLayout() {
 
   return (
     <Layout className="admin-shell">
-      <aside className="admin-sidebar">
-        <AdminBrand />
-        <AdminNavigation pathname={location.pathname} />
-        <div className="admin-sidebar__footer">
-          <span className={`admin-connection-dot is-${socket.status}`} aria-hidden="true" />
-          <span>{socket.text}</span>
-          {socketStatus === 'open' && onlineCount != null && <strong>{onlineCount} online</strong>}
+      <aside className={cn('admin-sidebar', collapsed && 'is-collapsed')}>
+        <div className="admin-sidebar__header">
+          <AdminBrand collapsed={collapsed} />
+        </div>
+
+        <AdminNavigation pathname={location.pathname} collapsed={collapsed} />
+
+        <div className={cn('admin-sidebar__footer', collapsed && 'is-collapsed')}>
+          {collapsed ? (
+            <Tooltip title={`${socket.text}${socketStatus === 'open' && onlineCount != null ? ` · ${onlineCount} online` : ''}`} placement="right">
+              <span className={`admin-connection-dot is-${socket.status}`} aria-hidden="true" />
+            </Tooltip>
+          ) : (
+            <>
+              <span className={`admin-connection-dot is-${socket.status}`} aria-hidden="true" />
+              <span>{socket.text}</span>
+              {socketStatus === 'open' && onlineCount != null && <strong>{onlineCount} online</strong>}
+            </>
+          )}
         </div>
       </aside>
 
@@ -144,6 +242,15 @@ export default function AdminLayout() {
               onClick={() => setNavOpen(true)}
               aria-label="Mở điều hướng quản trị"
             />
+            <Tooltip title={collapsed ? 'Mở rộng thanh bên (Ctrl+B)' : 'Thu gọn thanh bên (Ctrl+B)'} placement="bottom">
+              <Button
+                type="text"
+                className="admin-desktop-sidebar-trigger"
+                icon={collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+                onClick={() => setCollapsed((prev) => !prev)}
+                aria-label={collapsed ? 'Mở rộng thanh bên (Ctrl+B)' : 'Thu gọn thanh bên (Ctrl+B)'}
+              />
+            </Tooltip>
             <div>
               <span>Không gian quản trị</span>
               <strong>{currentItem.label}</strong>
