@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ChevronLeft, History, Trophy, TriangleAlert } from 'lucide-react'
+import { CheckCircle2, History, Trophy, TriangleAlert } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { useAuth } from '../auth/context'
@@ -108,15 +108,19 @@ export default function ContestExamPage() {
     onViolation: handleViolation,
   })
 
-  useSocket(useCallback((message) => {
-    if (message.type === 'SUBMISSION_UPDATE' && message.submission?.contestId === Number(cid)) reloadStandings()
-  }, [cid, reloadStandings]))
-
   const problems = useMemo(() => contest?.problems || [], [contest])
   const mySubs = useFetch(
     () => (user?.id ? api.listSubmissions({ contestId: cid, userId: user.id }) : Promise.resolve([])),
     [cid, user?.id],
   )
+  const reloadMySubs = mySubs.reload
+
+  useSocket(useCallback((message) => {
+    if (message.type === 'SUBMISSION_UPDATE' && message.submission?.contestId === Number(cid)) {
+      reloadStandings()
+      if (message.submission?.userId === user?.id) reloadMySubs()
+    }
+  }, [cid, reloadStandings, user?.id, reloadMySubs]))
   const solvedProblemIds = useMemo(() => new Set(
     (mySubs.data || []).filter((submission) => submission.verdict === 'AC').map((submission) => submission.problemId),
   ), [mySubs.data])
@@ -126,6 +130,14 @@ export default function ContestExamPage() {
     setFeedback(null)
     try {
       await api.finishContest(cid)
+      try {
+        const prefix = `cj.draft.${user?.id}.contest.${cid}.`
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith(prefix)) localStorage.removeItem(key)
+        })
+      } catch {
+        /* ignore */
+      }
       navigate(`/contests/${cid}`)
     } catch (error) {
       setFeedback(error.message || 'Không thể kết thúc bài thi')
@@ -168,14 +180,17 @@ export default function ContestExamPage() {
           <TabsTrigger value="history"><History /> Lịch sử nộp</TabsTrigger>
           <TabsTrigger value="standings"><Trophy /> Xếp hạng</TabsTrigger>
         </TabsList>
-        <TabsContent value="problems" className="min-h-0 flex-1 overflow-auto">
+        <TabsContent value="problems" className="min-h-0 flex-1 overflow-hidden">
           {currentProblem ? (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-                <Button size="sm" variant="ghost" onClick={() => setSelectedLabel(null)}><ChevronLeft data-icon="inline-start" /> Danh sách bài</Button>
-                <span className="font-medium">{currentProblem.label}. {currentProblem.title}</span>
-              </div>
-              <div className="min-h-0 flex-1"><Workspace key={`${cid}-${currentProblem.label}`} id={String(currentProblem.problemId)} contest={contest} label={currentProblem.label} /></div>
+            <div className="h-full">
+              <Workspace
+                key={`${cid}-${currentProblem.label}`}
+                id={String(currentProblem.problemId)}
+                contest={contest}
+                label={currentProblem.label}
+                inExam
+                onBack={() => setSelectedLabel(null)}
+              />
             </div>
           ) : (
             <div className="mx-auto grid w-full max-w-4xl gap-3 p-4 sm:p-6">

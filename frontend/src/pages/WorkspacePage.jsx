@@ -54,13 +54,13 @@ import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
 import ContestClock from '../components/ContestClock'
 
-const draftKey = (pid, uid) => `cj.draft.${uid}.${pid}`
+const draftKey = (pid, uid, cid) => (cid ? `cj.draft.${uid}.contest.${cid}.${pid}` : `cj.draft.${uid}.${pid}`)
 
-function readDraft(pid, uid) {
+function readDraft(pid, uid, cid) {
   try {
-    const val = localStorage.getItem(draftKey(pid, uid))
-    if (val && Number(pid) !== 1 && val.includes('cin >> a >> b') && val.includes('cout << a + b')) {
-      localStorage.removeItem(draftKey(pid, uid))
+    const val = localStorage.getItem(draftKey(pid, uid, cid))
+    if (!cid && val && Number(pid) !== 1 && val.includes('cin >> a >> b') && val.includes('cout << a + b')) {
+      localStorage.removeItem(draftKey(pid, uid, cid))
       return null
     }
     return val
@@ -348,12 +348,20 @@ function TestResultPanel({ mode, running, testResult, active, submitting, proble
   )
 }
 
-export function Workspace({ id, contest, label }) {
+export function Workspace({ id, contest, label, inExam = false, onBack }) {
   const { user, isAdmin, isLecturer } = useAuth()
   const { message, modal } = App.useApp()
   const navigate = useNavigate()
   const { data: problem, error, loading } = useFetch(() => api.getProblem(id), [id])
-  const [code, setCode] = useState(() => readDraft(id, user?.id) ?? STARTER_CODE)
+  const contestId = contest?.id
+  const [code, setCode] = useState(() => readDraft(id, user?.id, contestId) ?? STARTER_CODE)
+  const prevIdRef = useRef(id)
+  useEffect(() => {
+    if (prevIdRef.current !== id) {
+      prevIdRef.current = id
+      setCode(readDraft(id, user?.id, contestId) ?? STARTER_CODE)
+    }
+  }, [id, contestId, user?.id])
   const [cursor, setCursor] = useState({ line: 1, col: 1 })
   const [submitting, setSubmitting] = useState(false)
   const [activeId, setActiveId] = useState(null)
@@ -378,7 +386,7 @@ export function Workspace({ id, contest, label }) {
     const warn = (event) => {
       if (leaving.current) return
       try {
-        if (user?.id) localStorage.setItem(draftKey(id, user.id), code)
+        if (user?.id) localStorage.setItem(draftKey(id, user.id, contestId), code)
       } catch { /* Vẫn cảnh báo nếu bộ nhớ trình duyệt đầy. */ }
       event.preventDefault()
       event.returnValue = ''
@@ -394,7 +402,7 @@ export function Workspace({ id, contest, label }) {
       window.removeEventListener('beforeunload', warn)
       window.removeEventListener('cj:before-logout', preventLogout)
     }
-  }, [examActive, code, id, user?.id, message])
+  }, [examActive, code, id, user?.id, message, contestId])
 
 
 
@@ -405,11 +413,13 @@ export function Workspace({ id, contest, label }) {
     cancelText: 'Tiếp tục làm bài',
     onOk: () => {
       try {
-        if (user?.id) localStorage.setItem(draftKey(id, user.id), code)
-      } catch {
-        message.error('Không lưu được bản nháp. Hãy nộp bài trước khi hoàn thành.')
-        return Promise.reject(new Error('Không lưu được bản nháp'))
-      }
+        if (user?.id && contestId) {
+          const prefix = `cj.draft.${user.id}.contest.${contestId}.`
+          Object.keys(localStorage).forEach((key) => {
+            if (key.startsWith(prefix)) localStorage.removeItem(key)
+          })
+        }
+      } catch { /* ignore */ }
       leaving.current = true
       navigate(`/contests/${contest.id}`)
     },
@@ -419,10 +429,10 @@ export function Workspace({ id, contest, label }) {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      try { if (user?.id) localStorage.setItem(draftKey(id, user.id), code) } catch { /* ignore */ }
+      try { if (user?.id) localStorage.setItem(draftKey(id, user.id, contestId), code) } catch { /* ignore */ }
     }, 400)
     return () => clearTimeout(t)
-  }, [code, id, user?.id])
+  }, [code, id, user?.id, contestId])
 
   useSocket(
     useCallback(
@@ -462,7 +472,7 @@ export function Workspace({ id, contest, label }) {
   const { violationCount } = useProctoring({
     contest,
     user,
-    enabled: examActive,
+    enabled: examActive && !inExam,
     onViolation: handleViolation,
   })
 
@@ -527,44 +537,61 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
     <div className="workspace">
       {/* ── Top bar ── */}
       <div className="workspace-bar">
-        <Tooltip title={contest ? 'Về trang kỳ thi' : 'Danh sách bài'}>
-          <Button type="text" icon={<ArrowLeftOutlined />}
-            onClick={() => navigate(contest ? (isAdmin ? `/admin/contests/${contest.id}` : isLecturer ? `/teacher/contests/${contest.id}` : `/contests/${contest.id}`) : (isAdmin ? '/admin/problems' : isLecturer ? '/teacher/problems' : '/problems'))} />
-        </Tooltip>
-        {contest ? (
+        {inExam ? (
           <>
+            <Tooltip title="Danh sách bài">
+              <Button type="text" icon={<ArrowLeftOutlined />} onClick={onBack} />
+            </Tooltip>
             <span className="title"><b>{label}.</b> {problem.title}</span>
-            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>{contest.title}</Typography.Text>
+            <span style={{ flex: 1 }} />
+            <Tooltip title="Ctrl + Enter">
+              <Button type="primary" icon={<CloudUploadOutlined />} loading={submitting || judging} onClick={submit}>
+                {judging ? 'Đang chấm…' : 'Nộp bài'}
+              </Button>
+            </Tooltip>
           </>
         ) : (
           <>
-            <span className="title"><span className="mono muted">#{problem.id}</span> {problem.title}</span>
-            <span className={`diff-pill diff-pill-${problem.difficulty}`} style={{ margin: 0 }}>
-              {DIFFICULTIES[problem?.difficulty]?.label || problem?.difficulty || 'Dễ'}
-            </span>
+            <Tooltip title={contest ? 'Về trang kỳ thi' : 'Danh sách bài'}>
+              <Button type="text" icon={<ArrowLeftOutlined />}
+                onClick={() => navigate(contest ? (isAdmin ? `/admin/contests/${contest.id}` : isLecturer ? `/teacher/contests/${contest.id}` : `/contests/${contest.id}`) : (isAdmin ? '/admin/problems' : isLecturer ? '/teacher/problems' : '/problems'))} />
+            </Tooltip>
+            {contest ? (
+              <>
+                <span className="title"><b>{label}.</b> {problem.title}</span>
+                <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>{contest.title}</Typography.Text>
+              </>
+            ) : (
+              <>
+                <span className="title"><span className="mono muted">#{problem.id}</span> {problem.title}</span>
+                <span className={`diff-pill diff-pill-${problem.difficulty}`} style={{ margin: 0 }}>
+                  {DIFFICULTIES[problem?.difficulty]?.label || problem?.difficulty || 'Dễ'}
+                </span>
+              </>
+            )}
+            <span style={{ flex: 1 }} />
+            {examActive && <Button type="primary" onClick={finishExam} disabled={submitting || (active && active.status !== 'FINISHED')}>Hoàn thành</Button>}
+            {contest && (
+              <Space size={8}>
+                {violationCount > 0 ? (
+                  <Tooltip title={`Hệ thống ghi nhận bạn đã rời màn hình thi ${violationCount} lần`}>
+                    <Tag color="error" icon={<WarningOutlined />} style={{ fontWeight: 600 }}>Vi phạm: {violationCount} lần</Tag>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Chế độ giám sát thi đang bật">
+                    <Tag color="success" icon={<SafetyCertificateOutlined />}>Giám sát: Nghiêm túc</Tag>
+                  </Tooltip>
+                )}
+                <ContestClock contest={contest} compact />
+              </Space>
+            )}
+            <Tooltip title="Ctrl + Enter">
+              <Button type="primary" icon={<CloudUploadOutlined />} loading={submitting || judging} onClick={submit}>
+                {judging ? 'Đang chấm…' : 'Nộp bài'}
+              </Button>
+            </Tooltip>
           </>
         )}
-        <span style={{ flex: 1 }} />
-        {examActive && <Button type="primary" onClick={finishExam} disabled={submitting || (active && active.status !== 'FINISHED')}>Hoàn thành</Button>}
-        {contest && (
-          <Space size={8}>
-            {violationCount > 0 ? (
-              <Tooltip title={`Hệ thống ghi nhận bạn đã rời màn hình thi ${violationCount} lần`}>
-                <Tag color="error" icon={<WarningOutlined />} style={{ fontWeight: 600 }}>Vi phạm: {violationCount} lần</Tag>
-              </Tooltip>
-            ) : (
-              <Tooltip title="Chế độ giám sát thi đang bật">
-                <Tag color="success" icon={<SafetyCertificateOutlined />}>Giám sát: Nghiêm túc</Tag>
-              </Tooltip>
-            )}
-            <ContestClock contest={contest} compact />
-          </Space>
-        )}
-        <Tooltip title="Ctrl + Enter">
-          <Button type="primary" icon={<CloudUploadOutlined />} loading={submitting || judging} onClick={submit}>
-            {judging ? 'Đang chấm…' : 'Nộp bài'}
-          </Button>
-        </Tooltip>
       </div>
 
       {/* ── Main 3-panel layout ── */}
@@ -645,6 +672,29 @@ if (loading) return <Spin style={{ display: 'block', margin: 80 }} />
                     <Typography.Text type="secondary" className="mono" style={{ fontSize: 12, marginInlineEnd: 4 }}>
                       Dòng {cursor.line}, Cột {cursor.col}
                     </Typography.Text>
+                    <Tooltip title="Khôi phục mã mẫu ban đầu">
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<RedoOutlined />}
+                        onClick={() => {
+                          modal.confirm({
+                            title: 'Khôi phục mã mẫu ban đầu?',
+                            content: 'Toàn bộ nội dung đang soạn thảo trong bài này sẽ được đưa về mẫu ban đầu.',
+                            okText: 'Khôi phục',
+                            cancelText: 'Hủy',
+                            onOk: () => {
+                              setCode(STARTER_CODE)
+                              try {
+                                if (user?.id) localStorage.removeItem(draftKey(id, user.id, contestId))
+                              } catch { /* ignore */ }
+                            },
+                          })
+                        }}
+                      >
+                        Làm lại
+                      </Button>
+                    </Tooltip>
                     <Upload accept=".cpp,.cc,.cxx" showUploadList={false} beforeUpload={loadFile}>
                       <Button size="small" type="text" icon={<FolderOpenOutlined />}>Tải tệp .cpp</Button>
                     </Upload>
