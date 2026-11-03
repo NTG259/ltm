@@ -447,6 +447,10 @@ public class CourseController {
         if (courseOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy khóa học"));
         }
+        Course course = courseOpt.get();
+        if (!user.isAdmin() && !course.isPublished() && !isCourseOwner(course, user)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Khóa học chưa được công khai"));
+        }
 
         Map<String, Object> progress = courseProgressService.getCourseProgress(user, id);
         return ResponseEntity.ok(progress);
@@ -458,8 +462,13 @@ public class CourseController {
         User user = currentUser(req);
         if (user == null) return unauthorized();
 
-        if (!courseUnitRepository.existsById(unitId)) {
+        CourseUnit unit = courseUnitRepository.findById(unitId).orElse(null);
+        if (unit == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Không tìm thấy chủ đề"));
+        }
+        Course course = unit.getCourse();
+        if (!user.isAdmin() && !course.isPublished() && !isCourseOwner(course, user)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Khóa học chưa được công khai"));
         }
 
         boolean completed = courseProgressService.toggleUnitProgress(user, unitId);

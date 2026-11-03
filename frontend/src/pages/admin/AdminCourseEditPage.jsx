@@ -174,6 +174,10 @@ export default function AdminCourseEditPage({ teacher = false }) {
 
   const handleUploadFile = async (file) => {
     if (!lessonUnit) return false
+    if (file.type !== 'application/pdf' || file.size > 20 * 1024 * 1024) {
+      message.error('Chỉ hỗ trợ PDF tối đa 20 MB')
+      return false
+    }
     setUploadingFile(true)
     try {
       await api.uploadUnitFile(lessonUnit.id, file)
@@ -196,6 +200,15 @@ export default function AdminCourseEditPage({ teacher = false }) {
       setUnitFiles((prev) => prev.filter((f) => f.id !== fileId))
     } catch (e) {
       message.error(e.message || 'Không thể xóa tài liệu')
+    }
+  }
+
+  const handleDownloadFile = async (file) => {
+    if (!lessonUnit) return
+    try {
+      await api.downloadUnitFile(lessonUnit.id, file.id, file.filename)
+    } catch (e) {
+      message.error(e.message || 'Không tải được tài liệu')
     }
   }
 
@@ -653,10 +666,11 @@ export default function AdminCourseEditPage({ teacher = false }) {
                   <div style={{ padding: '8px 0' }}>
                     <Card style={{ marginBottom: 20, background: 'var(--surface)' }}>
                       <Typography.Title level={5} style={{ marginTop: 0 }}>
-                        Tải lên tài liệu bài giảng (PDF / Slides / DOCX)
+                        Tải lên tài liệu bài giảng (PDF)
                       </Typography.Title>
                       <Upload.Dragger
                         name="file"
+                        accept=".pdf,application/pdf"
                         multiple={false}
                         beforeUpload={handleUploadFile}
                         showUploadList={false}
@@ -667,7 +681,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
                           <InboxOutlined style={{ fontSize: 40, color: 'var(--primary)' }} />
                         </p>
                         <p className="ant-upload-text">Kéo thả file vào đây hoặc bấm để chọn tệp tài liệu</p>
-                        <p className="ant-upload-hint">Hỗ trợ PDF, PPTX, DOCX, ZIP... tối đa 50MB</p>
+                        <p className="ant-upload-hint">Hỗ trợ PDF tối đa 20 MB</p>
                       </Upload.Dragger>
                     </Card>
 
@@ -679,13 +693,13 @@ export default function AdminCourseEditPage({ teacher = false }) {
                       columns={[
                         {
                           title: 'Tên tài liệu',
-                          dataIndex: 'fileName',
+                          dataIndex: 'filename',
                           render: (name, row) => (
                             <Space>
                               <FilePdfOutlined style={{ color: '#ef4444', fontSize: 16 }} />
-                              <a href={`/api/courses/units/${lessonUnit?.id}/files/${row.id}`} download={name} target="_blank" rel="noreferrer">
+                              <Button type="link" style={{ padding: 0 }} onClick={() => handleDownloadFile(row)}>
                                 <b>{name}</b>
-                              </a>
+                              </Button>
                             </Space>
                           ),
                         },
@@ -708,9 +722,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
                           align: 'right',
                           render: (_, row) => (
                             <Space>
-                              <a href={`/api/courses/units/${lessonUnit?.id}/files/${row.id}`} download={row.fileName} target="_blank" rel="noreferrer">
-                                <Button size="small" icon={<DownloadOutlined />}>Tải về</Button>
-                              </a>
+                              <Button size="small" icon={<DownloadOutlined />} onClick={() => handleDownloadFile(row)}>Tải về</Button>
                               <Popconfirm
                                 title="Xóa tài liệu này?"
                                 onConfirm={() => handleDeleteFile(row.id)}

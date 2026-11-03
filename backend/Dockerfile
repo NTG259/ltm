@@ -12,7 +12,8 @@ RUN --mount=type=cache,id=codejudge-maven,target=/root/.m2,sharing=locked ./mvnw
  && cp target/backend-*.jar /app.jar
 
 FROM eclipse-temurin:21-jre-jammy
-RUN useradd --system --uid 10001 master
+RUN useradd --system --uid 10001 master \
+ && install -d -o master -g master /opt/backend/uploads
 COPY --from=build /app.jar /opt/backend/app.jar
 USER master
 EXPOSE 8000 8001 9000

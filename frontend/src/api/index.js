@@ -32,6 +32,25 @@ function storageSet(key, value) {
   }
 }
 
+async function downloadAuthenticatedFile(path, filename) {
+  const token = storageGet(TOKEN_KEY)
+  const res = await fetch(API_BASE + path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.message || data?.error || `HTTP ${res.status}`)
+  }
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename || 'document.pdf'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export function getStoredSession() {
   const raw = storageGet(USER_KEY)
   if (!raw) return null
@@ -267,6 +286,7 @@ export const api = {
     })
   },
   listUnitFiles: (unitId) => http('GET', `/courses/units/${unitId}/files`),
+  downloadUnitFile: (unitId, fileId, filename) => downloadAuthenticatedFile(`/courses/units/${unitId}/files/${fileId}/download`, filename),
   deleteUnitFile: (unitId, fileId) => http('DELETE', `/courses/units/${unitId}/files/${fileId}`),
   // ---- Monitor ----
   getClassroomPresence: (id) => http('GET', `/classrooms/${id}/presence`),

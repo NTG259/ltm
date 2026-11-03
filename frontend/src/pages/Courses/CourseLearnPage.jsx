@@ -30,7 +30,6 @@ import {
   FilePdfOutlined,
   CopyOutlined,
   LeftOutlined,
-  LockOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   ReadOutlined,
@@ -79,10 +78,10 @@ export default function CourseLearnPage() {
 
   // Dữ liệu khóa học & tiến độ
   const { data: course, loading: courseLoading } = useFetch(() => api.getCourse(courseId), [courseId])
-  const { data: progress, reload: reloadProgress } = useFetch(() => api.getCourseProgress(courseId), [courseId])
+  const { data: progress, setData: setProgress, reload: reloadProgress } = useFetch(() => api.getCourseProgress(courseId), [courseId])
 
   // Cache tiến độ vào localStorage để hiển thị tức thì không bị chớp 0%
-  const cacheKey = `cj.cache_progress_${courseId}`
+  const cacheKey = `cj.cache_progress_${user?.id}_${courseId}`
   const cachedProgress = useMemo(() => {
     try {
       const raw = localStorage.getItem(cacheKey)
@@ -200,14 +199,29 @@ export default function CourseLearnPage() {
 
   // Toggle trạng thái hoàn thành
   const handleToggleComplete = async (uId = currentUnit?.id) => {
-    if (!uId) return
+    if (!uId || updatingProgress) return false
     setUpdatingProgress(true)
     try {
-      await api.toggleUnitProgress(uId)
+      const result = await api.toggleUnitProgress(uId)
+      setProgress((previous) => {
+        const base = previous || course?.progress || { completedUnitIds: [] }
+        const ids = new Set(base.completedUnitIds || [])
+        if (result.completed) ids.add(uId)
+        else ids.delete(uId)
+        return {
+          ...base,
+          completedUnitIds: [...ids],
+          completedCount: ids.size,
+          totalUnits: units.length,
+          percent: units.length ? Math.round((ids.size / units.length) * 100) : 0,
+        }
+      })
       message.success('Đã cập nhật tiến độ học tập!')
       reloadProgress()
+      return true
     } catch (e) {
       message.error(e.message || 'Không thể cập nhật tiến độ')
+      return false
     } finally {
       setUpdatingProgress(false)
     }
@@ -215,9 +229,10 @@ export default function CourseLearnPage() {
 
   // Đánh dấu hoàn thành và chuyển sang bài kế tiếp
   const handleCompleteAndNext = async () => {
-    if (!currentUnit) return
+    if (!currentUnit || updatingProgress) return
     if (!completedSet.has(currentUnit.id)) {
-      await handleToggleComplete(currentUnit.id)
+      const saved = await handleToggleComplete(currentUnit.id)
+      if (!saved) return
     }
     setEditedCode(null)
     setEditedInput(null)
@@ -225,7 +240,11 @@ export default function CourseLearnPage() {
     if (nextUnit) {
       navigate(`/courses/${courseId}/learn/${nextUnit.id}`)
     } else {
-      message.success('Chúc mừng bạn đã hoàn thành tất cả các bài học trong khóa này! 🎉')
+      if (completedSet.size + (completedSet.has(currentUnit.id) ? 0 : 1) === units.length) {
+        message.success('Chúc mừng bạn đã hoàn thành tất cả các bài học trong khóa này! 🎉')
+      } else {
+        message.success('Đã hoàn thành bài này. Bạn vẫn còn bài học chưa hoàn thành trong khóa.')
+      }
     }
   }
 
@@ -374,9 +393,10 @@ export default function CourseLearnPage() {
               type={isCurrentDone ? 'default' : 'primary'}
               icon={isCurrentDone ? <CheckCircleFilled style={{ color: '#16a34a' }} /> : <CheckCircleOutlined />}
               loading={updatingProgress}
+              disabled={updatingProgress}
               onClick={() => handleToggleComplete(currentUnit.id)}
             >
-              {isCurrentDone ? 'Đã hoàn thành' : 'Đánh dấu hoàn thành'}
+              {isCurrentDone ? 'Bỏ đánh dấu hoàn thành' : 'Đánh dấu hoàn thành'}
             </Button>
           )}
         </div>
@@ -888,16 +908,18 @@ export default function CourseLearnPage() {
                                   <FilePdfOutlined />
                                 </div>
                                 <div>
-                                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{f.fileName}</div>
+                                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>{f.filename}</div>
                                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                                     {f.fileSize ? `${(f.fileSize / 1024).toFixed(1)} KB` : 'Tài liệu học tập'} · Tải lên ngày {f.createdAt ? new Date(f.createdAt).toLocaleDateString('vi-VN') : '—'}
                                   </div>
                                 </div>
                               </div>
                               <Space>
-                                <a href={`/api/courses/units/${unitIdKey}/files/${f.id}`} download={f.fileName} target="_blank" rel="noreferrer">
-                                  <Button type="primary" icon={<DownloadOutlined />}>Tải về máy</Button>
-                                </a>
+                                <Button type="primary" icon={<DownloadOutlined />}
+                                  onClick={() => api.downloadUnitFile(unitIdKey, f.id, f.filename)
+                                    .catch((e) => message.error(e.message || 'Không tải được tài liệu'))}>
+                                  Tải về máy
+                                </Button>
                               </Space>
                             </Card>
                           ))}
@@ -950,6 +972,7 @@ export default function CourseLearnPage() {
                   type="primary"
                   icon={<RightOutlined />}
                   onClick={handleCompleteAndNext}
+                  loading={updatingProgress}
                   style={{
                     display: 'flex',
                     flexDirection: 'row-reverse',
@@ -964,9 +987,10 @@ export default function CourseLearnPage() {
                   type="primary"
                   icon={<TrophyOutlined />}
                   style={{ background: '#16a34a', borderColor: '#16a34a' }}
-                  onClick={() => message.success('Bạn đã đến bài học cuối cùng của khóa học!')}
+                  onClick={handleCompleteAndNext}
+                  loading={updatingProgress}
                 >
-                  {isCurrentDone ? 'Đã hoàn thành toàn bộ khóa học!' : 'Hoàn thành khóa học'}
+                  {isCurrentDone ? (completedCount === units.length ? 'Đã hoàn thành toàn bộ khóa học!' : 'Bài cuối đã hoàn thành') : 'Hoàn thành bài cuối'}
                 </Button>
               )}
             </div>

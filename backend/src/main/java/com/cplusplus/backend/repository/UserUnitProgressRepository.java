@@ -13,6 +13,15 @@ public interface UserUnitProgressRepository extends JpaRepository<UserUnitProgre
 
     Optional<UserUnitProgress> findByUserIdAndUnitId(Long userId, Long unitId);
 
+    @Query(value = """
+            SELECT EXISTS (
+              SELECT 1 FROM course_unit_problems cup
+              JOIN submissions s ON s.problem_id = cup.problem_id
+              WHERE cup.unit_id = :unitId AND s.user_id = :userId AND s.verdict = 'AC'
+            )
+            """, nativeQuery = true)
+    boolean hasAcceptedProblemInUnit(Long userId, Long unitId);
+
     @Query("SELECT p FROM UserUnitProgress p WHERE p.user.id = :userId AND p.unit.course.id = :courseId AND p.completed = true")
     List<UserUnitProgress> findCompletedByUserIdAndCourseId(Long userId, Long courseId);
 
@@ -24,11 +33,14 @@ public interface UserUnitProgressRepository extends JpaRepository<UserUnitProgre
                   SELECT 1 FROM user_unit_progress p
                   WHERE p.unit_id = u.id AND p.user_id = :userId AND p.completed = true
                 )
-                OR EXISTS (
+                OR (NOT EXISTS (
+                  SELECT 1 FROM user_unit_progress p
+                  WHERE p.unit_id = u.id AND p.user_id = :userId
+                ) AND EXISTS (
                   SELECT 1 FROM course_unit_problems cup
                   JOIN submissions s ON s.problem_id = cup.problem_id
                   WHERE cup.unit_id = u.id AND s.user_id = :userId AND s.verdict = 'AC'
-                )
+                ))
               )
             """, nativeQuery = true)
     List<Long> findCompletedUnitIdsNative(Long userId, Long courseId);

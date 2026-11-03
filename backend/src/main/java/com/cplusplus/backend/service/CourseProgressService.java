@@ -80,9 +80,12 @@ public class CourseProgressService {
             progressRepository.save(prog);
             return nextState;
         } else {
-            UserUnitProgress prog = new UserUnitProgress(user, unit, true);
+            // An earlier AC can make the unit appear completed even without a progress row.
+            // The first manual click must then remove that completion.
+            boolean completed = !progressRepository.hasAcceptedProblemInUnit(user.getId(), unitId);
+            UserUnitProgress prog = new UserUnitProgress(user, unit, completed);
             progressRepository.save(prog);
-            return true;
+            return completed;
         }
     }
 

@@ -67,7 +67,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       GO_JUDGE_URL: http://go-judge:5050
+      UPLOAD_DIR: /opt/backend/uploads/course-files
       TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - course-files:/opt/backend/uploads
     ports:
       - "18000:8000"   # HTTP REST
       - "18001:8001"   # WebSocket
@@ -154,3 +157,4 @@ networks:
 volumes:
   db-data:
   redis-data:
+  course-files:

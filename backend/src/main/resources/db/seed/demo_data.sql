@@ -255,3 +255,4 @@ COMMIT;
 
 -- Tự động nạp thêm lớp học, giảng viên và bài nộp thực tế cho demo
 \i /seed/realistic_data.sql
+\i /seed/lms_demo.sql

@@ -56,6 +56,7 @@ function ContestsTab({ classroom, loading }) {
 }
 
 function CourseTab({ classroomId }) {
+  const { message } = App.useApp()
   const [selectedUnit, setSelectedUnit] = useState(null)
   const { data: courseData, loading } = useFetch(
     () => api.getClassroomCourse(classroomId).catch(() => null), [classroomId]
@@ -142,7 +143,8 @@ function CourseTab({ classroomId }) {
                   <Button
                     size="small"
                     icon={<DownloadOutlined />}
-                    onClick={() => window.open(`/api/courses/units/${activeUnit.id}/files/${f.id}/download`, '_blank')}
+                    onClick={() => api.downloadUnitFile(activeUnit.id, f.id, f.filename)
+                      .catch((e) => message.error(e.message || 'Không tải được tài liệu'))}
                   >
                     Tải về
                   </Button>

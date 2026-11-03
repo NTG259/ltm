@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   App,
@@ -28,13 +28,14 @@ export default function CourseDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { message } = App.useApp()
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
+  const [updatingUnitId, setUpdatingUnitId] = useState(null)
   const { mode } = useThemeMode()
   const isDark = mode === 'dark'
-  const { data: course, loading, reload: reloadCourse } = useFetch(() => api.getCourse(id), [id])
+  const { data: course, loading, setData: setCourse, reload: reloadCourse } = useFetch(() => api.getCourse(id), [id])
 
   // Cache tiến độ vào localStorage để hiển thị tức thì không bị chớp 0%
-  const cacheKey = `cj.cache_progress_${id}`
+  const cacheKey = `cj.cache_progress_${user?.id}_${id}`
   const cachedProgress = useMemo(() => {
     try {
       const raw = localStorage.getItem(cacheKey)
@@ -59,12 +60,33 @@ export default function CourseDetailPage() {
   }, [course?.progress, cacheKey])
 
   const toggleComplete = async (unitId) => {
+    if (updatingUnitId !== null) return
+    setUpdatingUnitId(unitId)
     try {
-      await api.toggleUnitProgress(unitId)
+      const result = await api.toggleUnitProgress(unitId)
+      setCourse((previous) => {
+        if (!previous) return previous
+        const ids = new Set(previous.progress?.completedUnitIds || [])
+        if (result.completed) ids.add(unitId)
+        else ids.delete(unitId)
+        const totalUnits = previous.units?.length || 0
+        return {
+          ...previous,
+          progress: {
+            ...previous.progress,
+            completedUnitIds: [...ids],
+            completedCount: ids.size,
+            totalUnits,
+            percent: totalUnits ? Math.round((ids.size / totalUnits) * 100) : 0,
+          },
+        }
+      })
       message.success('Đã cập nhật tiến độ học tập!')
       reloadCourse()
     } catch (e) {
       message.error(e.message || 'Lỗi khi cập nhật tiến độ')
+    } finally {
+      setUpdatingUnitId(null)
     }
   }
 
@@ -265,13 +287,15 @@ export default function CourseDetailPage() {
                           key="toggle"
                           type={isDone ? 'primary' : 'default'}
                           size="small"
+                          loading={updatingUnitId === unit.id}
+                          disabled={updatingUnitId !== null && updatingUnitId !== unit.id}
                           style={isDone ? { background: '#16a34a', borderColor: '#16a34a', fontWeight: 600 } : undefined}
                           onClick={(e) => {
                             e.stopPropagation()
                             toggleComplete(unit.id)
                           }}
                         >
-                          {isDone ? '✓ Đã xong' : 'Đánh dấu xong'}
+                          {isDone ? 'Bỏ đánh dấu' : 'Đánh dấu xong'}
                         </Button>,
                         <Button
                           key="learn"

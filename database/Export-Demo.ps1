@@ -18,6 +18,7 @@ try {
         Compose exec -T db psql -X -q -v ON_ERROR_STOP=1 -U codejudge -d $buildDb -f "$containerDir/migration/$($migration.Name)"
     }
     Compose exec -T db psql -X -q -v ON_ERROR_STOP=1 -U codejudge -d $buildDb -f "$containerDir/seed/realistic_data.sql"
+    Compose exec -T db psql -X -q -v ON_ERROR_STOP=1 -U codejudge -d $buildDb -f "$containerDir/seed/lms_demo.sql"
     # Keep Flyway's exact checksums so the application accepts the restored database.
     Compose exec -T db pg_dump -U codejudge -d codejudge --no-owner --no-privileges --table=public.flyway_schema_history -f "$containerDir/flyway.sql"
     Compose exec -T db psql -X -q -v ON_ERROR_STOP=1 -U codejudge -d $buildDb -f "$containerDir/flyway.sql"
@@ -30,6 +31,7 @@ try {
     Compose exec -T db psql -X -v ON_ERROR_STOP=1 -U codejudge -d $checkDb -c "SELECT 'users' AS entity,count(*) FROM users UNION ALL SELECT 'classrooms',count(*) FROM classrooms UNION ALL SELECT 'contests',count(*) FROM contests UNION ALL SELECT 'participants',count(*) FROM contest_participants UNION ALL SELECT 'submissions',count(*) FROM submissions UNION ALL SELECT 'sessions',count(*) FROM sessions;"
     if ($ApplyToWebsite) {
         Compose exec -T db psql -X -v ON_ERROR_STOP=1 -U codejudge -d codejudge -f "$containerDir/seed/realistic_data.sql"
+        Compose exec -T db psql -X -v ON_ERROR_STOP=1 -U codejudge -d codejudge -f "$containerDir/seed/lms_demo.sql"
     }
     Write-Host "Verified database/codejudge-demo.db ($size bytes)."
 } finally {
