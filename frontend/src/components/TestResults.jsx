@@ -83,7 +83,8 @@ function TestDetail({ test }) {
 
 /** Danh sách test case (ô màu theo kết quả) và chi tiết test đang chọn. Admin thấy đủ; sinh viên chỉ thấy số đúng/tổng. */
 export default function TestResults({ submission: s }) {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isLecturer } = useAuth()
+  const isStaff = isAdmin || isLecturer
   const [picked, setPicked] = useState(null)
   if (!s) return null
 
@@ -106,7 +107,7 @@ export default function TestResults({ submission: s }) {
   const pct = total ? Math.round((passed / total) * 100) : 0
 
   // Sinh viên chỉ thấy tổng đúng/sai, không thấy test nào sai
-  if (!isAdmin) {
+  if (!isStaff) {
     return (
       <div className="flex w-full flex-col gap-2">
         <span>
@@ -120,7 +121,7 @@ export default function TestResults({ submission: s }) {
     )
   }
 
-  // Admin: đầy đủ chip + chi tiết
+  // Admin và Giảng viên: đầy đủ chip + chi tiết
   const firstFail = s.tests.find((t) => VERDICTS[t.status] && t.status !== 'AC')
   const lastRun = [...s.tests].reverse().find((t) => t.status !== 'PENDING' && t.status !== 'SKIPPED')
   const selected = s.tests.find((t) => t.index === picked) || firstFail || lastRun || s.tests[0]

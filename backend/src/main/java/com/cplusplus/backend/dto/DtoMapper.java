@@ -21,6 +21,7 @@ public final class DtoMapper {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", s.getId());
         map.put("contestId", s.getContest() != null ? s.getContest().getId() : null);
+        map.put("contestTitle", s.getContest() != null ? s.getContest().getTitle() : null);
         map.put("problemId", s.getProblem().getId());
         map.put("problemTitle", s.getProblem().getTitle());
         map.put("userId", s.getUser().getUsername());

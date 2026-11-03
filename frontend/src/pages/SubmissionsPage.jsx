@@ -285,7 +285,7 @@ export default function SubmissionsPage({ admin, teacher }) {
                     <TableHead>Kết quả</TableHead>
                     {isStaff && <TableHead>Điểm</TableHead>}
                     <TableHead>Hiệu năng</TableHead>
-                    {admin && <TableHead>Worker</TableHead>}
+                    {isStaff && <TableHead>Worker</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -328,16 +328,23 @@ export default function SubmissionsPage({ admin, teacher }) {
                         </TableCell>
                       )}
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">#{s.problemId} {s.problemTitle}</span>
-                          <Link
-                            to={`/problems/${s.problemId}`}
-                            target="_blank"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            ↗
-                          </Link>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">#{s.problemId} {s.problemTitle}</span>
+                            <Link
+                              to={`/problems/${s.problemId}`}
+                              target="_blank"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              ↗
+                            </Link>
+                          </div>
+                          {s.contestId && (
+                            <span className="inline-flex items-center text-[11px] text-muted-foreground font-mono">
+                              🏆 Kỳ thi #{s.contestId}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell><VerdictTag submission={s} showIcon={false} /></TableCell>
@@ -345,7 +352,7 @@ export default function SubmissionsPage({ admin, teacher }) {
                       <TableCell className="font-mono text-sm text-muted-foreground">
                         {formatTime(s.timeMs)}{s.memoryKb ? ` / ${formatMemory(s.memoryKb)}` : ''}
                       </TableCell>
-                      {admin && (
+                      {isStaff && (
                         <TableCell>
                           {s.workerId ? (
                             <Badge variant="outline" className="font-mono">

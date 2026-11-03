@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { ArrowLeft, Clipboard, Download, FileQuestion, PencilLine, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Clipboard, Download, FileQuestion, PencilLine, Server, ShieldAlert, Trophy } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/context'
 import { useLiveSubmission } from '../lib/hooks'
-import { formatClock, formatDateTime } from '../lib/format'
+import { formatClock, formatDateTime, formatMemory, formatTime } from '../lib/format'
 import CodeEditor from '../components/CodeEditor'
 import TestResults from '../components/TestResults'
 import VerdictTag from '../components/VerdictTag'
@@ -168,6 +168,36 @@ export default function SubmissionDetailPage() {
                 <VerdictTag submission={submission} size="large" full />
               </div>
               <Separator />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Điểm số</span>
+                <span className="font-semibold text-base">
+                  {submission.score != null ? `${submission.score} / 100` : '—'}
+                </span>
+              </div>
+              {((submission.progress && submission.progress.total > 0) || submission.tests?.length > 0) && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">Test case</span>
+                    <span className="font-mono text-sm font-medium">
+                      {submission.progress?.total
+                        ? `${submission.progress.current} / ${submission.progress.total} (${Math.round((submission.progress.current / submission.progress.total) * 100)}%)`
+                        : `${(submission.tests || []).filter((t) => t.status === 'AC').length} / ${submission.tests?.length || 0}`}
+                    </span>
+                  </div>
+                </>
+              )}
+              <Separator />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Thời gian chạy</span>
+                <span className="font-mono font-medium">{formatTime(submission.timeMs)}</span>
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Bộ nhớ</span>
+                <span className="font-mono font-medium">{formatMemory(submission.memoryKb)}</span>
+              </div>
+              <Separator />
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">Đề bài</span>
                 <Link to={problemPath} target="_blank" className="font-medium hover:underline">
@@ -184,6 +214,22 @@ export default function SubmissionDetailPage() {
               </div>
               <Separator />
               <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Kỳ thi / Phạm vi</span>
+                {submission.contestId ? (
+                  <Link
+                    to={isAdmin ? `/admin/contests/${submission.contestId}` : isLecturer ? `/teacher/contests/${submission.contestId}` : `/contests/${submission.contestId}`}
+                    target="_blank"
+                    className="font-medium text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Trophy className="size-3.5" />
+                    <span>{submission.contestTitle || `Kỳ thi #${submission.contestId}`} ↗</span>
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Luyện tập tự do</span>
+                )}
+              </div>
+              <Separator />
+              <div className="flex flex-col gap-1">
                 <span className="text-xs text-muted-foreground">Ngôn ngữ</span>
                 <span className="font-mono">{submission.language || 'cpp17'} · g++ -O2</span>
               </div>
@@ -192,6 +238,34 @@ export default function SubmissionDetailPage() {
                 <span className="text-xs text-muted-foreground">Thời điểm</span>
                 <span>{formatDateTime(submission.createdAt)}</span>
               </div>
+              {(isAdmin || isLecturer) && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">Máy chấm (Worker)</span>
+                    {submission.workerId ? (
+                      <Badge variant="outline" className="font-mono">
+                        <Server data-icon="inline-start" className="mr-1 size-3" />
+                        {submission.workerId}
+                      </Badge>
+                    ) : (
+                      <span className="font-mono text-xs text-muted-foreground">—</span>
+                    )}
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">Lần thử</span>
+                    <span className="font-mono text-xs">{submission.attempts || 1} / 3</span>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">Trạng thái</span>
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {submission.status || 'FINISHED'}
+                    </Badge>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
