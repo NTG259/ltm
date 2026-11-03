@@ -344,7 +344,7 @@ function connect() {
     try {
       const msg = JSON.parse(e.data)
       if (msg.type === 'SESSION_KICKED') {
-        try { sessionStorage.setItem('cj.kicked', '1') } catch {}
+        try { sessionStorage.setItem('cj.kicked', '1') } catch { /* ignore */ }
         storeSession(null)
         window.location.hash = '#/login'
         return

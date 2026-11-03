@@ -31,7 +31,9 @@ export default function LoginPage() {
         sessionStorage.removeItem('cj.kicked')
         message.warning('Tài khoản của bạn đã được đăng nhập từ thiết bị khác. Vui lòng đăng nhập lại.')
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, [message])
 
   const onFinish = async (values) => {

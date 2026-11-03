@@ -1,4 +1,4 @@
-import { BookOpen, FileCheck2, GraduationCap, Trophy } from 'lucide-react'
+import { BarChart2, BookOpen, FileCheck2, GraduationCap, Trophy } from 'lucide-react'
 
 export const STUDENT_NAV_GROUPS = [
   {
@@ -18,6 +18,7 @@ export const STUDENT_NAV_GROUPS = [
     label: 'Hoạt động',
     items: [
       { path: '/submissions', label: 'Bài nộp', icon: FileCheck2 },
+      { path: '/leaderboard', label: 'Xếp hạng', icon: BarChart2 },
     ],
   },
 ]

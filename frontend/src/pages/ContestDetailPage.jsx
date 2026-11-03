@@ -10,6 +10,7 @@ import { CONTEST_STATUS, liveStatus } from '../lib/contest'
 import ContestClock from '../components/ContestClock'
 import ContestStandings from '../components/ContestStandings'
 import ContestProctoring from '../components/ContestProctoring'
+import ContestPlagiarism from '../components/ContestPlagiarism'
 import VerdictTag from '../components/VerdictTag'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -261,6 +262,9 @@ export default function ContestDetailPage() {
               {isStaff && (
                 <TabsTrigger value="proctor">Giám sát</TabsTrigger>
               )}
+              {isStaff && (
+                <TabsTrigger value="plagiarism">Chống đạo văn</TabsTrigger>
+              )}
               {!isStaff && <TabsTrigger value="rules">Thể lệ</TabsTrigger>}
             </TabsList>
 
@@ -282,6 +286,11 @@ export default function ContestDetailPage() {
             {isStaff && (
               <TabsContent value="proctor" className="p-4">
                 <ContestProctoring contestId={c.id} />
+              </TabsContent>
+            )}
+            {isStaff && (
+              <TabsContent value="plagiarism" className="p-4">
+                <ContestPlagiarism contestId={c.id} />
               </TabsContent>
             )}
             {!isStaff && (

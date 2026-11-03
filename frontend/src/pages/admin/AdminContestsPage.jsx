@@ -424,6 +424,27 @@ export default function AdminContestsPage({ teacher = false }) {
                               <Button variant="ghost" size="icon-sm" onClick={() => navigate(contestPath(c.id))} aria-label="Theo dõi kỳ thi" title="Theo dõi">
                                 <Eye />
                               </Button>
+                              {c.classroomId ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => navigate(teacher ? `/teacher/classrooms/${c.classroomId}/contests/${c.id}/monitor` : `/admin/classrooms/${c.classroomId}/contests/${c.id}/monitor`)}
+                                  aria-label="Giám sát kỳ thi của lớp"
+                                  title="Giám sát kỳ thi"
+                                >
+                                  <Trophy className="text-amber-500" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => navigate(teacher ? '/teacher/leaderboard' : `/admin/leaderboard/${c.id}`)}
+                                  aria-label="Bảng xếp hạng kỳ thi"
+                                  title="Bảng xếp hạng"
+                                >
+                                  <Trophy className="text-amber-500" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="icon-sm" onClick={() => setEditing(c)} aria-label="Sửa kỳ thi" title="Sửa">
                                 <Edit3 />
                               </Button>
@@ -453,6 +474,15 @@ export default function AdminContestsPage({ teacher = false }) {
                           {formatDateTime(c.startAt)} · {formatDuration(c.durationMin)}
                         </CardDescription>
                         <div className="absolute right-4 top-4 flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => navigate(c.classroomId ? (teacher ? `/teacher/classrooms/${c.classroomId}/contests/${c.id}/monitor` : `/admin/classrooms/${c.classroomId}/contests/${c.id}/monitor`) : (teacher ? '/teacher/leaderboard' : `/admin/leaderboard/${c.id}`))}
+                            aria-label="Giám sát kỳ thi"
+                            title="Giám sát kỳ thi"
+                          >
+                            <Trophy className="text-amber-500" />
+                          </Button>
                           <Button variant="ghost" size="icon-sm" onClick={() => setEditing(c)} aria-label="Sửa"><Edit3 /></Button>
                           <Button variant="ghost" size="icon-sm" onClick={() => setDeleteTarget(c)} aria-label="Xóa"><Trash2 /></Button>
                         </div>

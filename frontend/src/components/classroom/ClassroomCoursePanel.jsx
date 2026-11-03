@@ -6,7 +6,6 @@ import {
   Code2,
   Download,
   FileText,
-  LockKeyhole,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Badge } from '../ui/badge'
@@ -63,24 +62,20 @@ export default function ClassroomCoursePanel({ course, loading, progress }) {
         <div className="classroom-course__unit-list">
           {units.map((unit, index) => {
             const completed = completedIds.has(unit.id)
-            const locked = index > 0 && !completedIds.has(units[index - 1].id)
             return (
               <button
                 key={unit.id}
                 type="button"
                 className={`classroom-course__unit${activeUnit?.id === unit.id ? ' is-active' : ''}`}
-                onClick={() => !locked && setSelectedUnitId(unit.id)}
-                disabled={locked}
+                onClick={() => setSelectedUnitId(unit.id)}
                 aria-current={activeUnit?.id === unit.id ? 'step' : undefined}
               >
                 <span className="classroom-course__unit-index">
-                  {completed
-                    ? <CheckCircle2 className="size-4" />
-                    : locked ? <LockKeyhole className="size-4" /> : index + 1}
+                  {completed ? <CheckCircle2 className="size-4" /> : index + 1}
                 </span>
                 <span className="classroom-course__unit-copy">
                   <strong>{unit.title}</strong>
-                  <small>{completed ? 'Đã hoàn thành' : locked ? 'Chưa mở khóa' : 'Sẵn sàng học'}</small>
+                  <small>{completed ? 'Đã hoàn thành' : 'Sẵn sàng học'}</small>
                 </span>
               </button>
             )
