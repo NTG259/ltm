@@ -14,6 +14,8 @@ RUN --mount=type=cache,id=codejudge-maven,target=/root/.m2,sharing=locked ./mvnw
 FROM eclipse-temurin:21-jre-jammy
 RUN useradd --system --uid 10001 master
 COPY --from=build /app.jar /opt/backend/app.jar
+RUN mkdir -p /opt/backend/uploads/course-files \
+ && chown master:master /opt/backend/uploads/course-files
 USER master
 EXPOSE 8000 8001 9000
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "/opt/backend/app.jar"]
