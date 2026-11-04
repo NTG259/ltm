@@ -205,6 +205,8 @@ public final class DtoMapper {
         map.put("name", c.getName());
         map.put("semester", c.getSemester());
         map.put("createdBy", c.getCreatedBy() != null ? c.getCreatedBy().getUsername() : null);
+        map.put("createdById", c.getCreatedBy() != null ? c.getCreatedBy().getId() : null);
+        map.put("createdByRole", c.getCreatedBy() != null && c.getCreatedBy().getRole() != null ? c.getCreatedBy().getRole().name() : null);
         map.put("lecturerId", c.getLecturer() != null ? c.getLecturer().getId() : null);
         map.put("lecturerName", c.getLecturer() != null ? c.getLecturer().getFullName() : null);
         map.put("lecturerStaffId", c.getLecturer() != null ? c.getLecturer().getUsername() : null);
@@ -231,6 +233,8 @@ public final class DtoMapper {
         map.put("description", c.getDescription());
         map.put("published", c.isPublished());
         map.put("createdBy", c.getCreatedBy() != null ? c.getCreatedBy().getUsername() : null);
+        map.put("createdById", c.getCreatedBy() != null ? c.getCreatedBy().getId() : null);
+        map.put("createdByRole", c.getCreatedBy() != null && c.getCreatedBy().getRole() != null ? c.getCreatedBy().getRole().name() : null);
         map.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toEpochMilli() : null);
         map.put("unitCount", c.getUnits() != null ? c.getUnits().size() : 0);
         return map;

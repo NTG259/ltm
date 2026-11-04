@@ -86,11 +86,15 @@ public class CourseUnitFileController {
         if (file.getSize() > MAX_FILE_SIZE) return badRequest("File vượt quá giới hạn 20 MB");
 
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.equals("application/pdf")) {
+        String originalName = file.getOriginalFilename();
+        boolean isPdfExt = originalName != null && originalName.toLowerCase().endsWith(".pdf");
+        boolean isPdfMime = contentType != null && (contentType.equalsIgnoreCase("application/pdf")
+                || contentType.toLowerCase().startsWith("application/pdf")
+                || contentType.equalsIgnoreCase("application/x-pdf"));
+        if (!isPdfExt && !isPdfMime) {
             return badRequest("Chỉ chấp nhận file PDF");
         }
 
-        String originalName = file.getOriginalFilename();
         if (originalName == null || originalName.isBlank()) originalName = "document.pdf";
         // Sanitize filename
         String displayName = Paths.get(originalName).getFileName().toString();
@@ -175,8 +179,12 @@ public class CourseUnitFileController {
     }
 
     private boolean canManageCourse(CourseUnit unit, User user) {
-        return user.isAdmin() || (user.isLecturer() && unit.getCourse().getCreatedBy() != null
-                && unit.getCourse().getCreatedBy().getId().equals(user.getId()));
+        if (user == null) return false;
+        if (user.isAdmin()) return true;
+        if (!user.isLecturer()) return false;
+        var course = unit.getCourse();
+        if (course.getCreatedBy() == null || course.getCreatedBy().isAdmin()) return true;
+        return course.getCreatedBy().getId().equals(user.getId());
     }
 
     private ResponseEntity<Map<String, String>> unauthorized() {

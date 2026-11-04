@@ -43,7 +43,7 @@ export default function AdminCourseEditPage({ teacher = false }) {
   const { user } = useAuth()
   const { message } = App.useApp()
   const { data: course, loading, reload: refetch } = useFetch(() => api.getCourse(id), [id])
-  const canManage = !teacher || course?.createdBy === user?.id
+  const canManage = !teacher || course?.createdBy === user?.username || course?.createdById === user?.id || !course?.createdBy || course?.createdByRole === 'ADMIN' || course?.createdBy === 'admin'
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingUnit, setEditingUnit] = useState(null)

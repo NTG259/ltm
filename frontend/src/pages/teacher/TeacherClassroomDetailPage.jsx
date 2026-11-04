@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Download,
   FileText,
   GraduationCap,
   Key,
@@ -750,11 +751,33 @@ function CourseTab({ classroomId }) {
                 activeUnit.files.map((f) => (
                   <div key={f.id} className="flex items-center gap-2 rounded-md border px-3 py-2">
                     <FileText className="size-4 shrink-0 text-red-500" />
-                    <span className="flex-1 text-sm font-medium">{f.filename}</span>
-                    {f.fileSize && <span className="text-xs text-muted-foreground">{(f.fileSize / 1024 / 1024).toFixed(1)} MB</span>}
-                    <Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteFile(activeUnit.id, f.id)}>
-                      <Trash2 />
+                    <a
+                      href={`/api/courses/units/${activeUnit.id}/files/${f.id}/download`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 text-sm font-medium hover:underline text-foreground truncate"
+                      title="Bấm để tải về / xem tài liệu"
+                    >
+                      {f.filename}
+                    </a>
+                    {f.fileSize && <span className="text-xs text-muted-foreground whitespace-nowrap">{(f.fileSize / 1024 / 1024).toFixed(1)} MB</span>}
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => window.open(`/api/courses/units/${activeUnit.id}/files/${f.id}/download`, '_blank')}
+                      title="Tải về"
+                    >
+                      <Download className="size-4" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteFile(activeUnit.id, f.id)}
+                      title="Xóa tài liệu"
+                    >
+                      <Trash2 className="size-4" />
                     </Button>
                   </div>
                 ))
@@ -763,9 +786,9 @@ function CourseTab({ classroomId }) {
             <div className="mb-5">
               <Button size="sm" variant="outline" disabled={uploading} onClick={() => pdfInputRef.current?.click()}>
                 {uploading ? <Loader2 className="animate-spin size-4" /> : <Upload data-icon="inline-start" />}
-                Tải lên PDF
+                {uploading ? 'Đang tải lên...' : 'Tải lên PDF'}
               </Button>
-              <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
+              <input ref={pdfInputRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleUpload} />
             </div>
 
             {/* Problems */}

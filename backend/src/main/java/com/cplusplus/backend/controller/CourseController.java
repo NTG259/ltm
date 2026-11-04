@@ -137,7 +137,7 @@ public class CourseController {
         }
 
         Course course = opt.get();
-        if (!canManageCourse(course, user)) return forbidden();
+        if (!user.isAdmin() && !isCourseOwner(course, user)) return forbidden();
         if (body.containsKey("title")) {
             String title = (String) body.get("title");
             if (title != null && !title.isBlank()) {
@@ -480,7 +480,11 @@ public class CourseController {
     }
 
     private static boolean canManageCourse(Course course, User user) {
-        return user.isAdmin() || isCourseOwner(course, user);
+        if (user == null) return false;
+        if (user.isAdmin()) return true;
+        if (!user.isLecturer()) return false;
+        if (course.getCreatedBy() == null || course.getCreatedBy().isAdmin()) return true;
+        return isCourseOwner(course, user);
     }
 
     private static ResponseEntity<?> unauthorized() {
